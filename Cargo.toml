@@ -1,0 +1,19 @@
+# Programme Rust avec interface Qt construite par build.rs.
+[package]
+name = "gad"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+build = "build.rs"
+
+# Empreintes de contenu et protocole/journal JSON partagés avec la couche C++.
+[dependencies]
+md5 = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Optimiser le binaire utilisateur et retirer les symboles de débogage de la distribution.
+[profile.release]
+lto = true
+strip = true
+

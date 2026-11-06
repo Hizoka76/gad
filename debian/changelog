@@ -1,0 +1,6 @@
+gad (0.1.0-1~ppa1) noble; urgency=medium
+
+  * Initial Debian packaging for the Rust and Qt 6 application.
+  * Include offline Rust dependencies and multilingual documentation.
+
+ -- Terence Belleguic <hizo@free.fr>  Fri, 06 Nov 2026 19:35:50 +0100

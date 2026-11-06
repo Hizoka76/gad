@@ -1,0 +1,198 @@
+#include "i18n.h"
+#include "protocol.h"
+// Implémentation de la fenêtre Gad, séparée par responsabilité.
+#include "window.h"
+#include "bridge.h"
+#ifndef GAD_VERSION
+#define GAD_VERSION "développement"
+#endif
+#ifndef GAD_BUILD_DATE
+#define GAD_BUILD_DATE ""
+#endif
+
+#include "application.h"
+#include "paths.h"
+#include "dolphin_destination.h"
+#include <memory>
+#include <algorithm>
+#include <cstdio>
+#include <unistd.h>
+
+
+/// Convertit les arguments CLI en requête JSON, notamment la destination déduite du contexte Dolphin.
+QJsonObject parse(const QStringList &args, QString &error) {
+    error.clear();
+    if (args.size() == 1) return {{"command", Protocol::Command::Show}};
+    const auto option = args[1];
+    // Le lien de notification n’accepte aucune commande ni chemin arbitraire.
+    if ((option == "gad://show" || option == "gad://show/") && args.size()==2) return {{"command",Protocol::Command::Show}};
+    if (option == "--background" && args.size()==2) return {{"command",Protocol::Command::Background}};
+    if (option == "--status" && args.size() == 2) return {{"command", Protocol::Command::Status}};
+    // KIO développe %U : ignorer toute ancienne sélection et lire uniquement la fenêtre active.
+    if((option=="--paste-dolphin" || option=="--paste-current") && args.size()>=2)return {{"command",Protocol::Command::Paste},{"dolphin_current",true},{"background",true}};
+    if (option == "--paste-context" && args.size() >= 3) {
+        QStringList context;
+        for(int i=2;i<args.size();++i){context.append(LocalPaths::destination(args[i],error));if(!error.isEmpty())return {};}
+        // Le type des éléments distants ne peut être connu qu’après le montage asynchrone.
+        if(std::any_of(context.cbegin(),context.cend(),[](const QString &value){return SourceUrls::isUrl(value);})) {
+            QJsonArray items;for(const auto &item:context)items.append(item);
+            return {{"command",Protocol::Command::Paste},{"destination",context[0]},{"destination_context",items},{"background",true}};
+        }
+        QString path;
+        if (context.size()==1 && QFileInfo(context[0]).isDir()) path=context[0];
+        else {
+            for (const auto &item:context) {
+                const auto parent=QFileInfo(item).absolutePath();
+                if (path.isEmpty()) path=parent;
+                else if (parent!=path) {error=GAD_TR("The selection does not share a single destination folder");return {};}
+            }
+        }
+        return {{"command",Protocol::Command::Paste},{"destination",path},{"background",true}};
+    }
+    if (option == "--paste" && args.size() == 3) {
+        const auto path=LocalPaths::destination(args[2],error);if(!error.isEmpty())return {};
+        return {{"command",Protocol::Command::Paste},{"destination",path},{"background",true}};
+    }
+    if (option == "--copy" || option == "--move") {
+        int separator = args.indexOf("--to", 2);
+        if (separator >= 3 && separator == args.size() - 2) {
+            const auto path=LocalPaths::destination(args.last(),error);if(!error.isEmpty())return {};
+            QJsonArray sources; for (int i = 2; i < separator; ++i) sources.append(SourceUrls::argument(args[i]));
+            return {{"command", Protocol::Command::Enqueue}, {"sources", sources}, {"destination", path}, {"mode", option == "--move" ? "move" : "copy"}};
+        }
+    }
+    error = GAD_TR("Usage: gad [--background | --paste FOLDER | --copy SOURCE… --to FOLDER | --move SOURCE… --to FOLDER | --status | --smoke-test]");
+    return {};
+}
+
+/// Démarre Qt, transmet la commande à l’instance existante ou crée le serveur local propriétaire.
+/// Les modes de test isolent leur journal et leur socket pour ne pas atteindre l’instance du bureau.
+extern "C" int sc_gui(int argc, char **argv) {
+    // Vérifier les octets avant Qt : une conversion avec remplacement pourrait sélectionner un autre fichier existant.
+    for(int i=1;i<argc;++i) {
+        const QByteArray argument(argv[i]);
+        if(QString::fromUtf8(argument).toUtf8()!=argument) {
+            std::fprintf(stderr,"Argument non UTF-8 : nom de fichier non pris en charge.\n");return 2;
+        }
+    }
+    QApplication app(argc, argv);
+    app.setApplicationName("Gad"); app.setOrganizationName("Gad"); app.setDesktopFileName("org.hizoka.gad");
+    app.setApplicationVersion(QString::fromUtf8(GAD_VERSION));
+    app.setWindowIcon(applicationIcon());
+    I18n::initialize();
+    auto args = app.arguments();
+    const bool explicitMd5 = args.removeAll("--md5") > 0;
+    const bool explicitProperties=args.removeAll("--properties")>0;
+    if (args.size() == 3 && args[1] == "--export-icons") return exportIcons(args[2]);
+    if (args.contains("--help") || args.contains("-h")) {
+        std::puts(qPrintable(GAD_TR("Gad copies. — File transfer manager for KDE\n  gad\n  gad --background\n  gad --paste FOLDER\n  gad --copy SOURCE… --to FOLDER\n  gad --move SOURCE… --to FOLDER\n  gad --status\n  gad --smoke-test\n  Add --md5 to verify file contents."))); return 0;
+    }
+    const bool smoke = args.size() == 2 && args[1] == "--smoke-test";
+    std::unique_ptr<QTemporaryDir> smokeStorage;
+    if (smoke) {
+        smokeStorage = std::make_unique<QTemporaryDir>(QDir::tempPath()+"/gad-smoke-XXXXXX");
+        if (!smokeStorage->isValid()) return 1;
+        qputenv("XDG_DATA_HOME", QFile::encodeName(smokeStorage->path()+"/data"));
+        qputenv("XDG_CONFIG_HOME", QFile::encodeName(smokeStorage->path()+"/config"));
+    }
+    QString error;
+    QJsonObject initial = smoke ? QJsonObject{{"command", Protocol::Command::Show}} : parse(args, error);
+    if (!error.isEmpty()) { std::fprintf(stderr, "%s\n", qPrintable(error)); return 2; }
+    if(initial.take("dolphin_current").toBool()) {
+        const auto target=DolphinDestination::current();
+        if(!target.error.isEmpty()){std::fprintf(stderr,"%s\n",qPrintable(target.error));QMessageBox::warning(nullptr,"Gad",target.error);return 1;}
+        initial["destination"]=target.destination;
+    }
+    if (initial["command"] == Protocol::Command::Paste) {
+        const auto files = Clipboard::current();
+        if (!files.error.isEmpty()) {
+            std::fprintf(stderr, "%s\n", qPrintable(files.error));
+            QMessageBox::warning(nullptr, "Gad", files.error);
+            return 1;
+        }
+        const auto context=initial.value("destination_context");
+        initial = Clipboard::request(files, initial["destination"].toString());
+        if(context.isArray())initial["destination_context"]=context;
+        initial["background"] = true;
+    }
+    // Transmet le jeton reçu par le lanceur KDE à l’instance déjà ouverte sous Wayland.
+    if(initial["command"]== Protocol::Command::Show)initial["activation_token"]=qEnvironmentVariable("XDG_ACTIVATION_TOKEN");
+    if (explicitMd5) initial["verify_md5"] = true;
+    if(explicitProperties)initial["verify_properties"]=true;
+    const QString runtime = QStandardPaths::writableLocation(QStandardPaths::RuntimeLocation);
+    if (runtime.isEmpty()) { std::fprintf(stderr, "%s", qPrintable(GAD_TR("XDG_RUNTIME_DIR not found\n"))); return 1; }
+    const QString name = runtime + "/gad" + (smoke ? "-smoke-" + QString::number(getpid()) : "") + ".sock";
+    // Un client transmet sa requête à l’instance existante ; -1 signifie qu’aucun serveur n’a répondu.
+    auto forward = [&]() -> int {
+        QLocalSocket client;
+        QString endpoint=name;
+        client.connectToServer(endpoint);
+        if (!client.waitForConnected(200))return -1;
+        if (initial["verify_space"].toBool() || initial["mode"] == "move" || initial["verify_md5"].toBool() || initial["verify_properties"].toBool() || SourceUrls::needsResolution(initial)) {
+            QLocalSocket probe; probe.connectToServer(endpoint);
+            if (!probe.waitForConnected(500)) return 1;
+            probe.write("{\"command\":\"status\"}\n"); probe.waitForBytesWritten(1000);
+            QByteArray status;
+            QElapsedTimer probeTimeout; probeTimeout.start();
+            while (!status.contains('\n') && probeTimeout.elapsed() < 3000) {
+                if (probe.bytesAvailable() || probe.waitForReadyRead(200)) status += probe.readAll();
+            }
+            const int requiredVersion = qMax(SourceUrls::requiredProtocol(initial),initial["verify_md5"].toBool() ? 3 : 2);
+            if (QJsonDocument::fromJson(status.trimmed()).object()["protocol_version"].toInt() < requiredVersion) {
+                const QString message = GAD_TR("An older version of Gad is still running. Let its transfers finish, then quit and restart Gad to enable this feature. No transfer has been added.");
+                std::fprintf(stderr, "%s\n", qPrintable(message));
+                QMessageBox::warning(nullptr, "Gad", message);
+                return 1;
+            }
+        }
+        client.write(QJsonDocument(initial).toJson(QJsonDocument::Compact) + '\n');
+        if (!client.waitForBytesWritten(3000)) return 1;
+        QByteArray reply;
+        QElapsedTimer timeout; timeout.start();
+        while (!reply.contains('\n') && timeout.elapsed() < 10000) {
+            if (client.bytesAvailable() || client.waitForReadyRead(500)) reply += client.readAll();
+            else if (client.state() == QLocalSocket::UnconnectedState) break;
+        }
+        if (reply.isEmpty()) { std::fprintf(stderr, "%s", qPrintable(GAD_TR("Gad is not responding\n"))); return 1; }
+        std::fputs(reply.constData(), stdout);
+        return QJsonDocument::fromJson(reply.trimmed()).object().contains("error") ? 1 : 0;
+    };
+    // Le client --status ne doit jamais créer un second moteur si aucun serveur n’est disponible.
+    const int forwarded = forward(); if (forwarded >= 0) return forwarded;
+    if (initial["command"] == Protocol::Command::Status) { std::fprintf(stderr, "%s", qPrintable(GAD_TR("Gad is not running\n"))); return 1; }
+    // Le verrou tranche une course entre deux lancements qui n’auraient pas encore trouvé de socket.
+    QLockFile lock(runtime + "/gad" + (smoke ? "-smoke-" + QString::number(getpid()) : "") + ".lock");
+    lock.setStaleLockTime(0);
+    if (!lock.tryLock()) {
+        for (int i = 0; i < 15; ++i) { QThread::msleep(200); const int result = forward(); if (result >= 0) return result; }
+        std::fprintf(stderr, "%s", qPrintable(GAD_TR("An instance is starting or not responding\n"))); return 1;
+    }
+    QLocalServer::removeServer(name);
+    QLocalServer server; server.setSocketOptions(QLocalServer::UserAccessOption);
+    if (!server.listen(name)) { std::fprintf(stderr, "%s\n", qPrintable(server.errorString())); return 1; }
+    Window window;
+    // Chaque connexion transporte une ligne JSON, avec une limite de taille avant décodage.
+    QObject::connect(&server, &QLocalServer::newConnection, &window, [&] {
+        while (auto *socket = server.nextPendingConnection()) {
+            auto *buffer = new QByteArray;
+            QObject::connect(socket, &QObject::destroyed, [buffer] { delete buffer; });
+            QObject::connect(socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater);
+            QObject::connect(socket, &QLocalSocket::readyRead, &window, [socket, buffer, &window] {
+                buffer->append(socket->readAll());
+                if (buffer->size() > 16 * 1024 * 1024) { socket->abort(); return; }
+                if (!buffer->contains('\n')) return;
+                const auto doc = QJsonDocument::fromJson(buffer->left(buffer->indexOf('\n')));
+                const auto result = doc.isObject() ? window.handle(doc.object()) : QJsonObject{{"error", GAD_TR("Invalid request")}};
+                socket->write(QJsonDocument(result).toJson(QJsonDocument::Compact) + '\n'); socket->flush(); socket->disconnectFromServer();
+            });
+        }
+    });
+    // Le traitement après démarrage de la boucle Qt évite de montrer une fenêtre pour un collage caché.
+    QTimer::singleShot(0, &window, [&] { window.handle(initial); });
+    if (smoke) QTimer::singleShot(700, &app, [&] {
+        const auto screenshot = qEnvironmentVariable("GAD_SCREENSHOT");
+        if (!screenshot.isEmpty()) window.grab().save(screenshot);
+        app.quit();
+    });
+    return app.exec();
+}

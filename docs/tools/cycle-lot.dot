@@ -1,0 +1,33 @@
+// États des lots uniquement ; les états de fichier sont expliqués séparément dans le guide.
+digraph cycle {
+  graph [rankdir=LR, bgcolor="white", pad="0.25", nodesep="0.30", ranksep="0.40"];
+  node [shape=box, style="rounded,filled", fillcolor="#edf4ff", color="#355d88", fontname="DejaVu Sans", fontsize=11];
+  edge [fontname="DejaVu Sans", fontsize=9, color="#526779"];
+  scan [label="scanning\npréparation"];
+  waiting [label="waiting\nfile + pauses"];
+  running [label="running\ntravailleur réservé"];
+  device [label="device_waiting\nmontage absent",fillcolor="#fff4da"];
+  done [label="done", fillcolor="#e9f5ec"];
+  error [label="error", fillcolor="#ffe9e7"];
+  cancel [label="cancelled", fillcolor="#fff4da"];
+  undo [label="undoing\nexclusif"];
+  undone [label="undone", fillcolor="#e9f5ec"];
+  undoerr [label="undo_error", fillcolor="#ffe9e7"];
+  scan -> waiting [label="lot validé"];
+  scan -> error [label="refus"];
+  scan -> cancel [label="annulation"];
+  waiting -> running [label="ressources compatibles"];
+  waiting -> cancel [label="annulation"];
+  running -> done [label="succès"];
+  running -> waiting [label="branche suivante / replanification"];
+  running -> device [label="déconnexion"]; scan -> device [label="montage connu absent"];
+  device -> waiting [label="montage et fichiers revalidés"]; device -> error [label="reprise refusée"]; device -> cancel [label="annulation"];
+  running -> error [label="échec"];
+  running -> cancel [label="arrêt"];
+  done -> undo [label="remise en état"];
+  error -> undo [label="restauration / réessai ciblé"]; error -> scan [label="réessai d’analyse vide"]; cancel -> undo;
+  undo -> undone [label="restauration réussie"];
+  undo -> undoerr [label="protection / erreur"];
+  undoerr -> undo [label="nouvelle tentative"];
+  undo -> waiting [label="préparation de réactivation"];
+}

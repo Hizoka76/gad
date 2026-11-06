@@ -1,0 +1,29 @@
+# Prêt pour un dépôt GitHub : Qt/KF6 et Rust sont fournis par Debian Trixie.
+name: Tests Gad
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    container: debian:trixie
+    timeout-minutes: 30
+    steps:
+      - name: Installer les dépendances
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git ca-certificates build-essential pkg-config python3 cargo rustc rustfmt rust-clippy qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qmake6 libkf6windowsystem-dev dbus fonts-dejavu-core
+      - uses: actions/checkout@v4
+      - name: Vérifier les prérequis
+        run: python3 scripts/run_tests.py doctor
+      - name: Exécuter la validation complète
+        run: python3 scripts/run_tests.py all --keep-going
+      - name: Conserver les rapports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gad-test-results
+          path: target/test-results/

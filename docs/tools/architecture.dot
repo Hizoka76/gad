@@ -1,0 +1,21 @@
+// Architecture réelle : l’interface et le moteur résident dans le même exécutable.
+digraph architecture {
+  graph [rankdir=LR, bgcolor="white", pad="0.3", nodesep="0.35", ranksep="0.5"];
+  node [shape=box, style="rounded,filled", fillcolor="#edf4ff", color="#355d88", fontname="DejaVu Sans", fontsize=11, margin="0.16,0.10"];
+  edge [fontname="DejaVu Sans", fontsize=9, color="#526779"];
+  entree [label="Dolphin / CLI\nCopier, Couper, Coller avec Gad"];
+  socket [label="Instance unique Qt\nsocket Unix privée"];
+  ui [label="Fenêtre, menus et systray\nQSettings + cache des lignes"];
+  kio [label="KIO Fuse\nURL → chemin monté\nauthentification KDE", fillcolor="#fff4da"];
+  bridge [label="Frontière C / JSON\nsc_request → sc_free"];
+  prep [label="Préparation asynchrone\nvalidation + analyse"];
+  engine [label="État partagé Rust\nMutex + Condvar"];
+  workers [label="Deux travailleurs\nréservations de disques et chemins\ncopie / déplacement / remise en état"];
+  fs [label="Fichiers locaux ou montés\ntemporaires + sauvegardes", fillcolor="#e9f5ec"];
+  journal [label="Journal JSON\nécriture atomique + synchronisation", fillcolor="#e9f5ec"];
+  plasma [label="Plasma JobViewV3\nprogression agrégée", fillcolor="#fff4da"];
+  entree -> socket; socket -> ui; ui -> kio [label="sources distantes"]; kio -> ui [label="chemins"];
+  ui -> bridge; bridge -> engine; engine -> prep; prep -> engine;
+  engine -> workers; workers -> fs; workers -> journal; engine -> journal;
+  engine -> ui [label="poll : lots modifiés", style=dashed]; ui -> plasma;
+}

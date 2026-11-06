@@ -1,0 +1,1 @@
+{"KPlugin":{"Name":"Paste with Gad","Name[fr]":"Coller avec Gad","Description":"Send file pastes to Gad; text pastes stay native.","Description[fr]":"Confie le collage de fichiers à Gad ; le collage de texte reste natif.","Version":"0.1.0","License":"MIT","EnabledByDefault":true}}

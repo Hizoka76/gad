@@ -1,0 +1,21 @@
+// The UI and engine run inside one executable.
+digraph architecture {
+  graph [rankdir=LR, bgcolor="white", pad="0.3", nodesep="0.35", ranksep="0.5"];
+  node [shape=box, style="rounded,filled", fillcolor="#edf4ff", color="#355d88", fontname="DejaVu Sans", fontsize=11, margin="0.16,0.10"];
+  edge [fontname="DejaVu Sans", fontsize=9, color="#526779"];
+  input [label="Dolphin / Konqueror / CLI\nCopiar, cortar e colar com Gad"];
+  socket [label="Instância única do Qt\nSocket Unix privado"];
+  ui [label="Janela, menus e área de notificação\nQSettings + cache de linhas"];
+  kio [label="KIO Fuse\nURL → caminho montado\nAutenticação do KDE", fillcolor="#fff4da"];
+  bridge [label="Interface C / JSON\nsc_request → sc_free"];
+  prep [label="Preparação em segundo plano\nValidação e análise"];
+  engine [label="Estado partilhado do Rust\nMutex + Condvar"];
+  workers [label="Duas threads de trabalho\nReservas de discos e caminhos\nCopiar / mover / restaurar"];
+  fs [label="Ficheiros locais ou montados\nTemporários e cópias de segurança", fillcolor="#e9f5ec"];
+  journal [label="Diário JSON\nEscrita atómica e sincronização", fillcolor="#e9f5ec"];
+  plasma [label="Plasma JobViewV3\nProgresso combinado", fillcolor="#fff4da"];
+  input -> socket; socket -> ui; ui -> kio [label="Destinos remotos"]; kio -> ui [label="Caminhos"];
+  ui -> bridge; bridge -> engine; engine -> prep; prep -> engine;
+  engine -> workers; workers -> fs; workers -> journal; engine -> journal;
+  engine -> ui [label="poll: pedidos alterados", style=dashed]; ui -> plasma;
+}

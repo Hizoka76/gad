@@ -1,0 +1,19 @@
+Source: gad
+Section: utils
+Priority: optional
+Maintainer: Terence Belleguic <hizo@free.fr>
+Build-Depends: debhelper-compat (= 13), cargo (>= 1.85), rustc (>= 1.85),
+ pkgconf | pkg-config, python3, qt6-base-dev, qt6-base-dev-tools | qt6-base-dev, qmake6 | qt6-base-dev,
+ libkf6windowsystem-dev | kf6-kwindowsystem-dev
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: gad
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, python3
+Recommends: kio-fuse, kio-extras, wl-clipboard
+Suggests: dolphin, kdeconnect
+Description: queued file transfer manager for KDE
+ Gad manages file copies and moves with queues, parallel transfers,
+ pause and resume, verification, error reports and restoration actions.
+ Includes Qt translations and documentation in six languages.

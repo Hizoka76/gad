@@ -1,0 +1,33 @@
+#!/usr/bin/make -f
+# Les dépendances Cargo sont incluses dans l’archive source, jamais téléchargées ici.
+export CARGO_HOME = $(CURDIR)/debian/cargo-home
+export CARGO_TARGET_DIR = $(CURDIR)/target
+export CARGO_NET_OFFLINE = true
+export CARGO_PROFILE_RELEASE_STRIP = false
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	test -f .cargo/config.toml
+	test -d vendor
+	python3 scripts/translations.py --check
+
+override_dh_auto_build:
+	cargo build --release --frozen
+
+override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	cargo test --release --frozen -- --test-threads=1
+endif
+
+override_dh_auto_install:
+	python3 scripts/install_system.py --destdir debian/gad --binary target/release/gad
+
+# Préserver les Cargo.toml.orig dont les sommes sont vérifiées par Cargo.
+override_dh_clean:
+	dh_clean -Xvendor/
+
+override_dh_auto_clean:
+	rm -rf target debian/cargo-home

@@ -1,0 +1,15 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Gad
+Upstream-Contact: Terence Belleguic <hizo@free.fr>
+
+Files: *
+Copyright: 2026 Terence Belleguic <hizo@free.fr>
+License: to-be-confirmed
+ No distribution licence has yet been selected for Gad.
+ Confirm the upstream licence before publishing this package.
+
+Files: vendor/*
+Copyright: See individual crate metadata and licence files in vendor/.
+License: third-party
+ Each vendored crate retains its original licence and copyright notices.
+ See its Cargo.toml and accompanying LICENSE or COPYING files.

@@ -1,0 +1,22 @@
+/target/
+__pycache__/
+
+# Fichiers locaux de l’éditeur et notes personnelles.
+*.swp
+*.swo
+*~
+/TOTO.md
+
+# Artefacts Debian générés localement.
+*.deb
+*.ddeb
+*.buildinfo
+*.changes
+/debian/gad/
+/debian/cargo-home/
+/debian/.debhelper/
+/debian/debhelper-build-stamp
+/debian/files
+/debian/*.substvars
+/debian/*.debhelper.log
+*.kate-swp

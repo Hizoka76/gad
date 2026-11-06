@@ -1,0 +1,72 @@
+/* Mise en page commune aux guides HTML et PDF ; aucune ressource distante. */
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin: 0; color: #263747; background: #edf2f6; font: 16px/1.85 'Noto Sans', 'DejaVu Sans', sans-serif; }
+main { max-width: 1040px; margin: 38px auto; padding: 64px 76px; background: white; border-radius: 16px; box-shadow: 0 8px 40px #233e5412; }
+a { color: #086d9b; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+nav { max-width: 1040px; margin: 30px auto 0; padding: 0 20px; font-size: 14px; }
+nav a { margin-right: 24px; }
+h1,h2,h3 { color: #153b54; line-height: 1.35; font-weight: 700; }
+h1 { font-size: 44px; margin: 24px 0; letter-spacing: -1.3px; }
+h2 { font-size: 29px; margin: 0 0 30px; padding: 0 0 18px; border-bottom: 3px solid #39a8c9; }
+h3 { font-size: 20px; margin: 36px 0 18px; }
+p { margin: 0 0 22px; }
+li { margin-bottom: 11px; padding-left: 4px; }
+ul,ol { padding-left: 25px; margin: 18px 0 28px; }
+.cover { padding: 35px 0 55px; border-bottom: 1px solid #dce6ed; margin-bottom: 54px; }
+.cover-icon { width: 120px; height: 120px; object-fit: contain; margin-bottom: 16px; }
+.eyebrow { text-transform: uppercase; letter-spacing: 2px; color: #237b9a; font-size: 12px; font-weight: 700; }
+.cover-subtitle { font-size: 23px; color: #547084; margin-bottom: 26px; }
+.cover-meta { margin-top: 45px; font-size: 13px; color: #667f90; }
+.chapter { margin: 0 0 64px; padding-top: 18px; }
+figure { margin: 30px 0 36px; text-align: center; padding: 18px; background: #f5f8fb; border: 1px solid #dce6ee; border-radius: 10px; }
+figure img { display: block; max-width: 100%; height: auto; margin: 0 auto; border-radius: 5px; }
+figcaption { margin-top: 15px; font-size: 13px; line-height: 1.65; color: #566f81; text-align: left; }
+img { max-width: 100%; height: auto; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 28px 0 36px; font-size: 14px; line-height: 1.65; border: 1px solid #d9e4ec; border-radius: 7px; overflow: hidden; }
+th { background: #184c68; color: white; text-align: left; font-size: 13px; font-weight: 600; padding: 14px 16px; }
+td { padding: 14px 16px; text-align: left; vertical-align: top; border-bottom: 1px solid #e1e9ef; overflow-wrap: anywhere; }
+tbody tr:nth-child(even) { background: #f1f6fa; }
+tbody tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 500; }
+td p:last-child { margin-bottom: 0; }
+pre { background: #eff4f8; border-left: 3px solid #39a8c9; padding: 20px 22px; margin: 24px 0 32px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+code { font: .86em/1.7 'DejaVu Sans Mono',monospace; background: #eef3f7; padding: 2px 4px; border-radius: 3px; }
+pre code { padding: 0; background: transparent; }
+blockquote { margin: 26px 0; padding: 18px 22px; border-left: 4px solid #39a8c9; background: #f0f7fa; }
+@media screen { main { width: calc(100% - 32px); } }
+/* Les chapitres commencent sur une page neuve et les en-têtes de tableau se répètent. */
+@page { size: A4; margin: 20mm 17mm 19mm; @top-left { content: 'GAD  /  DOCUMENTATION'; font: 8pt 'Noto Sans'; color: #718897; } @bottom-left { content: string(guide-title); font: 8pt 'Noto Sans'; color: #718897; } @bottom-right { content: counter(page) ' / ' counter(pages); font: 8pt 'Noto Sans'; color: #718897; } }
+@page:first { @top-left { content: none; } @bottom-left { content: none; } }
+@media print {
+ body { background: white; font-size: 10.3pt; line-height: 1.65; }
+ main { margin: 0; padding: 0; max-width: none; box-shadow: none; border-radius: 0; }
+ nav { display: none; }
+ h1 { font-size: 34pt; string-set: guide-title content(); }
+ h2 { font-size: 21pt; margin-bottom: 8mm; padding-bottom: 4mm; }
+ h3 { font-size: 13pt; margin-top: 8mm; margin-bottom: 4mm; }
+ h1,h2,h3 { break-after: avoid; }
+ h3#carte-du-code, h3#code-map { break-before: page; margin-top: 0; }
+ .troubleshooting td { padding: 2.1mm 2.7mm; }
+ p { margin-bottom: 4mm; orphans: 3; widows: 3; }
+ li { margin-bottom: 2.5mm; }
+ ul,ol { margin-top: 3mm; margin-bottom: 6mm; }
+ .cover { min-height: 230mm; padding-top: 32mm; margin: 0; border: none; break-after: page; }
+ .cover-icon { width: 35mm; height: 35mm; }
+ .cover-subtitle { font-size: 17pt; }
+ .cover-meta { margin-top: 25mm; font-size: 10pt; }
+ .chapter { break-before: page; margin: 0; padding: 0; }
+ figure { padding: 3mm; margin: 6mm 0 7mm; break-inside: avoid; border-radius: 2mm; }
+ figure img { max-height: 170mm; object-fit: contain; }
+ figcaption { font-size: 8.5pt; margin-top: 3mm; }
+ table { font-size: 9pt; line-height: 1.6; margin: 6mm 0 8mm; border-radius: 0; }
+ thead { display: table-header-group; }
+ tr { break-inside: avoid; }
+ th { padding: 2.7mm; font-size: 8.7pt; }
+ td { padding: 2.7mm; }
+ pre { font-size: 8.8pt; padding: 4mm; break-inside: avoid; }
+ a { text-decoration: none; color: #086d9b; }
+}
+
+/* Le sommaire doit tenir sur une page dans chaque langue. */
+@media print { .contents li {margin-bottom:1mm;line-height:1.25;} .contents ul,.contents ol {margin-top:2mm;margin-bottom:3mm;} }

@@ -1,0 +1,6 @@
+<!-- Les catalogues et drapeaux sont ajoutés automatiquement par scripts/resources.py. -->
+<RCC>
+  <qresource prefix="/icons">
+    <file alias="gad.png">gad.png</file>
+  </qresource>
+</RCC>

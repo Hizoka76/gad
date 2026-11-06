@@ -1,0 +1,25 @@
+// Request states; individual files have additional states described in the guide.
+digraph cycle {
+  graph [rankdir=LR, bgcolor="white", pad="0.25", nodesep="0.30", ranksep="0.40"];
+  node [shape=box, style="rounded,filled", fillcolor="#edf4ff", color="#355d88", fontname="Noto Sans CJK JP", fontsize=10];
+  edge [fontname="Noto Sans CJK JP", fontsize=9, color="#526779"];
+  scan [label="scanning\n準備"];
+  waiting [label="waiting\nキューと一時停止の操作"];
+  running [label="running\nワーカーを予約済み"];
+  device [label="device_waiting\nマウント先が利用不可",fillcolor="#fff4da"];
+  done [label="done", fillcolor="#e9f5ec"];
+  error [label="error", fillcolor="#ffe9e7"];
+  cancel [label="cancelled", fillcolor="#fff4da"];
+  undo [label="undoing\n排他的な処理"];
+  undone [label="undone", fillcolor="#e9f5ec"];
+  undoerr [label="undo_error", fillcolor="#ffe9e7"];
+  scan -> waiting [label="検証済みのリクエスト"]; scan -> error [label="拒否"]; scan -> cancel [label="キャンセル"];
+  waiting -> running [label="互換性のあるリソース"]; waiting -> cancel [label="キャンセル"];
+  running -> done [label="成功"]; running -> waiting [label="次の分岐・再スケジュール"];
+  running -> device [label="切断"]; scan -> device [label="既知のマウント先が見つからない"];
+  device -> waiting [label="マウント先とファイルを再検証"]; device -> error [label="再開を拒否"]; device -> cancel [label="キャンセル"];
+  running -> error [label="失敗"]; running -> cancel [label="停止"];
+  done -> undo [label="復元"]; error -> undo [label="復元・失敗したファイルの再試行"]; error -> scan [label="空の準備処理を再試行"]; cancel -> undo;
+  undo -> undone [label="復元済み"]; undo -> undoerr [label="保護・失敗"]; undoerr -> undo [label="再試行"];
+  undo -> waiting [label="再試行・再有効化の準備完了"];
+}

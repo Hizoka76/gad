@@ -1,0 +1,3 @@
+# Les HTML autonomes intègrent les captures en base64. Leurs sources Markdown,
+# images et scripts de rendu sont livrés dans docs/ et scripts/build_docs.py.
+gad source: source-is-missing [docs/html/*.html]

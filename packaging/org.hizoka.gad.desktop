@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Gad
+Comment=Advanced file transfer manager for KDE
+Comment[fr]=Gestionnaire de copies pour KDE
+Exec=gad %u
+MimeType=x-scheme-handler/gad;
+Icon=gad-boucles-document
+Terminal=false
+Categories=Utility;FileTools;Qt;KDE;
+StartupNotify=true
+StartupWMClass=Gad

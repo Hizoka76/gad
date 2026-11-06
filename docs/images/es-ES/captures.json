@@ -1,0 +1,95 @@
+{
+  "captures": [
+    {
+      "file": "01-vue-ensemble.png",
+      "height": 1240,
+      "width": 2480,
+      "sha256": "a0084fb64eb2235ac5a7fa772ef95b6eb4b25ebff243b48d172b53ed13308220"
+    },
+    {
+      "file": "02-sources-options.png",
+      "height": 1052,
+      "width": 1216,
+      "sha256": "90b532c5aeb90e956831ec59b9449366b0913fbf49b6c5ade91fbf0069f3a1bd"
+    },
+    {
+      "file": "03-pause.png",
+      "height": 1240,
+      "width": 2480,
+      "sha256": "df87c72c73e1a920a54725d58a37ff35edb04a56423fcd88a672e269625f3acb"
+    },
+    {
+      "file": "04-menu-annulation.png",
+      "height": 258,
+      "width": 680,
+      "sha256": "9036f7e05ec64a46bb503d2308efc502935173b21e40832f57b484c82306a266"
+    },
+    {
+      "file": "05-menu-contextuel.png",
+      "height": 868,
+      "width": 618,
+      "sha256": "7bfc79043f5354764e4048ed03d2bf340dbd1c48dc1a822645dece82d36c965f"
+    },
+    {
+      "file": "06-filtres.png",
+      "height": 548,
+      "width": 610,
+      "sha256": "93ab3687e3e84cf3a3029fc7a363ede8d20f50c1ab6f5c52d1a4b7250124db9f"
+    },
+    {
+      "file": "07-verification-md5.png",
+      "height": 1240,
+      "width": 2480,
+      "sha256": "2d1f2c62ba5d528199a9426e093ecd3da5dcd916ae3fe4072754ab44c19cb317"
+    },
+    {
+      "file": "08-conflit.png",
+      "height": 1240,
+      "width": 2480,
+      "sha256": "ca03e71c3eaba47d56cdd6431c229e99d1960c159581081fcf45c4a20bd7f66c"
+    },
+    {
+      "file": "09-menu-zone-notification.png",
+      "height": 200,
+      "width": 328,
+      "sha256": "4c0bcc1e311fe2ccba355a550be90bc4da69a6edcd5d46e058af14e839870f0e"
+    },
+    {
+      "file": "10-a-propos.png",
+      "height": 576,
+      "width": 704,
+      "sha256": "0c421e6e5b77800f761e082a796e66d4c71d5cd331c6d5ad12364a759da2c6b3"
+    },
+    {
+      "file": "11-verification-proprietes.png",
+      "height": 1240,
+      "width": 2480,
+      "sha256": "37515a6d2617cc8273a34e0ce1ef9e501f0d13e3ca29cc7e14c06e2450b796fb"
+    },
+    {
+      "file": "12-reconnexion.png",
+      "height": 1240,
+      "width": 2480,
+      "sha256": "c9a1a2ff1e33f20419afc12b99e5404e7af7b7bdc6a7a68c9c172eef850a880c"
+    },
+    {
+      "file": "13-bilan-erreurs.png",
+      "height": 1300,
+      "width": 2640,
+      "sha256": "13b1214a89c051c4a1a86e723e91da94cbf8de08fa5de9524c5ac1314801a09e"
+    }
+  ],
+  "demo": true,
+  "description": "Vrais widgets Gad ; états simulés, fichiers temporaires, aucun bureau réel capturé.",
+  "device_pixel_ratio": 2,
+  "font": "Noto Sans",
+  "icon_theme": "breeze",
+  "locale": "es_ES",
+  "qt_version": "6.11.1",
+  "style": "breeze",
+  "theme": "light",
+  "window_color": "#eff0f1",
+  "version": "0.1.0",
+  "generated_at": "2026-11-06",
+  "language": "es-ES"
+}
