@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def main():
     """Aucun Dolphin ni fichier de configuration de la session n’est utilisé."""
-    with tempfile.TemporaryDirectory(prefix="gad-dolphin-paste-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="gad-dolphin-integration-") as tmp:
         base = Path(tmp)
         runtime = base / "runtime"
         runtime.mkdir(mode=0o700)

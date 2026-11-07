@@ -23,6 +23,7 @@ class PackagingTests(unittest.TestCase):
             with patch.dict(os.environ, HOME=str(home)), patch.object(install_system, 'install_docs') as docs:
                 install_system.install(root / 'stage', binary)
             self.assertEqual(list(home.iterdir()), [])
+            self.assertEqual({path.name for path in (root / 'stage/usr/bin').iterdir()}, {'gad'})
             self.assertEqual(len(list((root / 'stage/usr/share/icons/hicolor').glob('*/apps/*.png'))), 9)
             self.assertEqual((root / 'stage/usr/bin/gad').read_bytes(), binary.read_bytes())
             self.assertEqual((root / 'stage/usr/bin/gad').stat().st_mode & 0o777, 0o755)

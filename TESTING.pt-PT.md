@@ -200,7 +200,7 @@ make docs-check
 
 Os testes da documentação verificam o catálogo de seis idiomas e os três tipos de guia, a navegação entre idiomas, os formatos de papel, as legendas e as imagens incorporadas. Também verificam o formato compacto do início rápido, as capturas próprias de cada idioma e a preservação do código dos exemplos.
 
-A geração produz diagramas traduzidos e 18 guias. Em seguida, verifica ligações e âncoras, as 78 capturas com tema claro e as suas dimensões e assinaturas, o idioma do HTML, as imagens incorporadas e as 36 exportações HTML/PDF. Requer as dependências opcionais indicadas no índice da documentação.
+A geração produz diagramas traduzidos e 18 guias. Em seguida, verifica ligações e âncoras, as 84 capturas com tema claro e as suas dimensões e assinaturas, o idioma do HTML, as imagens incorporadas e as 36 exportações HTML/PDF. Requer as dependências opcionais indicadas no índice da documentação.
 
 [Documentation](docs/README.pt-PT.md#regeneration)
 
@@ -223,6 +223,11 @@ python3 scripts/test_qt.py --suite row_actions
 
 `python3 scripts/test_qt.py --suite konqueror` verifica a pasta atual, URLs codificados e remotos, preservação em modo de corte, colagem de texto nativo e Shift+Insert num ambiente isolado. O plugin foi também carregado no Konqueror 26.08.2 extraído para um diretório temporário com HOME/XDG e D-Bus privados; foi verificado o URL exato da pasta ativa. Os registos locais estão em `target/konqueror-real-test.log`.
 
-## Menu de definições {#settings-menu}
+## Diálogo de definições {#settings-menu}
 
-Os testes Qt abrangem o agrupamento de controlos, cliques em caixas de seleção para manter o menu aberto, tradução ao vivo e limites de taxa baseados na seleção. Um falso auxiliar de atalho num PATH privado verifica as alterações Dolphin bem-sucedidas e rejeitadas sem modificar as definições do ambiente de trabalho. O conjunto Konqueror verifica a desativação e reativação imediata do seu filtro Ctrl+V.
+Os testes Qt verificam tamanhos mínimos, ambos os separadores, Fechar e Esc, conservação dos controlos, tradução imediata e o botão de velocidade na barra de ações. A CLI é testada com valores inválidos, opções contraditórias, exclusões parciais e sincronização de preferências. Python verifica os seis manuais, os seis idiomas, a instalação e a rejeição de traduções em falta.
+
+```sh
+make manpages-check
+make test-cli-settings
+```

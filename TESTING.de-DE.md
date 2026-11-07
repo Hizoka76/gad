@@ -200,7 +200,7 @@ make docs-check
 
 Die Dokumentationstests prüfen den Katalog mit sechs Sprachen und drei Handbuchtypen, Sprachwechsel, Papierformate, Bildunterschriften und eingebettete Bilder. Außerdem prüfen sie das kompakte Drucklayout der Schnellstarts, die eigenen Bildschirmaufnahmen jeder Sprache und die unveränderten Codebeispiele.
 
-Der Build erzeugt übersetzte Diagramme und 18 Handbücher. Anschließend werden lokale Links und Sprungziele, die 78 Aufnahmen im hellen Design mit Abmessungen und Prüfsummen, HTML-Sprachangaben, eingebettete Bilder und alle 36 HTML-/PDF-Ausgaben geprüft. Dafür sind die im Dokumentationsindex genannten optionalen Abhängigkeiten nötig.
+Der Build erzeugt übersetzte Diagramme und 18 Handbücher. Anschließend werden lokale Links und Sprungziele, die 84 Aufnahmen im hellen Design mit Abmessungen und Prüfsummen, HTML-Sprachangaben, eingebettete Bilder und alle 36 HTML-/PDF-Ausgaben geprüft. Dafür sind die im Dokumentationsindex genannten optionalen Abhängigkeiten nötig.
 
 [Documentation](docs/README.de-DE.md#regeneration)
 
@@ -223,6 +223,11 @@ python3 scripts/test_qt.py --suite row_actions
 
 `python3 scripts/test_qt.py --suite konqueror` überprüft den aktuellen Ordner, kodierte und Remote-URLs, Cut-Mode-Bewahrung, natives Text-Patent und Shift+Insert in einer isolierten Umgebung. Konqueror 26.08.2 in ein temporäres Verzeichnis mit privaten HOME/XDG und D-Bus extrahiert; die genaue Active-folder URL wurde überprüft. `target/konqueror-real-test.log`.
 
-## Einstellungsmenü {#settings-menu}
+## Einstellungsdialog {#settings-menu}
 
-Qt-Tests umfassen die Kontrollgruppierung, die Checkbox-Klicks halten das Menü offen, die Live-Übersetzung und die Auswahl-basierten Ratengrenzen. Ein gefälschter Shortcut-Helfer in einem privaten PATH-Checks erfolgreich und abgelehnt Dolphin-Änderungen ohne Änderung von Desktop-Einstellungen. Die Konqueror-Suite prüft sofortiges Abschalten und Wiedereinschalten des Ctrl+V-Filters.
+Qt-Tests prüfen Mindestgrößen, beide Reiter, Schließen und Escape, erhaltene Steuerelemente, sofortige Übersetzung und die Geschwindigkeitsschaltfläche in der Aktionsleiste. CLI-Tests decken ungültige Werte, widersprüchliche Optionen, teilweise Ausschlussänderungen und die Synchronisierung der Einstellungen ab. Python prüft sechs Handbuchseiten, sechs Sprachen, Installation und die Ablehnung fehlender Übersetzungen.
+
+```sh
+make manpages-check
+make test-cli-settings
+```

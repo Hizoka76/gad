@@ -13,6 +13,7 @@ override_dh_auto_configure:
 	test -f .cargo/config.toml
 	test -d vendor
 	python3 scripts/translations.py --check
+	python3 scripts/generate_manpages.py --check
 
 override_dh_auto_build:
 	cargo build --release --frozen

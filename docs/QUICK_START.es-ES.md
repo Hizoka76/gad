@@ -39,11 +39,11 @@ Pegue nuevamente para agregar otra solicitud. Gad pone el trabajo en cola y pued
 
 ## Configurar las preferencias {#set-your-preferences}
 
-![Configuración y controles de acceso directo](images/es-ES/02-sources-options.png)
+![El diálogo de opciones se abre desde el bloque Configuración.](images/es-ES/02-sources-options.png)
 
-*Abra Opciones desde Configuración, a la derecha de Destino.*
+*El diálogo de opciones se abre desde el bloque Configuración.*
 
-En **Configuración → Opciones…**, elija su idioma, manejo de elementos ocultos, opciones de verificación, historial, inicio y límites de ancho de banda. Las casillas de verificación se aplican inmediatamente y dejan el menú abierto. Utilice **Exclusiones…** para patrones de carpetas como `__*` y patrones de archivos como `*.tmp` o `*~`.
+En **Configuración → Opciones…**, las pestañas **Configuración** y **Atajos** agrupan las preferencias y las integraciones. Los cambios se aplican inmediatamente; **Cerrar** o Esc cierra el diálogo. Los parámetros de comando aparecen en gris. **Exclusiones…** acepta patrones de carpetas como `__*` y de archivos como `*.tmp` o `*~`. El botón de velocidad de los lotes seleccionados está a la izquierda de la barra de acciones principal.
 
 **Permitir duplicación en la misma carpeta** crea nombres como `photo_copied1.jpg` al volver a copiar a la carpeta original. Está desactivado de forma predeterminada y se aplica sólo a las copias. Las opciones de selección, verificación y duplicación se capturan para nuevas solicitudes; Las solicitudes existentes mantienen su configuración. El límite de velocidad global puede cambiar durante los traslados.
 
@@ -66,3 +66,14 @@ Para un archivo existente, elija **Mantener el archivo existente**, **Mantenga a
 Abra **Resumen de errores...** para transferencias fallidas, copie o exporte los detalles y vuelva a intentar solo los archivos fallidos. Si un dispositivo desaparece, vuelva a conectar el mismo dispositivo en la misma ubicación y deje que Gad lo verifique antes de continuar.
 
 **mantener la historia** conserva información de deshacer. **Borrar operaciones terminadas** elimina la información de restauración correspondiente. Para recuperación, direcciones remotas, comprobaciones de MD5 y todas las opciones de cancelación, continúe con [Guía del usuario](USER_GUIDE.es-ES.md).
+
+## Configuración y páginas de manual {#command-settings}
+
+`gad --configure` guarda las preferencias y actualiza los controles de la instancia abierta. Si no hay ninguna, inicia Gad en segundo plano y devuelve el control al terminal. Las formas `--no-…` desactivan las casillas. Las listas de exclusión no indicadas se conservan; repetir `--exclude-folder` o `--exclude-file` sustituye la lista correspondiente. `--clear-exclusions` vacía ambas listas. El límite global se expresa en MiB/s; 0 significa sin límite. `--md5` y `--properties` con una copia o movimiento afectan solo a ese traslado. Los atajos de Dolphin usan `gad --configure --dolphin-ctrl-v` o `--no-dolphin-ctrl-v`.
+
+```bash
+gad --configure --md5 --verify-space --no-include-hidden
+gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR --rate-limit 25
+```
+
+`man gad` · `make manpages`

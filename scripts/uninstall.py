@@ -20,7 +20,6 @@ for size in (16, 22, 24, 32, 48, 64, 128, 256, 512):
 # Le retrait ciblé du raccourci préserve les réglages personnels de Dolphin.
 # Le retour aux raccourcis d’origine précède le retrait de l’outil et de son reçu.
 (data_dir / "gad/dolphin-paste.json").unlink(missing_ok=True)
-(Path.home() / ".local/bin/gad-dolphin-paste").unlink(missing_ok=True)
 for name in ("dolphin_shortcut.py", "xdg_paths.py"):
     (data_dir / "gad/integration" / name).unlink(missing_ok=True)
 # Retirer aussi l’association gad:// du cache MIME, comme lors de l’installation.

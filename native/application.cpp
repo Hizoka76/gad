@@ -11,6 +11,7 @@
 #endif
 
 #include "application.h"
+#include "cli_options.h"
 #include "paths.h"
 #include "dolphin_destination.h"
 #include <memory>
@@ -24,6 +25,7 @@ QJsonObject parse(const QStringList &args, QString &error) {
     error.clear();
     if (args.size() == 1) return {{"command", Protocol::Command::Show}};
     const auto option = args[1];
+    if(option=="--configure")return CliOptions::configure(args,error);
     // Le lien de notification n’accepte aucune commande ni chemin arbitraire.
     if ((option == "gad://show" || option == "gad://show/") && args.size()==2) return {{"command",Protocol::Command::Show}};
     if (option == "--background" && args.size()==2) return {{"command",Protocol::Command::Background}};
@@ -81,11 +83,14 @@ extern "C" int sc_gui(int argc, char **argv) {
     app.setWindowIcon(applicationIcon());
     I18n::initialize();
     auto args = app.arguments();
-    const bool explicitMd5 = args.removeAll("--md5") > 0;
-    const bool explicitProperties=args.removeAll("--properties")>0;
+    const bool configuring=args.size()>1 && args[1]=="--configure";
+    const bool explicitMd5 = !configuring && args.removeAll("--md5") > 0;
+    const bool explicitProperties=!configuring && args.removeAll("--properties")>0;
     if (args.size() == 3 && args[1] == "--export-icons") return exportIcons(args[2]);
     if (args.contains("--help") || args.contains("-h")) {
-        std::puts(qPrintable(GAD_TR("Gad copies. — File transfer manager for KDE\n  gad\n  gad --background\n  gad --paste FOLDER\n  gad --copy SOURCE… --to FOLDER\n  gad --move SOURCE… --to FOLDER\n  gad --status\n  gad --smoke-test\n  Add --md5 to verify file contents."))); return 0;
+        std::puts(qPrintable(GAD_TR("Gad copies. — File transfer manager for KDE\n  gad\n  gad --background\n  gad --paste FOLDER\n  gad --copy SOURCE… --to FOLDER\n  gad --move SOURCE… --to FOLDER\n  gad --status\n  gad --smoke-test\n  Add --md5 to verify file contents.")));
+        std::puts("  gad --paste-current\n  gad --paste-context URL...\n  gad --configure [--md5|--no-md5] [--properties|--no-properties]\n    [--verify-space|--no-verify-space] [--keep-history|--no-keep-history]\n    [--resume-interrupted|--no-resume-interrupted] [--include-hidden|--no-include-hidden]\n    [--allow-duplication|--no-allow-duplication] [--autostart|--no-autostart]\n    [--dolphin-ctrl-v|--no-dolphin-ctrl-v]\n    [--konqueror-ctrl-v|--no-konqueror-ctrl-v] [--language LOCALE]\n    [--rate-limit MIB_PER_SECOND] [--exclude-folder PATTERN] [--exclude-file PATTERN]\n    [--clear-exclusions]");
+        std::printf("  --properties: %s\n",qPrintable(GAD_TR("Verify properties")));return 0;
     }
     const bool smoke = args.size() == 2 && args[1] == "--smoke-test";
     std::unique_ptr<QTemporaryDir> smokeStorage;
@@ -128,7 +133,7 @@ extern "C" int sc_gui(int argc, char **argv) {
         QString endpoint=name;
         client.connectToServer(endpoint);
         if (!client.waitForConnected(200))return -1;
-        if (initial["verify_space"].toBool() || initial["mode"] == "move" || initial["verify_md5"].toBool() || initial["verify_properties"].toBool() || SourceUrls::needsResolution(initial)) {
+        if (initial["command"]==Protocol::Command::Configure || initial["verify_space"].toBool() || initial["mode"] == "move" || initial["verify_md5"].toBool() || initial["verify_properties"].toBool() || SourceUrls::needsResolution(initial)) {
             QLocalSocket probe; probe.connectToServer(endpoint);
             if (!probe.waitForConnected(500)) return 1;
             probe.write("{\"command\":\"status\"}\n"); probe.waitForBytesWritten(1000);
@@ -137,7 +142,7 @@ extern "C" int sc_gui(int argc, char **argv) {
             while (!status.contains('\n') && probeTimeout.elapsed() < 3000) {
                 if (probe.bytesAvailable() || probe.waitForReadyRead(200)) status += probe.readAll();
             }
-            const int requiredVersion = qMax(SourceUrls::requiredProtocol(initial),initial["verify_md5"].toBool() ? 3 : 2);
+            const int requiredVersion = initial["command"]==Protocol::Command::Configure?Protocol::Command::Version:qMax(SourceUrls::requiredProtocol(initial),initial["verify_md5"].toBool() ? 3 : 2);
             if (QJsonDocument::fromJson(status.trimmed()).object()["protocol_version"].toInt() < requiredVersion) {
                 const QString message = GAD_TR("An older version of Gad is still running. Let its transfers finish, then quit and restart Gad to enable this feature. No transfer has been added.");
                 std::fprintf(stderr, "%s\n", qPrintable(message));
@@ -160,6 +165,15 @@ extern "C" int sc_gui(int argc, char **argv) {
     // Le client --status ne doit jamais créer un second moteur si aucun serveur n’est disponible.
     const int forwarded = forward(); if (forwarded >= 0) return forwarded;
     if (initial["command"] == Protocol::Command::Status) { std::fprintf(stderr, "%s", qPrintable(GAD_TR("Gad is not running\n"))); return 1; }
+    // Une configuration lancée depuis un terminal ne garde pas ce terminal occupé.
+    // Le processus détaché prend le verrou normal, puis reçoit la même requête validée.
+    if(initial["command"]==Protocol::Command::Configure) {
+        QProcess launcher;launcher.setProgram(QCoreApplication::applicationFilePath());launcher.setArguments({"--background"});
+        launcher.setStandardInputFile(QProcess::nullDevice());launcher.setStandardOutputFile(QProcess::nullDevice());launcher.setStandardErrorFile(QProcess::nullDevice());
+        if(!launcher.startDetached())return 1;
+        for(int i=0;i<50;++i){QThread::msleep(100);const auto result=forward();if(result>=0)return result;}
+        std::fprintf(stderr,"%s",qPrintable(GAD_TR("Gad is not responding\n")));return 1;
+    }
     // Le verrou tranche une course entre deux lancements qui n’auraient pas encore trouvé de socket.
     QLockFile lock(runtime + "/gad" + (smoke ? "-smoke-" + QString::number(getpid()) : "") + ".lock");
     lock.setStaleLockTime(0);
@@ -178,12 +192,15 @@ extern "C" int sc_gui(int argc, char **argv) {
             QObject::connect(socket, &QObject::destroyed, [buffer] { delete buffer; });
             QObject::connect(socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater);
             QObject::connect(socket, &QLocalSocket::readyRead, &window, [socket, buffer, &window] {
+                if(socket->property("handling").toBool())return;
                 buffer->append(socket->readAll());
                 if (buffer->size() > 16 * 1024 * 1024) { socket->abort(); return; }
                 if (!buffer->contains('\n')) return;
+                socket->setProperty("handling",true);
                 const auto doc = QJsonDocument::fromJson(buffer->left(buffer->indexOf('\n')));
-                const auto result = doc.isObject() ? window.handle(doc.object()) : QJsonObject{{"error", GAD_TR("Invalid request")}};
-                socket->write(QJsonDocument(result).toJson(QJsonDocument::Compact) + '\n'); socket->flush(); socket->disconnectFromServer();
+                const QPointer<QLocalSocket> guarded(socket);
+                const auto respond=[guarded](QJsonObject result){if(!guarded)return;guarded->write(QJsonDocument(result).toJson(QJsonDocument::Compact)+'\n');guarded->flush();guarded->disconnectFromServer();};
+                if(doc.isObject())window.handleAsync(doc.object(),respond);else respond({{"error",GAD_TR("Invalid request")}});
             });
         }
     });

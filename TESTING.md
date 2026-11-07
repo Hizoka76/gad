@@ -199,7 +199,7 @@ Les tests `errors_` vérifient le rapport en lecture seule, les erreurs d’anal
 
 Les cas de `tests/python/test_documentation.py` utilisent seulement la bibliothèque standard : catalogue complet des six langues et des trois types de guide, navigation et bascule de langue par public, papier A4/US Letter, liens relatifs et fragments, couverture/légendes localisées, images embarquées, titre absent et génération des 18 guides. Markdown et WeasyPrint sont simulés pour ces tests.
 
-`make docs` effectue le rendu réel, renouvelle les schémas modifiés et vérifie les liens des README/guides/tests, les 78 captures, les langues HTML et les 36 exports. Les dépendances facultatives sont indiquées dans [l’index documentaire](docs/README.md). Le test Qt du bilan vérifie aussi les icônes des six boutons avec un thème volontairement absent pour contrôler leur repli standard.
+`make docs` effectue le rendu réel, renouvelle les schémas modifiés et vérifie les liens des README/guides/tests, les 84 captures, les langues HTML et les 36 exports. Les dépendances facultatives sont indiquées dans [l’index documentaire](docs/README.md). Le test Qt du bilan vérifie aussi les icônes des six boutons avec un thème volontairement absent pour contrôler leur repli standard.
 
 ## Traductions de l’application
 
@@ -220,6 +220,11 @@ python3 scripts/test_qt.py --suite row_actions
 
 `python3 scripts/test_qt.py --suite konqueror` vérifie le dossier courant, les URL distantes et encodées, la conservation du mode couper, le collage de texte et Maj+Inser dans un environnement privé. Le module a aussi été chargé dans Konqueror 26.08.2 extrait dans un dossier temporaire, avec HOME/XDG et bus D-Bus privés ; l’URL exacte du dossier actif a été vérifiée. Les journaux de cet essai local sont dans `target/konqueror-real-test.log`.
 
-## Menu Paramètres
+## Boîte des paramètres {#menu-parametres}
 
-Les tests Qt vérifient le regroupement des contrôles, l’ouverture persistante du menu lors d’un clic sur une case, la traduction à chaud et le débit par sélection. Un faux gestionnaire de raccourcis dans un PATH privé contrôle le succès et le refus d’une modification Dolphin sans modifier les réglages du bureau. La suite Konqueror vérifie la désactivation et la réactivation immédiates du filtre Ctrl+V.
+Les tests Qt contrôlent les minima des fenêtres, les deux onglets, Fermer et Échap, la conservation des widgets, la traduction à chaud et le bouton de débit dans la barre d’actions. La CLI est testée pour les valeurs invalides, les options opposées, les exclusions partielles et la synchronisation des préférences. Les tests Python vérifient les six manpages, la couverture des six langues, leur installation et le refus des traductions manquantes.
+
+```sh
+make manpages-check
+make test-cli-settings
+```

@@ -1,5 +1,5 @@
 // Vocabulaire unique du JSON et du journal ; les noms sérialisés historiques restent inchangés.
-GAD_PROTOCOL_VERSION(22)
+GAD_PROTOCOL_VERSION(24)
 GAD_STATE(Scanning, scanning, false)
 GAD_STATE(Waiting, waiting, false)
 GAD_STATE(DeviceWaiting, device_waiting, false)

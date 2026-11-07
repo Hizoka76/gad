@@ -200,7 +200,7 @@ make docs-check
 
 Documentation tests cover the six-language catalog and all three guide types, same-audience language navigation, paper sizes, localized captions, and offline image embedding. They also check that quick starts use a compact print layout, that each user guide references its own screenshots, and that translated examples preserve the original code blocks.
 
-The documentation build renders localized diagrams and 18 guides, then checks local links and anchors, 78 light-theme screenshots and their dimensions and hashes, HTML language tags, embedded images, and all 36 HTML/PDF exports. It requires the optional dependencies listed in the documentation index.
+The documentation build renders localized diagrams and 18 guides, then checks local links and anchors, 84 light-theme screenshots and their dimensions and hashes, HTML language tags, embedded images, and all 36 HTML/PDF exports. It requires the optional dependencies listed in the documentation index.
 
 [Documentation](docs/README.en-US.md#regeneration)
 
@@ -223,6 +223,11 @@ python3 scripts/test_qt.py --suite row_actions
 
 `python3 scripts/test_qt.py --suite konqueror` checks the current folder, encoded and remote URLs, cut-mode preservation, native text pasting, and Shift+Insert in an isolated environment. The plugin was also loaded in Konqueror 26.08.2 extracted into a temporary directory with private HOME/XDG and D-Bus; the exact active-folder URL was verified. Local logs are in `target/konqueror-real-test.log`.
 
-## Settings menu
+## Settings dialog {#settings-menu}
 
-Qt tests cover control grouping, checkbox clicks keeping the menu open, live translation, and selection-based rate limits. A fake shortcut helper in a private PATH checks successful and rejected Dolphin changes without modifying desktop settings. The Konqueror suite checks immediate disabling and re-enabling of its Ctrl+V filter.
+Qt tests check window minimum sizes, both tabs, Close and Escape, retained controls, live translation, and the speed button in the action bar. CLI tests cover invalid values, conflicting switches, partial exclusion updates, and preference synchronization. Python tests check all six manual pages, six-language coverage, installation, and rejection of missing translations.
+
+```sh
+make manpages-check
+make test-cli-settings
+```

@@ -52,7 +52,7 @@ Gad lässt sich über **Mit Gad einfügen** und das optionale Strg+V in Dolphin 
 
 ### Die Bildschirmaufnahmen lesen {#reading-the-screenshots}
 
-Die 13 Aufnahmen zeigen die echten Gad-Widgets, Beispieldateien und simulierte Übertragungszustände. Sie verwenden das helle Design und die Oberflächensprache dieser Ausgabe. Persönliche Dateien und der echte Desktop werden nicht aufgenommen. Externe Plasma-Benachrichtigungen werden in diesen Aufnahmen nicht nachgebildet.
+Die 14 Aufnahmen zeigen die echten Gad-Widgets, Beispieldateien und simulierte Übertragungszustände. Sie verwenden das helle Design und die Oberflächensprache dieser Ausgabe. Persönliche Dateien und der echte Desktop werden nicht aufgenommen. Externe Plasma-Benachrichtigungen werden in diesen Aufnahmen nicht nachgebildet.
 
 Gad bietet Französisch, US-Englisch, Spanisch, Portugiesisch, Deutsch und Japanisch. Wählen Sie die Sprache unter **Einstellungen → Optionen…**: Die Änderung gilt sofort, ohne Gad neu zu starten oder Übertragungen zu unterbrechen. Geöffnete Dialoge und aktive Benachrichtigungen werden aktualisiert; Auswahl und Eingaben bleiben erhalten. **System** wählt eine verfügbare Variante der Desktop-Sprache und verwendet andernfalls Französisch oder Englisch. Nicht erfasste technische Diagnosen und Meldungen externer Dienste können in ihrer ursprünglichen Sprache bleiben.
 
@@ -90,11 +90,15 @@ Beenden oder brechen Sie bei einem Update die aktive Arbeit ab und beenden Sie G
 | Unten die Liste | Konfliktentscheidungen und Informationen zur Geschwindigkeit/verbleibenden Zeit pro Anfrage. |
 | Fußzeile | **Über**, **Fehlerbericht…** und die kombinierte Zusammenfassung. |
 
-![Einstellungsmenü und Verknüpfungssteuerung](images/de-DE/02-sources-options.png)
+![Der Optionsdialog wird über den Bereich Einstellungen geöffnet.](images/de-DE/02-sources-options.png)
 
-*Die Optionen werden im Block „Einstellungen“ rechts neben „Ziel“ geöffnet.*
+*Der Optionsdialog wird über den Bereich Einstellungen geöffnet.*
 
-Das Menü umfasst Überprüfung, versteckte Elemente, Duplizierung, Verlauf, Start, unterbrochene Übertragungen, Ausschlüsse, Sprache und die globale Geschwindigkeitsbegrenzung. Änderungen werden sofort wirksam und Kontrollkästchen lassen das Menü geöffnet. **Geschwindigkeit des Auftrags begrenzen** gilt für ausgewählte Zeilen und ist ohne Auswahl deaktiviert. Das Menü scrollt auf kleineren Bildschirmen.
+**Einstellungen → Optionen…** öffnet einen größenveränderbaren Dialog mit den Reitern **Einstellungen** und **Tastenkürzel**. Änderungen gelten sofort; **Schließen** oder Escape schließt den Dialog, ohne Änderungen rückgängig zu machen. Er kann während Übertragungen geöffnet bleiben. Befehlszeilenparameter erscheinen grau unter den Steuerelementen. Die Mindestgröße beträgt **800 × 740**; Hauptfenster und Fehlerbericht haben eine Mindestgröße von **1100 × 600**. **Geschwindigkeit des Auftrags begrenzen…** befindet sich links in der Hauptaktionsleiste neben Pause/Fortsetzen und Abbruch. Ohne Auswahl ist die Schaltfläche deaktiviert; sie begrenzt die ausgewählten Aufträge unabhängig vom globalen Limit.
+
+![Der Reiter Tastenkürzel steuert die Dateiverwaltungsintegration.](images/de-DE/14-options-raccourcis.png)
+
+*Der Reiter Tastenkürzel steuert die Dateiverwaltungsintegration.*
 
 **Tastenkürzel** aktiviert oder deaktiviert Strg+V mit Gad für Dolphin und Konqueror. Dolphin-Änderungen verwenden den reversiblen Shortcut-Helper von Gad und erfordern einen Neustart von Dolphin; Eine abgelehnte Änderung stellt das Kontrollkästchen wieder her und zeigt einen Fehler an. Konqueror übernimmt Änderungen beim nächsten Tastendruck in **Konqueror mit Gad**. Die Startschaltfläche ist verfügbar, wenn sowohl der Browser als auch der Launcher installiert sind. Texteinfügungen bleiben nativ.
 
@@ -111,7 +115,7 @@ Die Rechtsklick-Aktion **Paste mit Gad** funktioniert, ohne die native Einfügev
 So verknüpfen Sie Strg+V mit Gad in Dolphin:
 
 ```bash
-gad-dolphin-paste --enable
+gad --configure --dolphin-ctrl-v
 ```
 
 Schließen Sie Dolphin und öffnen Sie es erneut. Strg+V zielt dann auf den aktuell geöffneten Ordner Dolphin. Die Integration löst diesen Ordner anhand der Sitzungsinformationen von Dolphin auf; es ist kein vollständiger Pfad im Fenstertitel erforderlich. In einem Textfeld bleibt Strg+V eine Texteinfügung.
@@ -119,7 +123,7 @@ Schließen Sie Dolphin und öffnen Sie es erneut. Strg+V zielt dann auf den aktu
 **Umschalt+Einfügen** bleibt die Standard-Pastenalternative KDE/Dolphin KIO. Es handelt sich nicht um eine neue Gad-Verknüpfung. So stellen Sie die vorherige Dolphin-Verknüpfungskonfiguration wieder her:
 
 ```bash
-gad-dolphin-paste --disable
+gad --configure --no-dolphin-ctrl-v
 ```
 
 Die Änderung gilt für Dolphin, nicht für jede Anwendung in Plasma. Vorhandene Verknüpfungen und Aktionen werden über die gespeicherte Konfiguration der Integration wiederhergestellt, anstatt nicht verwandte Benutzereinstellungen zurückzusetzen.
@@ -325,9 +329,9 @@ Die Stornierung ist während einer Pause möglich. Ein explizit angefordertes un
 
 ## Die Geschwindigkeit begrenzen {#limiting-bandwidth}
 
-**Globale Geschwindigkeitsbegrenzung:** in **Einstellungen → Optionen…** begrenzt die **Summe** des gleichzeitigen Kopierverkehrs. Die Schnittstelle verwendet ** MiB/s**, äquivalent ** MiB/s**: 1 MiB = 1.048,576 Bytes. Dies ist nicht Megabit pro Sekunde. Zero, angezeigt als **Unbegrenzt**, entfernt die Grenze. Die Einstellung wird gespeichert und kann geändert werden.
+Das **globale Geschwindigkeitslimit** unter **Einstellungen → Optionen…** begrenzt den gesamten Datenkopierdurchsatz. Änderungen gelten sofort. 0 bedeutet unbegrenzt; schnelle Verschiebungen durch Umbenennen werden nicht gedrosselt.
 
-Klicken Sie mit der rechten Maustaste auf eine Zeile und wählen Sie **Geschwindigkeit des Auftrags begrenzen** im Kontextmenü oder **Einstellungen → Optionen…**, um seine gesamte Anfrage zu begrenzen. Die Auswahl von Zeilen aus mehreren Anfragen gilt für jeden von ihnen. Ihr globales Budget bleibt geteilt. Zero entfernt nur die individuellen Grenzen der ausgewählten Anfragen. Tooltips zeigen eine individuelle Grenze, wenn man gesetzt ist.
+Zeilen auswählen und links in der Hauptaktionsleiste auf **Geschwindigkeit des Auftrags begrenzen…** klicken oder das Kontextmenü verwenden. Das Limit gilt für jeden ausgewählten Auftrag; alle teilen weiterhin das globale Limit. 0 entfernt nur die individuellen Grenzen.
 
 Beide Zwänge gelten: Eine auf 10 MiB/s begrenzte Anforderung bleibt auf 10 begrenzt, auch wenn die globale Grenze 50 beträgt. Zwei Anträge ohne individuelle Grenzen können maximal 50 MiB/s kombiniert verwenden.
 
@@ -594,3 +598,14 @@ Das Plugin stellt auch den aktiven Ordner frei, **In den offenen Ordner mit Gad 
 ### Dokumentation im Über-Dialog {#about-documentation}
 
 **Über Gad** enthält Links zu **Schnellstart**, **Benutzerhandbuch** und **Entwicklerhandbuch**, jeweils als HTML und PDF. Die Links folgen der gewählten Sprache, auch wenn sie bei geöffnetem Dialog geändert wird. Die Dokumente werden lokal installiert und benötigen den Projektordner nicht. Fehlt eine Ausgabe, bietet Gad die verfügbare englische Ausgabe an; fehlende Dokumente erzeugen keine ungültigen Links.
+
+## Konfiguration und Handbuchseiten {#command-settings}
+
+`gad --configure` speichert Einstellungen und aktualisiert die laufende Oberfläche. Läuft noch keine Instanz, startet Gad im Hintergrund und der Befehl kehrt zurück. Die Formen `--no-…` deaktivieren Kontrollkästchen. Nicht angegebene Ausschlusslisten bleiben erhalten; wiederholtes `--exclude-folder` oder `--exclude-file` ersetzt die entsprechende Liste. `--clear-exclusions` leert beide Listen. Das globale Limit wird in MiB/s angegeben; 0 bedeutet unbegrenzt. `--md5` und `--properties` bei einer Kopie oder Verschiebung gelten nur für diese Übertragung. Dolphin-Tastenkürzel werden mit `gad --configure --dolphin-ctrl-v` oder `--no-dolphin-ctrl-v` verwaltet.
+
+```bash
+gad --configure --md5 --verify-space --no-include-hidden
+gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR --rate-limit 25
+```
+
+`man gad` · `make manpages`

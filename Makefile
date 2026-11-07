@@ -78,3 +78,16 @@ package-source:
 
 package-binary:
 	$(PYTHON) scripts/package.py binary
+
+# Pages de manuel des commandes publiques, dans les six langues.
+.PHONY: manpages manpages-check
+manpages:
+	$(PYTHON) scripts/generate_manpages.py
+
+manpages-check:
+	$(PYTHON) scripts/generate_manpages.py --check
+
+# Aucun transfert réel : toutes les préférences et le serveur utilisent un compte temporaire.
+.PHONY: test-cli-settings
+test-cli-settings: build
+	dbus-run-session -- $(PYTHON) scripts/test_cli_settings.py

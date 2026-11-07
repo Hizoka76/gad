@@ -46,6 +46,10 @@ def main():
             home=private / "home";home.mkdir();config=private / "config";config.mkdir()
             # Les vrais exports restent en lecture seule ; seul le lien vit dans les données de capture.
             documentation=private / "data/gad/docs";documentation.parent.mkdir(parents=True);documentation.symlink_to(ROOT / "docs",target_is_directory=True)
+            # Reproduire l’installation du composant privé sans appeler l’intégration du bureau réel.
+            integration=private / "data/gad/integration";integration.mkdir()
+            for name in ("dolphin_shortcut.py","xdg_paths.py"):
+                shutil.copy2(ROOT / "scripts" / name,integration / name)
             # Le thème clair est imposé dans la seule configuration de démonstration.
             palette=configparser.ConfigParser(interpolation=None,strict=False);palette.optionxform=str
             palette.read(user_config / "kdeglobals")

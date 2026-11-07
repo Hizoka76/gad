@@ -200,7 +200,7 @@ make docs-check
 
 Las pruebas de documentación comprueban el catálogo de seis idiomas y los tres tipos de guía, la navegación entre idiomas, los formatos de papel, los pies de figura y las imágenes integradas. También verifican el formato compacto del inicio rápido, las capturas propias de cada idioma y la conservación del código de los ejemplos.
 
-La generación produce diagramas traducidos y 18 guías. Después comprueba los enlaces y anclas, las 78 capturas con tema claro y sus dimensiones y huellas, el idioma del HTML, las imágenes integradas y las 36 exportaciones HTML/PDF. Requiere las dependencias opcionales indicadas en el índice de documentación.
+La generación produce diagramas traducidos y 18 guías. Después comprueba los enlaces y anclas, las 84 capturas con tema claro y sus dimensiones y huellas, el idioma del HTML, las imágenes integradas y las 36 exportaciones HTML/PDF. Requiere las dependencias opcionales indicadas en el índice de documentación.
 
 [Documentation](docs/README.es-ES.md#regeneration)
 
@@ -223,6 +223,11 @@ python3 scripts/test_qt.py --suite row_actions
 
 `python3 scripts/test_qt.py --suite konqueror` verifica la carpeta actual, las URL codificadas y remotas, la preservación en modo de corte, el pegado de texto nativo y Shift+Insert en un entorno aislado. El complemento también se cargó en Konqueror 26.08.2 y se extrajo en un directorio temporal con HOME/XDG y D-Bus privados; Se verificó la URL exacta de la carpeta activa. Los registros locales están en `target/konqueror-real-test.log`.
 
-## Menú de configuración {#settings-menu}
+## Diálogo de configuración {#settings-menu}
 
-Las pruebas Qt cubren agrupación de controles, clics en casillas de verificación para mantener el menú abierto, traducción en vivo y límites de velocidad basados ​​en selección. Un asistente de acceso directo falso en una RUTA privada verifica los cambios Dolphin exitosos y rechazados sin modificar la configuración del escritorio. La suite Konqueror verifica la desactivación y reactivación inmediata de su filtro Ctrl+V.
+Las pruebas Qt verifican los tamaños mínimos, ambas pestañas, Cerrar y Esc, la conservación de controles, la traducción inmediata y el botón de velocidad en la barra de acciones. La CLI se prueba con valores inválidos, opciones contradictorias, exclusiones parciales y sincronización de preferencias. Python comprueba los seis manuales, los seis idiomas, la instalación y el rechazo de traducciones ausentes.
+
+```sh
+make manpages-check
+make test-cli-settings
+```

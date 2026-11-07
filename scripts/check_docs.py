@@ -39,7 +39,7 @@ def main():
     for language in LANGUAGES:
         directory=DOCS / "images" / language
         manifest=json.loads((directory / "captures.json").read_text());manifests[language]=manifest
-        assert len(manifest["captures"])==13, f"Treize captures attendues : {language}"
+        assert len(manifest["captures"])==14, f"Quatorze captures attendues : {language}"
         assert manifest["locale"]==LABELS[language]["locale"], f"Langue des captures : {language}"
         assert manifest.get("theme")=="light", f"Thème clair attendu : {language}"
         assert sum(int(manifest["window_color"][i:i+2],16) for i in (1,3,5))>540, f"Palette sombre : {language}"

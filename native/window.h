@@ -141,6 +141,10 @@ public:
     void resolveNextSources();
     /// Traite les commandes d’interface avant délégation au moteur ; un collage en arrière-plan ne relève pas la fenêtre.
     QJsonObject handle(QJsonObject request);
+    /// Termine une configuration Dolphin sans bloquer les transferts ni la réponse IPC.
+    void handleAsync(QJsonObject request,std::function<void(QJsonObject)> reply);
+    void configureDolphin(bool enabled,std::function<void(QJsonObject)> reply);
+    static QString dolphinIntegration();
     /// Met à jour les lignes existantes à partir d’un instantané JSON, sans reconstruire le modèle.
     /// La conservation des items préserve le survol, les infobulles, les indices et la sélection.
     void refresh();

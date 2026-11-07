@@ -147,9 +147,67 @@ void Window::resolveNextSources(){
     sourceResolver->start();
 }
 
+/// Le script Python reste un composant privé, trouvé dans les données installées ou l’arbre de développement.
+QString Window::dolphinIntegration() {
+    auto path=QStandardPaths::locate(QStandardPaths::GenericDataLocation,"gad/integration/dolphin_shortcut.py");
+    if(path.isEmpty() && QStringList{"debug","release"}.contains(QFileInfo(QCoreApplication::applicationDirPath()).fileName())) {
+        const auto candidate=QCoreApplication::applicationDirPath()+"/../../scripts/dolphin_shortcut.py";
+        if(QFileInfo(candidate).isFile())path=QFileInfo(candidate).canonicalFilePath();
+    }
+    return path;
+}
+
+/// Partage le même traitement asynchrone entre la case et la commande publique de Gad.
+void Window::configureDolphin(bool enabled,std::function<void(QJsonObject)> reply) {
+    auto *check=findChild<QCheckBox *>("dolphinShortcut");
+    if(check->property("configuring").toBool()){reply({{"error","Dolphin shortcut configuration is already running."}});return;}
+    const auto script=dolphinIntegration();const auto python=QStandardPaths::findExecutable("python3");
+    if(script.isEmpty() || python.isEmpty()){reply({{"error",GAD_TR("Unable to change the Dolphin shortcut.")}});return;}
+    const auto old=check->isChecked();
+    check->setProperty("configuring",true);check->setEnabled(false);
+    auto *process=new QProcess(this);auto *timeout=new QTimer(process);timeout->setSingleShot(true);
+    connect(timeout,&QTimer::timeout,process,[process]{process->kill();});
+    const auto finish=[check,process,enabled,old,reply](bool success){
+        if(process->property("finishedSettings").toBool())return;
+        process->setProperty("finishedSettings",true);check->setProperty("configuring",false);check->setEnabled(true);
+        {QSignalBlocker blocker(check);check->setChecked(success?enabled:old);}
+        const auto detail=QString::fromUtf8(process->readAllStandardError()).trimmed();
+        reply(success?QJsonObject{{"ok",true}}:QJsonObject{{"error",detail.isEmpty()?GAD_TR("Unable to change the Dolphin shortcut."):detail}});
+        process->deleteLater();
+    };
+    connect(process,&QProcess::finished,this,[finish](int code,QProcess::ExitStatus status){finish(code==0 && status==QProcess::NormalExit);});
+    connect(process,&QProcess::errorOccurred,this,[finish](QProcess::ProcessError error){if(error==QProcess::FailedToStart)finish(false);});
+    process->start(python,{script,enabled?"--enable-ctrl-v":"--disable-ctrl-v"});timeout->start(8000);
+}
+
+void Window::handleAsync(QJsonObject request,std::function<void(QJsonObject)> reply) {
+    auto gui=request["gui_settings"].toObject();
+    if(request["command"]!=Protocol::Command::Configure || !gui.contains("dolphin_ctrl_v")){reply(handle(request));return;}
+    if(gui.contains("language") && findChild<QComboBox *>("languageSelector")->findData(gui["language"].toString())<0){reply({{"error","Unknown language: "+gui["language"].toString()}});return;}
+    const bool enabled=gui.take("dolphin_ctrl_v").toBool();request["gui_settings"]=gui;
+    configureDolphin(enabled,[this,request,reply](QJsonObject result){
+        if(result.contains("error")){reply(result);return;}
+        if(request.size()==2 && request["gui_settings"].toObject().isEmpty()){reply(result);return;}
+        reply(handle(request));
+    });
+}
+
 /// Traite les commandes d’interface avant délégation au moteur ; un collage en arrière-plan ne relève pas la fenêtre.
 QJsonObject Window::handle(QJsonObject request){
     const auto command = request["command"].toString();
+    const auto gui=request.take("gui_settings").toObject();
+    if(command==Protocol::Command::Configure) {
+        if(gui.contains("language")) {
+            const auto locale=gui["language"].toString();auto *selector=findChild<QComboBox *>("languageSelector");
+            if(selector->findData(locale)<0)return {{"error","Unknown language: "+locale}};
+        }
+        // Les modifications partielles conservent les règles et la visibilité non fournies.
+        if(request.contains("exclusion_patch")) {
+            auto rules=exclusionRules;const auto patch=request.take("exclusion_patch").toObject();
+            for(auto it=patch.begin();it!=patch.end();++it)rules[it.key()]=it.value();
+            request["exclusions"]=rules;
+        }
+    }
     if (command == Protocol::Command::Show) {
         showMainWindow(request["activation_token"].toString());
         return {{"ok", true}};
@@ -180,7 +238,7 @@ QJsonObject Window::handle(QJsonObject request){
         return {{"ok",true},{"preparing",true}};
     }
 
-    auto result = engine(request);
+    auto result = command==Protocol::Command::Configure && request.size()==1 && !gui.isEmpty()?QJsonObject{{"ok",true}}:engine(request);
     if(!result.contains("error") && (command== Protocol::Command::CancelAll || command== Protocol::Command::UndoAll))
         result["cancelled_preparations"]=cancelSourcePreparation();
     if (command == Protocol::Command::Configure && !result.contains("error")) {
@@ -198,6 +256,14 @@ QJsonObject Window::handle(QJsonObject request){
         if (request.contains("verify_md5")) { QSignalBlocker blocker(verifyMd5); verifyMd5->setChecked(request["verify_md5"].toBool()); QSettings().setValue("verifyMd5", verifyMd5->isChecked()); }
         if(request.contains("resume_interrupted")){QSignalBlocker blocker(resumeInterrupted);resumeInterrupted->setChecked(request["resume_interrupted"].toBool());QSettings().setValue("resumeInterrupted",resumeInterrupted->isChecked());}
         if (request.contains("keep_history")) { QSignalBlocker blocker(keepHistory); keepHistory->setChecked(request["keep_history"].toBool()); QSettings().setValue("keepHistory", keepHistory->isChecked()); }
+        if(gui.contains("autostart")) {
+            const auto enabled=gui["autostart"].toBool();if(!setAutostart(enabled))return {{"error",GAD_TR("Unable to change Gad's startup setting.")}};
+            auto *check=findChild<QCheckBox *>("launchAtStartup");QSignalBlocker blocker(check);check->setChecked(enabled);
+        }
+        if(gui.contains("konqueror_ctrl_v")) {
+            const auto enabled=gui["konqueror_ctrl_v"].toBool();auto *check=findChild<QCheckBox *>("konquerorShortcut");QSignalBlocker blocker(check);check->setChecked(enabled);QSettings().setValue("konquerorCtrlV",enabled);
+        }
+        if(gui.contains("language")){auto *selector=findChild<QComboBox *>("languageSelector");selector->setCurrentIndex(selector->findData(gui["language"].toString()));}
     }
     if (command == Protocol::Command::Enqueue) {
         if (!request["background"].toBool()) { showMainWindow(); }
@@ -237,7 +303,8 @@ void Window::showRateLimit() {
     auto ordered=unique.values();std::sort(ordered.begin(),ordered.end());for(auto id:ordered)ids.append(id);
     qint64 initial=0;
     for(const auto &value:state["jobs"].toArray())if(value.toObject()["id"].toInteger()==ordered.first())initial=value.toObject()["rate_limit"].toInteger();
-    auto *dialog=new QDialog(this);dialog->setObjectName("requestRateDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);
+    auto *settings=findChild<QDialog *>("settingsDialog");
+    auto *dialog=new QDialog(settings && settings->isVisible()?static_cast<QWidget *>(settings):this);dialog->setObjectName("requestRateDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);
     I18n::bindProperty(dialog,"windowTitle",[=]{return GAD_TR("Limit request speed");});auto *layout=new QVBoxLayout(dialog);
     auto *label=I18n::localized(new QLabel(QString()),"text",[=]{return QString(GAD_TR("Limit for each of the %1 selected request(s).\nApplies to all their rows. The global limit still applies.\n0 = unlimited.")).arg(ids.size());});label->setWordWrap(true);layout->addWidget(label);
     auto *spin=new QDoubleSpinBox;spin->setObjectName("requestRateLimit");spin->setRange(0,1048576);spin->setDecimals(2);I18n::bindProperty(spin,"suffix",[=]{return GAD_TR(" MiB/s");});I18n::bindProperty(spin,"specialValueText",[=]{return GAD_TR("Unlimited");});spin->setValue(initial/1048576.0);layout->addWidget(spin);
@@ -292,7 +359,8 @@ void Window::updateExclusionSummary() {
 /// Dialog de réglages : éditer ou annuler ne modifie aucune demande déjà présente.
 void Window::showExclusions() {
     if(auto *existing=findChild<QDialog *>("exclusionsDialog")){existing->show();existing->raise();existing->activateWindow();return;}
-    auto *dialog=new QDialog(this);dialog->setObjectName("exclusionsDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->resize(650,450);
+    auto *settings=findChild<QDialog *>("settingsDialog");
+    auto *dialog=new QDialog(settings && settings->isVisible()?static_cast<QWidget *>(settings):this);dialog->setObjectName("exclusionsDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->resize(650,450);
     I18n::bindProperty(dialog,"windowTitle",[]{return GAD_TR("Transfer exclusions");});auto *layout=new QVBoxLayout(dialog);
     auto *help=I18n::localized(new QLabel,"text",[]{return GAD_TR("One name pattern per line, at any depth.\n* matches any text; ? matches one character.\nFolder exclusions skip their entire contents.\nRules apply to new transfers only; excluded items are kept at the source during moves.");});help->setWordWrap(true);help->setTextFormat(Qt::PlainText);layout->addWidget(help);
     auto *hidden=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Include hidden items");});hidden->setObjectName("exclusionsIncludeHidden");hidden->setChecked(exclusionRules["include_hidden"].toBool(true));layout->addWidget(hidden);

@@ -1,0 +1,49 @@
+{
+  "headings": {
+    "NAME": "NOME",
+    "SYNOPSIS": "SINOPSE",
+    "DESCRIPTION": "DESCRIÇÃO",
+    "OPTIONS": "OPÇÕES",
+    "PATHS": "CAMINHOS",
+    "EXAMPLES": "EXEMPLOS",
+    "SETTINGS": "DEFINIÇÕES",
+    "FILES": "FICHEIROS",
+    "SEE ALSO": "VER TAMBÉM",
+    "AUTHOR": "AUTOR"
+  },
+  "titles": {
+    "gad": "Gestor de transferências de ficheiros com fila para KDE"
+  },
+  "texts": {
+    "Gad manages copies and moves with queuing, pause, resume, verification and restoration. Without arguments, it shows the main window. Commands are forwarded to the existing instance when available.": "O Gad gere cópias e movimentos com fila, pausa, retoma, verificação e restauro. Sem argumentos, apresenta a janela principal. Os comandos são enviados para a instância existente quando disponível.",
+    "Display command help and exit.": "Apresentar a ajuda do comando e sair.",
+    "Start Gad in the system tray without showing its main window.": "Iniciar o Gad na área de notificação sem apresentar a janela principal.",
+    "Queue copies of the sources into the destination folder.": "Colocar em fila a cópia das origens para a pasta de destino.",
+    "Queue moves of the sources into the destination folder.": "Colocar em fila o movimento das origens para a pasta de destino.",
+    "Queue clipboard files into the destination. Cut clipboard data requests a move. Starts the transfer without opening the main window.": "Colocar em fila os ficheiros da área de transferência para o destino. Os dados cortados solicitam um movimento. A transferência começa sem abrir a janela principal.",
+    "Paste into the active supported Dolphin or Konqueror folder. Requires the corresponding file manager integration.": "Colar na pasta ativa suportada do Dolphin ou do Konqueror. Requer a integração correspondente do gestor de ficheiros.",
+    "Paste using the folder or selected file context supplied by a KIO service menu.": "Colar utilizando o contexto da pasta ou do ficheiro selecionado fornecido por um menu de serviço KIO.",
+    "Verify source and destination contents using MD5 for the submitted transfer. Does not change the saved preference.": "Verificar os conteúdos de origem e destino por MD5 para a transferência solicitada. Não altera a preferência guardada.",
+    "Verify visible owners, groups, permissions, ACLs and extended attributes for the submitted transfer. This checks properties; it does not replicate them. Does not change the saved preference.": "Verificar os proprietários, grupos, permissões, ACL e atributos estendidos visíveis para a transferência solicitada. Verifica as propriedades, mas não as replica. Não altera a preferência guardada.",
+    "Print the current engine state as JSON.": "Apresentar o estado atual do motor em JSON.",
+    "Run an isolated graphical startup check with temporary storage.": "Executar uma verificação gráfica de arranque isolada com armazenamento temporário.",
+    "Show the main window of the running instance.": "Apresentar a janela principal da instância em execução.",
+    "Save settings in the running instance, or start Gad in the tray to save them. Requires at least one setting. Boolean switches listed below must be used with \\-\\-configure; use their \\-\\-no\\- form to disable them.": "Guardar as definições na instância em execução ou iniciar o Gad na área de notificação para as guardar. Requer pelo menos uma definição. As opções booleanas seguintes utilizam-se com --configure; a forma --no- desativa-as.",
+    "With \\-\\-configure, disable the corresponding verification preference. \\-\\-configure \\-\\-md5 and \\-\\-configure \\-\\-properties enable it.": "Com --configure, desativar a preferência de verificação correspondente. --configure --md5 e --configure --properties ativam-na.",
+    "With \\-\\-configure, enable or disable available space checks for new transfers.": "Com --configure, ativar ou desativar a verificação de espaço disponível para novas transferências.",
+    "With \\-\\-configure, enable or disable persistent transfer history.": "Com --configure, ativar ou desativar o histórico persistente das transferências.",
+    "With \\-\\-configure, enable or disable durable checkpoints and automatic recovery for new transfers.": "Com --configure, ativar ou desativar os pontos de retoma duradouros e a recuperação automática de novas transferências.",
+    "With \\-\\-configure, include or exclude hidden items. Keep existing exclusion patterns.": "Com --configure, incluir ou excluir elementos ocultos. Conservar os padrões de exclusão existentes.",
+    "With \\-\\-configure, enable or disable copies named name_copied1 in the source folder.": "Com --configure, ativar ou desativar cópias chamadas name_copied1 na pasta de origem.",
+    "With \\-\\-configure, enable or disable launching Gad when the current user signs in.": "Com --configure, ativar ou desativar o arranque do Gad no início de sessão da conta atual.",
+    "With \\-\\-configure, enable or disable paste interception in Konqueror launched with Gad. The integration plugin must be installed.": "Com --configure, ativar ou desativar a interceção da colagem no Konqueror iniciado com o Gad. O módulo de integração tem de estar instalado.",
+    "With \\-\\-configure, select system or an installed locale such as fr_FR or en_US.": "Com --configure, selecionar system ou uma configuração regional instalada, como fr_FR ou en_US.",
+    "With \\-\\-configure, set the global speed limit in MiB/s; 0 means unlimited. Applies immediately.": "Com --configure, definir o limite global de velocidade em MiB/s; 0 significa sem limite. Aplica-se imediatamente.",
+    "With \\-\\-configure, replace the corresponding pattern list. Repeat an option for multiple patterns; quote shell wildcards. Unspecified lists remain unchanged.": "Com --configure, substituir a lista de padrões correspondente. Repetir uma opção para vários padrões; proteger os caracteres universais da shell com aspas. As listas não indicadas são conservadas.",
+    "With \\-\\-configure, clear both pattern lists. Later pattern options add rules. Does not change hidden item handling.": "Com --configure, limpar ambas as listas de padrões. As opções de padrões seguintes acrescentam regras. Não altera o tratamento de elementos ocultos.",
+    "With \\-\\-configure, enable or disable Ctrl+V integration in Dolphin. Restart Dolphin after changing it.": "Com --configure, ativar ou desativar Ctrl+V com o Gad no Dolphin. Reiniciar o Dolphin após uma alteração.",
+    "Sources and destinations accept local paths and file, ftp, sftp, smb and kdeconnect URLs supported by KIO Fuse. The relevant services and mounts must be available. Quote paths containing spaces.": "As origens e os destinos aceitam caminhos locais e URL file, ftp, sftp, smb e kdeconnect suportados pelo KIO Fuse. Os serviços e as montagens correspondentes têm de estar disponíveis. Colocar entre aspas os caminhos com espaços.",
+    "Options supplied with \\-\\-configure are persistent and reflected in graphical settings. New transfers use saved preferences unless explicitly overridden. Not all settings apply retroactively to existing transfers. Configure Ctrl+V in Dolphin with \\-\\-configure \\-\\-dolphin\\-ctrl\\-v or \\-\\-no\\-dolphin\\-ctrl\\-v.": "As opções de --configure são persistentes e refletem-se nas definições gráficas. As novas transferências utilizam as preferências guardadas, salvo indicação explícita em contrário. Nem todas as definições se aplicam retroativamente às transferências existentes. Utilizar gad --configure --dolphin-ctrl-v / --no-dolphin-ctrl-v para configurar Ctrl+V no Dolphin.",
+    "HTML and PDF guides in the supported languages.": "Guias HTML e PDF nos idiomas disponíveis."
+  }
+}

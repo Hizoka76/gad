@@ -86,7 +86,7 @@ class DocumentationTest(unittest.TestCase):
                 continue
             text = (build_docs.DOCS / guide.source).read_text()
             captures = re.findall(r"images/([^/]+)/([0-9][0-9]-[^)]+\.png)", text)
-            self.assertEqual(len({name for _, name in captures}), 13, guide.language)
+            self.assertEqual(len({name for _, name in captures}), 14, guide.language)
             self.assertEqual({language for language, _ in captures}, {guide.language})
             manifest = json.loads((build_docs.DOCS / "images" / guide.language / "captures.json").read_text())
             self.assertEqual(manifest["theme"], "light")

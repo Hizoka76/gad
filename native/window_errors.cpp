@@ -15,7 +15,7 @@ void Window::retryErrorSelection() {
 void Window::showErrorReport() {
     if(auto *existing=findChild<QDialog *>("errorReportDialog")){existing->show();existing->raise();existing->activateWindow();return;}
     auto *dialog=new QDialog(this);dialog->setObjectName("errorReportDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);
-    I18n::bindProperty(dialog,"windowTitle",[=]{return GAD_TR("Gad — Error report");});dialog->resize(1150,650);
+    I18n::bindProperty(dialog,"windowTitle",[=]{return GAD_TR("Gad — Error report");});dialog->setMinimumSize(1100,600);dialog->resize(1150,650);
     auto *layout=new QVBoxLayout(dialog);
     auto *summary=new QLabel;summary->setObjectName("errorReportSummary");summary->setTextFormat(Qt::PlainText);summary->setWordWrap(true);layout->addWidget(summary);
     auto *search=new QLineEdit;search->setObjectName("errorReportSearch");I18n::bindProperty(search,"placeholderText",[=]{return GAD_TR("Filter by request, file, destination, or message…");});layout->addWidget(search);

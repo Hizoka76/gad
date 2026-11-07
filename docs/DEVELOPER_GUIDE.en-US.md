@@ -393,7 +393,7 @@ Success at submission returns an ID, not proof that the eventual transfer succee
 
 The application identifier is `org.hizoka.gad`; desktop and icon associations must agree so the taskbar uses the software icon rather than a generic copy image. Embedded `gad-boucles-document` assets are exported at desktop sizes by Qt.
 
-`gad-dolphin-paste --enable` installs a reversible Dolphin Ctrl+V association. `--disable` restores prior saved settings. The integration preserves native text paste and the standard Shift+Insert KIO alternative. It locates the active Dolphin folder through current session information rather than a full-path window-title requirement. Validate changes atomically, reject unrelated/malformed integration records, and preserve unrelated shortcuts.
+`gad --configure --dolphin-ctrl-v` installs a reversible Dolphin Ctrl+V association. `--no-dolphin-ctrl-v` restores prior saved settings. The integration preserves native text paste and the standard Shift+Insert KIO alternative. It locates the active Dolphin folder through current session information rather than a full-path window-title requirement. Validate changes atomically, reject unrelated/malformed integration records, and preserve unrelated shortcuts.
 
 The optional `make test-dolphin-paste` uses actual KXMLGUI/KActionCollection on a private bus to exercise shortcut activation, text paste, and restoration without copying files or restarting the user's Dolphin.
 
@@ -417,7 +417,7 @@ make test
 
 Rust tests use temporary trees to check observable state and file contents. Python tests use the standard library and isolated fixtures; documentation renderer dependencies are loaded only when rendering. Qt tests use private D-Bus/HOME/XDG environments, engine doubles, and intercepted desktop opens. Integration tests also exercise the real executable and crash recovery. Mocks do not reproduce every server or Plasma release.
 
-The documented local validation comprises **216 Rust tests**, **56 Python tests**, Qt suites including **81 row-action cases**, and integration, formatting, and Clippy checks. One benchmark is intentionally ignored in routine runs. This describes local evidence, not an assertion that the supplied GitHub workflow has run remotely or that future edits are validated automatically.
+The documented local validation comprises **216 Rust tests**, **62 Python tests**, Qt suites including **83 row-action cases**, and integration, formatting, and Clippy checks. One benchmark is intentionally ignored in routine runs. This describes local evidence, not an assertion that the supplied GitHub workflow has run remotely or that future edits are validated automatically.
 
 ### Diagnosing failures
 
@@ -445,7 +445,7 @@ After adding display strings, run `make translations` to synchronize sources, tr
 
 ## Documentation tooling
 
-The root README is a short entry point; detailed guides are maintained here. The documentation covers six languages. Each edition includes Quick Start, User Guide, Developer Guide, and 13 screenshots of its own interface in the light theme. Architecture and lifecycle diagrams have localized labels.
+The root README is a short entry point; detailed guides are maintained here. The documentation covers six languages. Each edition includes Quick Start, User Guide, Developer Guide, and 14 screenshots of its own interface in the light theme. Architecture and lifecycle diagrams have localized labels.
 
 `doc_catalog.py` identifies each source's language and audience. `build_docs.py` generates language-correct covers, same-audience language switches, relative links/fragments, and offline embedded images. English PDFs use US Letter; other PDFs use A4. `check_docs.py` validates all README/testing/guide links, captures, language metadata, and all 36 HTML/PDF exports.
 
@@ -515,12 +515,16 @@ The plugin also exposes the active folder to **Paste into the open folder with G
 
 `native/konqueror/paste_filter.h` handles only Ctrl+V in a view with a supported URL and a file clipboard. Text fields, HTTP pages, other windows, and Shift+Insert remain native. `plugin.cpp` derives from `KonqParts::Plugin` and exposes the active destination over D-Bus. The frontend reads it twice before pasting. `scripts/konqueror_integration.py` builds the plugin against Konqueror headers, Qt6Xml/DBus/Widgets, KF6CoreAddons, and KF6XmlGui. Konqueror headers and CoreAddons/XmlGui development libraries are required. The local plugin path is passed exclusively to the process launched by `gad-konqueror`, without changing global Qt settings or browser shortcuts.
 
-## Settings menu
+## Settings dialog {#settings-menu}
 
-`Window` keeps its existing controls in a `QWidgetAction` panel inside a `QScrollArea`. Object names remain stable, including `destinationInput` to distinguish the target field from spinbox editors. Live translation bindings and engine connections are retained. Checkbox clicks keep the menu open; exclusion and rate dialogs close it first. Height is constrained by the screen.
+`Window` keeps one nonmodal `QDialog`, named `settingsDialog`, with a `QTabWidget` for settings and shortcuts. The `settingsPanel` remains scrollable; controls, connections, translation bindings, and values survive reopening. Close and Escape hide the dialog. Exclusion and speed subdialogs use it as their parent while it is visible. Minimum sizes are 800 × 740 for settings and 1100 × 600 for the main window and error report. The `settingsRequestRate` button now belongs to the main action bar; its enabled state follows tree selection.
 
-Dolphin settings read `gad/dolphin-paste.json` and invoke `gad-dolphin-paste` asynchronously with fixed arguments. Failed changes restore the checkbox; a ten-second timeout bounds the process. No shortcut commands run during window construction. Konqueror uses the `konquerorCtrlV` setting; its plugin reads `QSettings("Gad", "Gad")` on each Ctrl+V, enabling immediate changes. Other keypresses remain native.
+Dolphin commands and its checkbox share `Window::configureDolphin`. It runs the private `gad/integration/dolphin_shortcut.py` component with Python and QProcess without blocking transfers. The receipt remains in `gad/dolphin-paste.json`. An eight-second timeout bounds execution; failures restore the checkbox and return an error to the client. `Window::handleAsync` delays the IPC reply until completion. Konqueror keeps `konquerorCtrlV`, read by its plugin on each Ctrl+V. No separate public command is installed.
 
 ### Documentation from About {#about-documentation}
 
 `docs/catalog.json` is generated by `doc_catalog.runtime_catalog()` and installed with exports by `scripts/install_docs.py`, without requiring rendering tools during installation. `native/documentation.h` searches XDG data directories for `gad/docs/catalog.json`, followed by portable/development locations. Fields `locale`, `kind`, `title`, `html`, and `pdf` map each guide to real files. Selection prefers the exact locale, a variant of the same language, then English. Paths are checked against the canonical document root to reject traversal and escaping symlinks. About links are recalculated on language changes and opened through `QDesktopServices`.
+
+## Configuration and manual pages {#command-settings}
+
+`native/cli_options.h` validates `--configure` arguments. Protocol 24 carries GUI settings and partial exclusion updates to `Window::handleAsync` / `Window::handle`, which validates the language, merges rules, and synchronizes the engine, widgets, and QSettings. `scripts/test_cli_settings.py` checks behavior in a temporary account on a private D-Bus session. `make manpages` generates six manuals in six languages; `make manpages-check` checks freshness. Additional catalogs live in `packaging/manpages/`. Both the local installer and Debian install manuals under `man1` and `<language>/man1`.

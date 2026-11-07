@@ -52,7 +52,7 @@ O Gad integra-se com o Dolphin através de **Colar com Gad** e da opção Ctrl+V
 
 ### Interpretar as capturas {#reading-the-screenshots}
 
-As 13 capturas mostram os widgets reais do Gad, ficheiros de exemplo e estados de transferência simulados. Utilizam o tema claro e o idioma desta edição. Não são fotografados ficheiros pessoais nem o ambiente de trabalho real. As notificações externas do Plasma não são reproduzidas nestas capturas.
+As 14 capturas mostram os widgets reais do Gad, ficheiros de exemplo e estados de transferência simulados. Utilizam o tema claro e o idioma desta edição. Não são fotografados ficheiros pessoais nem o ambiente de trabalho real. As notificações externas do Plasma não são reproduzidas nestas capturas.
 
 O Gad disponibiliza francês, inglês americano, espanhol, português, alemão e japonês. Escolha um idioma em **Definições → Opções…**: a alteração é imediata, sem reiniciar o Gad nem interromper as transferências. Os diálogos e as notificações ativas são atualizados, preservando a seleção e os valores introduzidos. **Sistema** escolhe uma variante disponível do idioma do ambiente de trabalho; caso não exista, utiliza francês ou inglês. Os diagnósticos técnicos não catalogados e as mensagens de serviços externos podem manter o idioma original.
 
@@ -90,11 +90,15 @@ Para uma atualização, termine ou cancele o trabalho ativo e saia do Gad normal
 | Abaixo da lista | Decisões de conflitos e informação sobre velocidade/tempo restante por pedido. |
 | Rodapé | **Sobre**, **Relatório de erros…** e o resumo combinado. |
 
-![Menu de definições e controlos de atalho](images/pt-PT/02-sources-options.png)
+![O diálogo de opções abre-se a partir do bloco Definições.](images/pt-PT/02-sources-options.png)
 
-*As opções são abertas no bloco Definições à direita de Destino.*
+*O diálogo de opções abre-se a partir do bloco Definições.*
 
-O menu agrupa a verificação, os itens ocultos, a duplicação, o histórico, o arranque, as transferências interrompidas, as eliminações, o idioma e o limite de velocidade global. As alterações são aplicadas imediatamente e as caixas de seleção deixam o menu aberto. **Limitar a velocidade da solicitação** aplica-se a linhas selecionadas e é desativado sem seleção. O menu rola em telas menores.
+**Definições → Opções…** abre um diálogo redimensionável com os separadores **Definições** e **Atalhos**. As alterações aplicam-se imediatamente; **Fechar** ou Esc fecha o diálogo sem as anular. Pode permanecer aberto durante as transferências. Os parâmetros de comando aparecem a cinzento sob os controlos. O tamanho mínimo é **800 × 740**; a janela principal e o relatório de erros têm um mínimo de **1100 × 600**. **Limitar a velocidade da solicitação…** encontra-se à esquerda da barra de ações principal, junto de pausa/retoma e cancelamento. Fica desativado sem seleção e limita os pedidos selecionados independentemente do limite global.
+
+![O separador Atalhos controla a integração dos gestores de ficheiros.](images/pt-PT/14-options-raccourcis.png)
+
+*O separador Atalhos controla a integração dos gestores de ficheiros.*
 
 **Atalhos** ativa ou desativa Ctrl+V com Gad para Dolphin e Konqueror. As alterações no Dolphin utilizam o auxiliar de atalho reversível do Gad e requerem o reinício do Dolphin; uma alteração rejeitada restaura a caixa de selecção e apresenta um erro. Konqueror capta as alterações no próximo toque de tecla em **Konqueror com Gad**. O seu botão de arranque está disponível quando o navegador e o iniciador estão instalados. As pastas de texto permanecem nativas.
 
@@ -111,7 +115,7 @@ A ação de clicar com o botão direito do rato em **Colar com Gad** funciona se
 Para associar Ctrl+V a Gad em Dolphin:
 
 ```bash
-gad-dolphin-paste --enable
+gad --configure --dolphin-ctrl-v
 ```
 
 Feche e volte a abrir Dolphin. Ctrl+V direciona então a pasta Dolphin atualmente aberta. A integração resolve esta pasta através da informação da sessão do Dolphin; não requer um caminho completo no título da janela. Num campo de texto, Ctrl+V permanece como uma pasta de texto.
@@ -119,7 +123,7 @@ Feche e volte a abrir Dolphin. Ctrl+V direciona então a pasta Dolphin atualment
 **Shift + Inserir** continua a ser a alternativa de pasta padrão KDE/Dolphin KIO. Não é um novo atalho Gad. Para restaurar a configuração anterior do atalho Dolphin:
 
 ```bash
-gad-dolphin-paste --disable
+gad --configure --no-dolphin-ctrl-v
 ```
 
 A alteração aplica-se ao Dolphin, e não a todas as aplicações no Plasma. Os atalhos e ações existentes são restaurados através da configuração guardada da integração, em vez de repor as preferências do utilizador não relacionadas.
@@ -325,9 +329,9 @@ O cancelamento está disponível durante uma pausa. Um desfazer explicitamente s
 
 ## Limitar a velocidade {#limiting-bandwidth}
 
-O **Limite global de velocidade:** no **Definições → Opções…** limita o **soma** do tráfego de cópia simultâneo. A interface usa o ** MiB/s**, equivalente ao ** MiB/s**: 1 MiB = 1. 048. 576 bytes. Isto não é megabits por segundo. Zero, exibido como **Ilimitado**, remove o limite. A configuração é lembrada e pode ser alterada durante as transferências.
+O **limite global de velocidade** em **Definições → Opções…** limita o débito total das transferências que copiam dados. Aplica-se imediatamente. 0 significa sem limite; os movimentos rápidos por mudança de nome não são limitados.
 
-Clique com o botão direito numa linha e escolha **Limitar a velocidade da solicitação** no menu de contexto ou **Definições → Opções…** para limitar toda a sua solicitação. Selecionando linhas de várias solicitações, aplica- se o limite escolhido para cada uma delas. Seu orçamento global permanece compartilhado. Zero remove apenas os limites individuais das solicitações selecionadas. As dicas mostram um limite individual quando uma é definida.
+Selecione linhas e clique em **Limitar a velocidade da solicitação…** à esquerda da barra de ações principal, ou utilize o menu de contexto. O limite aplica-se a cada pedido selecionado; todos continuam a partilhar o limite global. 0 remove apenas os limites individuais.
 
 Ambas as restrições aplicam-se: uma solicitação limitada a 10 MiB/s permanece limitada a 10, mesmo que o limite global seja 50. Dois pedidos sem limites individuais podem ser usados no máximo 50 MiB/s combinados.
 
@@ -594,3 +598,14 @@ O plugin também expõe a pasta ativa ao **Colar na pasta aberta com Gad**, sem 
 ### Documentação na caixa Sobre {#about-documentation}
 
 A caixa **Sobre o Gad** inclui ligações para **Início rápido**, **Guia do utilizador** e **Guia de desenvolvimento**, em HTML e PDF. As ligações acompanham o idioma escolhido, mesmo quando muda com a caixa aberta. Os documentos são instalados localmente e funcionam sem a pasta do projeto. Se uma edição não estiver disponível, o Gad apresenta a edição inglesa disponível; os documentos ausentes não geram ligações inválidas.
+
+## Configuração e páginas de manual {#command-settings}
+
+`gad --configure` guarda as preferências e atualiza os controlos da instância aberta. Se não existir nenhuma, inicia o Gad em segundo plano e devolve o controlo ao terminal. As formas `--no-…` desativam as caixas. As listas de exclusão não indicadas são conservadas; repetir `--exclude-folder` ou `--exclude-file` substitui a lista correspondente. `--clear-exclusions` limpa ambas. O limite global utiliza MiB/s; 0 significa sem limite. `--md5` e `--properties` numa cópia ou movimento afetam apenas essa transferência. Os atalhos do Dolphin utilizam `gad --configure --dolphin-ctrl-v` ou `--no-dolphin-ctrl-v`.
+
+```bash
+gad --configure --md5 --verify-space --no-include-hidden
+gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR --rate-limit 25
+```
+
+`man gad` · `make manpages`

@@ -17,7 +17,6 @@ def install(destdir, binary):
         shutil.copyfile(source, target)
         target.chmod(mode)
     copy(binary, "usr/bin/gad", 0o755)
-    copy(PROJECT / "packaging/gad-dolphin-paste", "usr/bin/gad-dolphin-paste", 0o755)
     copy(PROJECT / "packaging/org.hizoka.gad.desktop", "usr/share/applications/org.hizoka.gad.desktop")
     for icon in (PROJECT / "packaging/icons").glob("*/apps/*.png"):
         copy(icon, "usr/share/icons/hicolor/" + str(icon.relative_to(PROJECT / "packaging/icons")))

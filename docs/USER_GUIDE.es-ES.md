@@ -52,7 +52,7 @@ Gad se integra con Dolphin mediante **Pegar con Gad** y su opción de Ctrl+V. La
 
 ### Interpretar las capturas {#reading-the-screenshots}
 
-Las 13 capturas muestran los widgets reales de Gad, archivos de ejemplo y estados de transferencia simulados. Utilizan el tema claro y el idioma de esta edición. No se fotografían archivos personales ni el escritorio real. Las notificaciones externas de Plasma no se reproducen en estas capturas.
+Las 14 capturas muestran los widgets reales de Gad, archivos de ejemplo y estados de transferencia simulados. Utilizan el tema claro y el idioma de esta edición. No se fotografían archivos personales ni el escritorio real. Las notificaciones externas de Plasma no se reproducen en estas capturas.
 
 Gad ofrece francés, inglés estadounidense, español, portugués, alemán y japonés. Elija un idioma en **Configuración → Opciones…**: se aplica inmediatamente sin reiniciar Gad ni interrumpir las transferencias. Los diálogos y las notificaciones activas se actualizan conservando la selección y los valores introducidos. **Sistema** elige una variante disponible del idioma del escritorio y, si no existe, utiliza francés o inglés. Los diagnósticos técnicos no catalogados y los mensajes de servicios externos pueden conservar su idioma original.
 
@@ -90,11 +90,15 @@ Para realizar una actualización, finalice o cancele el trabajo activo y salga d
 | Debajo de la lista | Decisiones de conflictos e información de velocidad/tiempo restante por solicitud. |
 | Pie de página | **Acerca de**, **Resumen de errores...** y el resumen combinado. |
 
-![Menú de configuración y controles de acceso directo](images/es-ES/02-sources-options.png)
+![El diálogo de opciones se abre desde el bloque Configuración.](images/es-ES/02-sources-options.png)
 
-*Las opciones se abren desde el bloque Configuración a la derecha de Destino.*
+*El diálogo de opciones se abre desde el bloque Configuración.*
 
-El menú agrupa verificación, elementos ocultos, duplicación, historial, inicio, transferencias interrumpidas, exclusiones, idioma y límite de velocidad global. Los cambios se aplican inmediatamente y las casillas de verificación dejan el menú abierto. **Limitar el rendimiento de las solicitudes** se aplica a las filas seleccionadas y está deshabilitado sin una selección. El menú se desplaza en pantallas más pequeñas.
+**Configuración → Opciones…** abre un diálogo redimensionable con las pestañas **Configuración** y **Atajos**. Los cambios se aplican inmediatamente; **Cerrar** o Esc cierra el diálogo sin deshacerlos. Puede permanecer abierto durante los traslados. Los parámetros de comando aparecen en gris debajo de los controles. Su tamaño mínimo es **800 × 740**; la ventana principal y el informe de errores tienen un mínimo de **1100 × 600**. **Limitar la tasa de la solicitud…** está a la izquierda de la barra de acciones principal, junto a pausa/reanudación y cancelación. Se desactiva sin selección y limita los lotes seleccionados independientemente del límite global.
+
+![La pestaña Atajos controla la integración de los gestores de archivos.](images/es-ES/14-options-raccourcis.png)
+
+*La pestaña Atajos controla la integración de los gestores de archivos.*
 
 **Atajos** habilita o deshabilita Ctrl+V con Gad para Dolphin y Konqueror. Los cambios de Dolphin utilizan el asistente de acceso directo reversible de Gad y requieren reiniciar Dolphin; un cambio rechazado restaura la casilla de verificación y muestra un error. Konqueror recoge los cambios en la siguiente pulsación de tecla en **Konqueror con Gad**. Su botón de inicio está disponible cuando tanto el navegador como el iniciador están instalados. Los pegados de texto siguen siendo nativos.
 
@@ -111,7 +115,7 @@ La acción de hacer clic con el botón derecho en **Pegado con Gad** funciona si
 Para asociar Ctrl+V con Gad en Dolphin:
 
 ```bash
-gad-dolphin-paste --enable
+gad --configure --dolphin-ctrl-v
 ```
 
 Cierre y vuelva a abrir Dolphin. Ctrl+V luego apunta a la carpeta Dolphin actualmente abierta. La integración resuelve esa carpeta a través de la información de sesión de Dolphin; no requiere una ruta completa en el título de la ventana. En un campo de texto, Ctrl+V sigue siendo un pegado de texto.
@@ -119,7 +123,7 @@ Cierre y vuelva a abrir Dolphin. Ctrl+V luego apunta a la carpeta Dolphin actual
 **Mayús+Insertar** sigue siendo la alternativa de pasta estándar KDE/Dolphin KIO. No es un nuevo atajo Gad. Para restaurar la configuración anterior del acceso directo Dolphin:
 
 ```bash
-gad-dolphin-paste --disable
+gad --configure --no-dolphin-ctrl-v
 ```
 
 El cambio se aplica a Dolphin, no a todas las aplicaciones en Plasma. Los accesos directos y acciones existentes se restauran a través de la configuración guardada de la integración en lugar de restablecer preferencias de usuario no relacionadas.
@@ -594,3 +598,14 @@ El complemento también expone la carpeta activa a **Pegue en la carpeta abierta
 ### Documentación desde Acerca de {#about-documentation}
 
 **Acerca de Gad** incluye enlaces a **Inicio rápido**, **Guía de usuario** y **Guía de desarrollo**, en HTML y PDF. Los enlaces siguen el idioma elegido, incluso si cambia mientras el diálogo está abierto. Los documentos se instalan localmente y funcionan sin la carpeta del proyecto. Si falta una edición, Gad ofrece la edición inglesa disponible; los documentos ausentes no generan enlaces rotos.
+
+## Configuración y páginas de manual {#command-settings}
+
+`gad --configure` guarda las preferencias y actualiza los controles de la instancia abierta. Si no hay ninguna, inicia Gad en segundo plano y devuelve el control al terminal. Las formas `--no-…` desactivan las casillas. Las listas de exclusión no indicadas se conservan; repetir `--exclude-folder` o `--exclude-file` sustituye la lista correspondiente. `--clear-exclusions` vacía ambas listas. El límite global se expresa en MiB/s; 0 significa sin límite. `--md5` y `--properties` con una copia o movimiento afectan solo a ese traslado. Los atajos de Dolphin usan `gad --configure --dolphin-ctrl-v` o `--no-dolphin-ctrl-v`.
+
+```bash
+gad --configure --md5 --verify-space --no-include-hidden
+gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR --rate-limit 25
+```
+
+`man gad` · `make manpages`

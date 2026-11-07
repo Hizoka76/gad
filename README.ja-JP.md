@@ -45,7 +45,7 @@ gad
 2. 宛先フォルダを右クリックし、**Gadで貼り付けます。**(Gadで貼り付ける)を選択します。
 3. キューに別のリクエストを追加します。
 
-オプション **DolphinにおけるCtrl+V統合** で有効にします `gad-dolphin-paste --enable` 障害者で `gad-dolphin-paste --disable`閉じて開け直す Dolphin 変えた後です GadCtrl+V は、表示されたコピー先へペーストします。
+Dolphin の **Ctrl+V と Gad の連携** は、`gad --configure --dolphin-ctrl-v` で有効にし、`gad --configure --no-dolphin-ctrl-v` で無効にします。変更後は Dolphin を閉じて開き直してください。Gad 内の Ctrl+V は表示中のコピー先へ貼り付け、ドラッグ＆ドロップはファイルをコピーします。
 
 他のファイルマネージャの場合:[ペーストして Gadドラッグ&ドロップ、カスタムアクション](docs/USER_GUIDE.ja-JP.md#using-gad-with-other-file-managers)。
 

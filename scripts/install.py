@@ -7,6 +7,7 @@ from xdg_paths import data_home
 import shutil
 import subprocess
 from install_docs import install as install_documentation
+from install_manpages import install as install_manuals
 from dolphin_shortcut import configure
 from konqueror_integration import install as install_konqueror
 
@@ -98,15 +99,10 @@ integration = data_dir / "gad/integration"
 integration.mkdir(parents=True, exist_ok=True)
 for name in ("dolphin_shortcut.py", "xdg_paths.py"):
     shutil.copy2(project / "scripts" / name, integration / name)
-shortcut_command = bin_dir / "gad-dolphin-paste"
-shortcut_contents = "#!/usr/bin/env python3\n# Gestionnaire de raccourcis installé par Gad.\nimport runpy, sys\nfrom pathlib import Path\nhelper = Path(" + repr(str(integration / "dolphin_shortcut.py")) + ")\nsys.path.insert(0, str(helper.parent))\nrunpy.run_path(str(helper), run_name='__main__')\n"
-staged_command = shortcut_command.with_name(".gad-dolphin-paste.install")
-staged_command.write_text(shortcut_contents)
-staged_command.chmod(0o755)
-staged_command.replace(shortcut_command)
 # Le raccourci appartient à Dolphin : aucun raccourci global concurrent n’est installé.
 configure()
 install_documentation(data_dir / "gad/docs")
+install_manuals(data_dir / "man")
 install_konqueror(binary)
 entries_changed = True
 # Le lien gad://show de la progression est associé au lanceur par sa déclaration MIME.

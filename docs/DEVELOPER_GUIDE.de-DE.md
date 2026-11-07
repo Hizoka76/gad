@@ -393,7 +393,7 @@ Der Erfolg bei der Einreichung gibt eine ID zurück, nicht den Beweis, dass die 
 
 Die Anwendungskennung ist `org.hizoka.gad`; Desktop- und Icon-Vereinbarungen müssen übereinstimmen, so dass die Taskleiste das Software-Icon anstelle eines generischen Kopierbildes verwendet. `gad-boucles-document` Vermögenswerte werden in Desktop-Größen nach exportiert Qt.
 
-`gad-dolphin-paste --enable` installiert einen reversiblen Dolphin Ctrl+V Verein. `--disable` stellt vorab gespeicherte Einstellungen wieder her. Die Integration bewahrt native Textpaste und die standardmäßige Shift+Insert KIO-Alternative. Sie ordnet den aktiven Dolphin-Ordner durch aktuelle Sitzungsinformationen anstelle einer vollpfad-Fenster-Berechtigungsanforderungen ab.
+`gad --configure --dolphin-ctrl-v` installiert einen reversiblen Dolphin Ctrl+V Verein. `--no-dolphin-ctrl-v` stellt vorab gespeicherte Einstellungen wieder her. Die Integration bewahrt native Textpaste und die standardmäßige Shift+Insert KIO-Alternative. Sie ordnet den aktiven Dolphin-Ordner durch aktuelle Sitzungsinformationen anstelle einer vollpfad-Fenster-Berechtigungsanforderungen ab.
 
 Der optionale `make test-dolphin-paste` verwendet die eigentliche KXMLGUI/KActionCollection auf einem privaten Bus, um die Kurzschlussaktivierung, Textpaste und Restauration zu trainieren, ohne Dateien zu kopieren oder die Dolphin des Benutzers neu zu starten.
 
@@ -417,7 +417,7 @@ make test
 
 Rust Python-Tests verwenden die Standardbibliothek und isolierte Geräte; Dokumentation Rendering-Abhängigkeiten werden nur beim Rendern geladen. Qt Tests verwenden private D-Bus/HOME/XDG-Umgebungen, Motor-Doppel, und abgefangene Desktop-Öffnungen. Integrationstests trainieren auch die reale ausführbare und Crash-Recovery. Mocks reproduzieren nicht jeden Server oder Plasma Veröffentlichung.
 
-Die dokumentierte lokale Validierung umfasst **216 Rust-Tests**, **56 Python-Tests**, Qt Suiten einschließlich **81 Zeilen-Aktionsfälle** und Integration, Formatierung und Clippy-Checks. Ein Benchmark wird in Routineläufen bewusst ignoriert. Dies beschreibt lokale Beweise, nicht eine Behauptung, dass der gelieferte GitHub-Workflow remote ausgeführt hat oder dass zukünftige Edits automatisch validiert werden.
+Die dokumentierte lokale Validierung umfasst **216 Rust-Tests**, **62 Python-Tests**, Qt Suiten einschließlich **83 Zeilen-Aktionsfälle** und Integration, Formatierung und Clippy-Checks. Ein Benchmark wird in Routineläufen bewusst ignoriert. Dies beschreibt lokale Beweise, nicht eine Behauptung, dass der gelieferte GitHub-Workflow remote ausgeführt hat oder dass zukünftige Edits automatisch validiert werden.
 
 ### Diagnose von Fehlern {#diagnosing-failures}
 
@@ -445,7 +445,7 @@ Nach dem Hinzufügen von Display-Strings laufen `make translations` um Quellen z
 
 ## Werkzeuge für die Dokumentation {#documentation-tooling}
 
-Die Root-README ist ein kurzer Einstiegspunkt; detaillierte Anleitungen werden hier beibehalten. Die Dokumentation umfasst sechs Sprachen. Jede Ausgabe beinhaltet Quick Start, User Guide, Developer Guide und 13 Screenshots seiner eigenen Schnittstelle im Lichtthema. Architektur und Lifecycle-Diagramme haben lokalisierte Labels.
+Die Root-README ist ein kurzer Einstiegspunkt; detaillierte Anleitungen werden hier beibehalten. Die Dokumentation umfasst sechs Sprachen. Jede Ausgabe beinhaltet Quick Start, User Guide, Developer Guide und 14 Screenshots seiner eigenen Schnittstelle im Lichtthema. Architektur und Lifecycle-Diagramme haben lokalisierte Labels.
 
 `doc_catalog.py` identifiziert die Sprache und das Publikum der jeweiligen Quelle. `build_docs.py` generiert sprachkorrigierte Cover, Sprachschalter, relative Links/Fragen und Offline-Einbettbilder. Englische PDFs verwenden US Letter; andere PDFs verwenden A4. `check_docs.py` validiert alle LEADME/Testing/guide-Links, Erfassungen, SprachmetadatenPDF und alle 36 HTML/
 
@@ -515,12 +515,16 @@ Das Plugin stellt auch den aktiven Ordner frei, **In den offenen Ordner mit Gad 
 
 `native/konqueror/paste_filter.h` nur Ctrl+V in einer Ansicht mit einer unterstützten URL und einer Datei-Clipboard. Textfelder, HTTP-Seiten, andere Fenster und Shift+Insert bleiben native. `plugin.cpp` Abkömmlinge `KonqParts::Plugin` und stellt das aktive Ziel über D-Bus aus. Das Frontend liest es zweimal vor dem Pasten. `scripts/konqueror_integration.py` baut das Plugin gegen Konqueror Kopfzeilen, Qt6Xml/DBus/Widgets, KF6CoreAddons und KF6XmlGui. Konqueror Header und CoreAddons/XmlGui Entwicklungsbibliotheken sind erforderlich. Der lokale Plugin-Pfad wird ausschließlich an den Prozess übergeben, der von `gad-konqueror`, ohne sich global zu verändern Qt Einstellungen oder Browser-Kürze.
 
-## Einstellungsmenü {#settings-menu}
+## Einstellungsdialog {#settings-menu}
 
-`Window` hält seine vorhandenen Steuerungen in einem `QWidgetAction`-Panel innerhalb eines `QScrollArea`. Objektnamen bleiben stabil, einschließlich `destinationInput`, um das Zielfeld von Spinbox-Editoren zu unterscheiden. Live-Übersetzungsbindungen und Motorverbindungen bleiben erhalten.
+`Window` behält einen nichtmodalen `QDialog` namens `settingsDialog` mit einem `QTabWidget` für Einstellungen und Tastenkürzel. `settingsPanel` bleibt scrollbar; Steuerelemente, Verbindungen, Übersetzungsbindungen und Werte bleiben beim erneuten Öffnen erhalten. Schließen und Escape verbergen den Dialog. Ausschluss- und Geschwindigkeitsdialoge verwenden ihn als Elternfenster, solange er sichtbar ist. Mindestgrößen sind 800 × 740 für Optionen und 1100 × 600 für Hauptfenster und Fehlerbericht. `settingsRequestRate` gehört zur Hauptaktionsleiste; sein Aktivierungszustand folgt der Baumauswahl.
 
-Dolphin : : : `gad/dolphin-paste.json` und aufrufen `gad-dolphin-paste` Asynchron mit festen Argumenten. Fehlerhafte Änderungen wiederherstellen das Kontrollkästchen; ein zehn Sekunden-Timeout begrenzt den Prozess. Keine Shortcut-Befehle laufen während der Fensterbau. Konqueror Verwendung von `konquerorCtrlV` Einstellung; sein Plugin liest `QSettings("Gad", "Gad")` auf jedem Ctrl+V, das sofortige Änderungen ermöglicht. Andere Tastendrucke bleiben native.
+Dolphin-Befehle und Kontrollkästchen verwenden gemeinsam `Window::configureDolphin`. Die Methode führt die private Komponente `gad/integration/dolphin_shortcut.py` mit Python und QProcess aus, ohne Übertragungen zu blockieren. Der Nachweis bleibt in `gad/dolphin-paste.json`. Nach spätestens acht Sekunden wird abgebrochen; Fehler stellen das Kontrollkästchen wieder her und werden dem Client gemeldet. `Window::handleAsync` antwortet erst nach Abschluss über IPC. Konqueror behält `konquerorCtrlV`, das sein Modul bei jedem Ctrl+V liest. Es wird kein separater öffentlicher Befehl installiert.
 
 ### Dokumentation im Über-Dialog {#about-documentation}
 
 `docs/catalog.json` wird von `doc_catalog.runtime_catalog()` erzeugt und mit den Ausgaben durch `scripts/install_docs.py` installiert; Renderwerkzeuge sind bei der Installation nicht erforderlich. `native/documentation.h` sucht in XDG-Datenverzeichnissen nach `gad/docs/catalog.json`, danach in portablen und Entwicklungsverzeichnissen. Die Felder `locale`, `kind`, `title`, `html` und `pdf` bestimmen die Dateien. Vorrang haben die genaue Sprachvariante, eine Variante derselben Sprache und anschließend Englisch. Pfade werden gegen das kanonische Dokumentverzeichnis geprüft, um Verzeichniswechsel und herausführende symbolische Links abzulehnen. Die Links werden beim Sprachwechsel aktualisiert und über `QDesktopServices` geöffnet.
+
+## Konfiguration und Handbuchseiten {#command-settings}
+
+`native/cli_options.h` prüft die Argumente von `--configure`. Protokoll 24 überträgt GUI-Einstellungen und teilweise Ausschlussänderungen an `Window::handleAsync` / `Window::handle`, das Sprache und Regeln prüft und Übertragungssteuerung, Steuerelemente und QSettings synchronisiert. `scripts/test_cli_settings.py` prüft das Verhalten mit einem temporären Benutzerkonto und einem privaten D-Bus. `make manpages` erzeugt sechs Handbuchseiten in sechs Sprachen; `make manpages-check` prüft ihre Aktualität. Zusätzliche Kataloge liegen in `packaging/manpages/`. Lokale Installation und Debian legen Handbücher unter `man1` und `<Sprache>/man1` ab.

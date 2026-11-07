@@ -4,19 +4,25 @@
       "file": "01-vue-ensemble.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "13e7342b9cd8a256d0daaec21a5ad23ef02c8d887f27a78015b50cfa1e07664a"
+      "sha256": "d80bac2bd01ccec7ae3415930b7b38d7bcbf99f04b3902bd03bba500cd7f56d3"
     },
     {
       "file": "02-sources-options.png",
-      "height": 1052,
-      "width": 1216,
-      "sha256": "dd01169effa48202c0c57a06e659d87f11bf0bdd2fde3959aafea2d6fd7a9383"
+      "height": 1480,
+      "width": 1600,
+      "sha256": "4356038357d4e70e4defee81668a5beb8bf5184522d4981a3b9f21b5d64dc5c1"
+    },
+    {
+      "file": "14-options-raccourcis.png",
+      "height": 1480,
+      "width": 1600,
+      "sha256": "0855be5322a147465b02040b54e0f03827afca84e0266a909df1ee86ffbe673e"
     },
     {
       "file": "03-pause.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "183677b09e57666c7e71c5a5935c10ddf6d856cfc4111c70debe05b7d199c5be"
+      "sha256": "11ca22fbc5a8576c1cd9689840fc387298bd3a987f6bdd66e7beb352dcb738a3"
     },
     {
       "file": "04-menu-annulation.png",
@@ -40,13 +46,13 @@
       "file": "07-verification-md5.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "ecb93275b4f0431a792445c82577b3636cc320a221ae2fa74b9d98bec233c56d"
+      "sha256": "9f5a1d762bacfbc5e0ecc4b5cdb73eeb4158bd13c07c801ade287564a75ac2d5"
     },
     {
       "file": "08-conflit.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "0697496330e3b61368666f20253ab8006fa0cc67e59eff61228b4e29d0e3a277"
+      "sha256": "dbd242510af810139b637af2d27a11900b3c049dfe65cfcbe82d51739ce35ca6"
     },
     {
       "file": "09-menu-zone-notification.png",
@@ -58,25 +64,25 @@
       "file": "10-a-propos.png",
       "height": 612,
       "width": 770,
-      "sha256": "7a73624b729c4389b08cf6746422274233f90c14a0770900b1090242d4b1c2bb"
+      "sha256": "aa992bce2b85f7ef8f852a0d06dc34e49d8a66d068a72f95819cba8590060aaa"
     },
     {
       "file": "11-verification-proprietes.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "5a3ca624acb75155450db46b19e37252825934556c7759d21e4e753f6ff93d33"
+      "sha256": "4f9e0b7907020998e2c3c9386198e8b6741997f83a1c8578fe85794bec9aa437"
     },
     {
       "file": "12-reconnexion.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "0c22374923a9141b16f44a33acf50c1e69f934a48b78d56d12f9975d3fc2ae0e"
+      "sha256": "3ee517903ca7dc66179e8cf8a0e477462312acd185f85f50bb75d480f27fc8c2"
     },
     {
       "file": "13-bilan-erreurs.png",
       "height": 1300,
       "width": 2640,
-      "sha256": "6c0b1a3436e33f15ee5a40dd7cbbceaf3b1a40f8f08310b4e1f48fc141305736"
+      "sha256": "4b1396d0b420c05fa4cc08177a52b0d8c143500c4c51b9753c5d60c8410c42f1"
     }
   ],
   "demo": true,
@@ -90,6 +96,6 @@
   "theme": "light",
   "window_color": "#eff0f1",
   "version": "0.1.0",
-  "generated_at": "2026-11-06",
+  "generated_at": "2026-11-07",
   "language": "en-US"
 }

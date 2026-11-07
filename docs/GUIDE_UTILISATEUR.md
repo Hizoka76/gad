@@ -106,11 +106,15 @@ La fenêtre se lit de haut en bas :
 
 ### Source, destination et options
 
-![Le menu Paramètres avec les préférences et les raccourcis](images/fr/02-sources-options.png)
+![La boîte des options, ouverte depuis le bloc Paramètres.](images/fr/02-sources-options.png)
 
-*Figure 2 — Le menu Options du bloc Paramètres, à droite de Destination.*
+*La boîte des options, ouverte depuis le bloc Paramètres.*
 
-Le bouton **Options…** ouvre les réglages. Les cases s’appliquent immédiatement et le menu reste ouvert pendant leur modification. Il regroupe MD5, propriétés, espace disponible, historique, démarrage, éléments cachés, duplication, reprise, exclusions, langue et débit global. **Limiter le débit de la demande…** utilise les lignes sélectionnées et reste désactivé sans sélection. Le menu défile si l’écran est trop petit.
+Le bouton **Paramètres → Options…** ouvre une boîte de dialogue redimensionnable, avec les onglets **Paramètres** et **Raccourcis**. Les réglages s’appliquent immédiatement ; **Fermer** ou Échap ferme la boîte sans annuler les changements. Elle peut rester ouverte pendant les transferts. Les noms des paramètres de commande apparaissent en gris sous les contrôles. Sa taille minimale est **800 × 740** ; la fenêtre principale et le bilan des erreurs ont un minimum de **1100 × 600**. Le bouton **Limiter le débit de la demande…** se trouve à gauche de la barre d’actions principale, sur la même ligne que pause/reprise et annulation. Il reste grisé sans sélection et règle le débit des lots sélectionnés, indépendamment du plafond global.
+
+![L’onglet Raccourcis et les intégrations des gestionnaires de fichiers.](images/fr/14-options-raccourcis.png)
+
+*L’onglet Raccourcis et les intégrations des gestionnaires de fichiers.*
 
 La section **Raccourcis** permet d’activer ou désactiver Ctrl+V avec Gad dans Dolphin et Konqueror. Une modification pour Dolphin utilise le gestionnaire réversible de Gad et nécessite de relancer Dolphin ; en cas d’échec, la case est rétablie et une erreur apparaît. Le choix Konqueror est pris en compte à la prochaine frappe dans **Konqueror avec Gad**. Le bouton d’ouverture de Konqueror est disponible lorsque le navigateur et le lanceur sont installés. Le collage de texte reste natif.
 
@@ -133,7 +137,7 @@ Modifier la destination après l’ajout n’envoie pas les anciens lots ailleur
 Après installation, activez l’association avec :
 
 ```bash
-gad-dolphin-paste --enable
+gad --configure --dolphin-ctrl-v
 ```
 
 Fermez puis rouvrez Dolphin pour charger les nouveaux raccourcis. Dans la vue de fichiers, **Ctrl+V** lance alors **Coller avec Gad**. Le collage habituel de Dolphin reste accessible avec **Maj+Inser** (Majuscule + Insertion), un raccourci standard de KDE. Dans la barre d’adresse, la recherche et les champs de texte, Ctrl+V reste un collage de texte normal.
@@ -147,7 +151,7 @@ L’association vise les listes de fichiers copiés/coupés. Pour créer un fich
 Pour revenir aux raccourcis précédents :
 
 ```bash
-gad-dolphin-paste --disable
+gad --configure --no-dolphin-ctrl-v
 ```
 
 Rouvrez ensuite Dolphin. Les raccourcis personnels modifiés après activation sont conservés ; Gad ne les réinitialise pas. La réinstallation conserve le mode activé et la désinstallation restaure les propriétés de raccourci encore installées par Gad. Un conflit avec une autre action personnalisée est signalé sans modifier la configuration.
@@ -393,7 +397,7 @@ Le bouton de pause du message KDE agit sur toute la file, comme le bouton de la 
 
 Le champ **Débit global** dans **Paramètres → Options…** limite la somme des copies simultanées, en **Mio/s** (1 Mio = 1 048 576 octets). **Illimité**, soit la valeur zéro, désactive ce plafond. Le réglage est mémorisé et agit immédiatement sur les transferts en cours ainsi que sur les suivants.
 
-Pour limiter une demande, sélectionnez l’une de ses lignes puis choisissez **Limiter le débit de la demande…** au clic droit ou dans **Paramètres → Options…**. La valeur concerne tous les fichiers de cette demande. Si les lignes appartiennent à plusieurs demandes, chacune reçoit le plafond indiqué ; la limite globale reste partagée entre elles. Une valeur nulle retire uniquement leur plafond individuel. L’infobulle des lignes rappelle le plafond propre à la demande.
+Le **Débit global** dans **Paramètres → Options…** limite la somme des transferts qui copient des données. Le changement s’applique immédiatement. 0 signifie illimité ; les déplacements rapides par renommage ne sont pas ralentis.
 
 Les deux plafonds se cumulent comme contraintes : une demande à 10 Mio/s reste limitée à 10 Mio/s même si le plafond global vaut 50 Mio/s. Deux demandes sans plafond individuel se partagent au total les 50 Mio/s disponibles. Gad ne garantit pas un partage égal entre elles.
 
@@ -669,7 +673,7 @@ Pour remettre en état un transfert vers un téléphone ou un partage, le montag
 | --- | --- |
 | « Le presse-papiers ne contient pas de liste de fichiers » | Copier les fichiers dans Dolphin, et non seulement le texte de leur chemin. Sous Wayland, vérifier la présence de `wl-paste`/`wl-clipboard`. |
 | « Le presse-papiers a changé pendant sa lecture » | Refaire Copier ou Couper, puis recommencer le collage. Aucune partie de cette demande incohérente ne doit être transférée. |
-| Ctrl+V ne lance pas Gad dans Dolphin | Fermer puis rouvrir Dolphin après installation ; vérifier l’action Coller avec Gad. Activer l’association avec `gad-dolphin-paste --enable`. |
+| Ctrl+V ne lance pas Gad dans Dolphin | Fermer puis rouvrir Dolphin après installation ; vérifier l’action Coller avec Gad. Activer l’association avec `gad --configure --dolphin-ctrl-v`. |
 | Les transferts semblent rester en pause | Vérifier le bouton global et les pauses ciblées au clic droit. Une reprise ciblée peut être nécessaire. |
 | Un lot reste en attente alors qu’un autre avance | Les lots peuvent partager un disque, ou un volume peut être inconnu de Gad. Une analyse précédente peut aussi garder l’ordre de la file. |
 | Une copie apparaît remplie mais n’est pas encore OK | La vérification MD5 peut être encore en cours. Lire l’état et la progression de relecture. |
@@ -717,3 +721,14 @@ Le module expose aussi le dossier actif au menu **Coller dans le dossier ouvert 
 ### Documentation depuis À propos {#about-documentation}
 
 La boîte **À propos** contient des liens vers le **Démarrage rapide**, le **Guide utilisateur** et le **Guide développeur**, avec un accès HTML et PDF. Les liens suivent la langue choisie dans Gad, même si la boîte reste ouverte pendant le changement. Les documents sont installés localement et restent accessibles sans le dossier du projet. Si une édition est absente, Gad propose l’édition anglaise disponible ; un document indisponible ne produit pas de lien mort.
+
+## Configuration et pages de manuel {#command-settings}
+
+`gad --configure` enregistre les préférences et met à jour les contrôles de l’instance ouverte. Sans instance, Gad démarre en arrière-plan et la commande rend la main. Les formes `--no-…` désactivent les cases. Les exclusions non fournies sont conservées ; répéter `--exclude-folder` ou `--exclude-file` remplace la liste correspondante. `--clear-exclusions` vide les deux listes. Le débit global est exprimé en Mio/s ; 0 signifie illimité. `--md5` et `--properties` utilisés avec une copie ou un déplacement ne modifient que ce transfert. Les raccourcis Dolphin utilisent `gad --configure --dolphin-ctrl-v` ou `--no-dolphin-ctrl-v`.
+
+```bash
+gad --configure --md5 --verify-space --no-include-hidden
+gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR --rate-limit 25
+```
+
+`man gad` · `make manpages`

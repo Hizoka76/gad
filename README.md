@@ -45,7 +45,7 @@ L’installation est propre au compte utilisateur et ne demande pas de droits ad
 2. Au clic droit sur le dossier de destination, choisir **Coller avec Gad**.
 3. Répéter pour ajouter une autre demande à la file.
 
-L’association facultative de **Ctrl+V à Gad dans Dolphin** s’active avec `gad-dolphin-paste --enable` et se retire avec `gad-dolphin-paste --disable`. Fermer puis rouvrir Dolphin pour appliquer le changement. Dans Gad, Ctrl+V colle vers la destination affichée ; un glisser-déposer effectue une copie.
+L’association facultative de **Ctrl+V à Gad dans Dolphin** s’active avec `gad --configure --dolphin-ctrl-v` et se retire avec `gad --configure --no-dolphin-ctrl-v`. Fermer puis rouvrir Dolphin pour appliquer le changement. Dans Gad, Ctrl+V colle vers la destination affichée ; un glisser-déposer effectue une copie.
 
 Pour les autres gestionnaires : [collage dans Gad, glisser-déposer et actions personnalisées](docs/GUIDE_UTILISATEUR.md#utiliser-gad-avec-un-autre-gestionnaire-de-fichiers).
 

@@ -39,11 +39,11 @@ Paste again to add another request. Gad queues the work and may run two compatib
 
 ## Set your preferences
 
-![Settings and shortcut controls](images/en-US/02-sources-options.png)
+![The settings dialog opens from the Settings block.](images/en-US/02-sources-options.png)
 
-*Open Options from Settings, to the right of Destination.*
+*The settings dialog opens from the Settings block.*
 
-In **Settings → Options…**, choose your language, hidden-item handling, verification options, history, startup, and bandwidth limits. Checkboxes apply immediately and leave the menu open. Use **Exclusions…** for folder patterns such as `__*` and file patterns such as `*.tmp` or `*~`.
+In **Settings → Options…**, the **Settings** and **Shortcuts** tabs group preferences and integrations. Changes apply immediately; **Close** or Escape closes the dialog. Command-line parameters appear in gray. **Exclusions…** accepts folder patterns such as `__*` and file patterns such as `*.tmp` or `*~`. The speed button for selected requests is on the left of the main action bar.
 
 **Allow duplication in the same folder** creates names such as `photo_copied1.jpg` when copying back into the original folder. It is off by default and applies only to copies. Selection, verification, and duplication choices are captured for new requests; existing requests keep their settings. The global speed limit can change during transfers.
 
@@ -66,3 +66,14 @@ For an existing file, choose **Keep existing file**, **Keep both**, or **Replace
 Open **Error report…** for failed transfers, copy or export the details, and retry only failed files. If a device disappears, reconnect the same device at the same location and let Gad verify before resuming.
 
 **Keep history** retains undo information. **Clear finished operations** removes the corresponding restoration information. For recovery, remote addresses, MD5 checks, and all cancellation choices, continue with the [User Guide](USER_GUIDE.en-US.md).
+
+## Configuration and manual pages {#command-settings}
+
+`gad --configure` saves preferences and updates controls in the running instance. If none is running, Gad starts in the background and the command returns. The `--no-…` forms disable checkboxes. Unspecified exclusion lists remain unchanged; repeated `--exclude-folder` or `--exclude-file` options replace the corresponding list. `--clear-exclusions` empties both lists. The global limit uses MiB/s; 0 means unlimited. `--md5` and `--properties` used with a copy or move affect only that transfer. Dolphin shortcuts use `gad --configure --dolphin-ctrl-v` or `--no-dolphin-ctrl-v`.
+
+```bash
+gad --configure --md5 --verify-space --no-include-hidden
+gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR --rate-limit 25
+```
+
+`man gad` · `make manpages`

@@ -45,7 +45,7 @@ Installation is per user and does not require administrator privileges. Use `gad
 2. Right-click the destination folder and select **Paste with Gad** (Paste with Gad).
 3. Repeat to add another request to the queue.
 
-Optional **Ctrl+V integration in Dolphin** is enabled with `gad-dolphin-paste --enable` and disabled with `gad-dolphin-paste --disable`. Close and reopen Dolphin after changing it. In Gad, Ctrl+V pastes into the displayed destination; drag-and-drop copies files.
+Optional **Ctrl+V integration in Dolphin** is enabled with `gad --configure --dolphin-ctrl-v` and disabled with `gad --configure --no-dolphin-ctrl-v`. Close and reopen Dolphin after changing it. In Gad, Ctrl+V pastes into the displayed destination; drag-and-drop copies files.
 
 For other file managers: [pasting in Gad, drag-and-drop, and custom actions](docs/USER_GUIDE.en-US.md#using-gad-with-other-file-managers).
 

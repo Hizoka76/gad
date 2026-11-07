@@ -45,7 +45,7 @@ La instalación es por usuario y no requiere privilegios de administrador. Utili
 2. Haga clic derecho en la carpeta de destino y seleccione **Pegado con Gad** (Pegar con Gad).
 3. Repita para agregar otra solicitud a la cola.
 
-El **Integración Ctrl+V en Dolphin** opcional se habilita con `gad-dolphin-paste --enable` y se deshabilita con `gad-dolphin-paste --disable`. Cierre y vuelva a abrir Dolphin después de cambiarlo. En Gad, Ctrl+V pega en el destino mostrado; Arrastrar y soltar copias de archivos.
+La integración opcional de **Ctrl+V con Gad en Dolphin** se activa con `gad --configure --dolphin-ctrl-v` y se desactiva con `gad --configure --no-dolphin-ctrl-v`. Cierre y vuelva a abrir Dolphin para aplicar el cambio. En Gad, Ctrl+V pega en el destino mostrado; arrastrar y soltar copia los archivos.
 
 Para otros administradores de archivos: [pasta en Gad, arrastrar y soltar, y acciones personalizadas](docs/USER_GUIDE.es-ES.md#using-gad-with-other-file-managers).
 

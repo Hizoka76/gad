@@ -17,6 +17,7 @@
 Window::Window(){
     I18n::bindProperty(this,"windowTitle",[]{return GAD_TR("Gad - Advanced Duplication Manager");});
     setWindowIcon(applicationIcon());
+    setMinimumSize(1100,600);
     resize(1150, 720);
     auto *body = new QWidget;
     auto *layout = new QVBoxLayout(body);
@@ -57,16 +58,22 @@ Window::Window(){
     actions->addStretch();
     panels->addWidget(sourceBox, 1);
     panels->addWidget(destinationBox, 1);
-    // Les réglages gardent leurs widgets et leurs connexions, dans un menu défilant.
+    // Une seule boîte persistante conserve les contrôles, les connexions et les réglages immédiats.
     auto *settingsBox=I18n::localized(new QGroupBox,"title",[]{return GAD_TR("Settings");});settingsBox->setObjectName("settingsBox");
     auto *settingsRow=new QHBoxLayout(settingsBox);
     auto *settingsButton=I18n::localized(new QToolButton,"text",[]{return GAD_TR("Options…");});settingsButton->setObjectName("settingsButton");
-    settingsButton->setIcon(QIcon::fromTheme("configure",style()->standardIcon(QStyle::SP_FileDialogDetailedView)));settingsButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);settingsButton->setPopupMode(QToolButton::InstantPopup);
-    auto *settingsMenu=new QMenu(this);settingsMenu->setObjectName("settingsMenu");settingsButton->setMenu(settingsMenu);
-    auto *settingsPanel=new QWidget;settingsPanel->setObjectName("settingsPanel");auto *settingsLayout=new QVBoxLayout(settingsPanel);settingsLayout->setSpacing(8);
+    settingsButton->setIcon(QIcon::fromTheme("configure",style()->standardIcon(QStyle::SP_FileDialogDetailedView)));settingsButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    auto *settingsDialog=I18n::localized(new QDialog(this),"windowTitle",[]{return GAD_TR("Settings");});settingsDialog->setObjectName("settingsDialog");
+    auto *dialogLayout=new QVBoxLayout(settingsDialog);dialogLayout->setContentsMargins(16,16,16,16);dialogLayout->setSpacing(12);
+    auto *settingsPanel=new QWidget;settingsPanel->setObjectName("settingsPanel");auto *settingsLayout=new QVBoxLayout(settingsPanel);settingsLayout->setSpacing(12);
     auto *settingsScroll=new QScrollArea;settingsScroll->setWidgetResizable(true);settingsScroll->setFrameShape(QFrame::NoFrame);settingsScroll->setWidget(settingsPanel);
-    const auto available=screen()->availableGeometry().size();settingsScroll->setMinimumWidth(qMin(600,available.width()-60));settingsScroll->setFixedHeight(qMin(650,qMax(220,available.height()-150)));
-    auto *settingsAction=new QWidgetAction(settingsMenu);settingsAction->setDefaultWidget(settingsScroll);settingsMenu->addAction(settingsAction);
+    auto *settingsTabs=new QTabWidget;settingsTabs->setObjectName("settingsTabs");settingsTabs->addTab(settingsScroll,QString());
+    I18n::onChange(settingsTabs,"tabs",[settingsTabs]{settingsTabs->setTabText(0,GAD_TR("Settings"));if(settingsTabs->count()>1)settingsTabs->setTabText(1,GAD_TR("Shortcuts"));});
+    auto *commandUsage=new QLabel("gad --configure [options]");commandUsage->setTextInteractionFlags(Qt::TextSelectableByMouse);dialogLayout->addWidget(commandUsage);
+    dialogLayout->addWidget(settingsTabs);
+    auto *settingsButtons=new QDialogButtonBox;auto *settingsClose=I18n::localized(new QPushButton(QIcon::fromTheme("window-close",style()->standardIcon(QStyle::SP_DialogCloseButton)),QString()),"text",[]{return GAD_TR("Close");});settingsClose->setObjectName("settingsCloseButton");
+    settingsButtons->addButton(settingsClose,QDialogButtonBox::RejectRole);connect(settingsButtons,&QDialogButtonBox::rejected,settingsDialog,&QDialog::reject);dialogLayout->addWidget(settingsButtons);
+    settingsDialog->setMinimumSize(800,740);settingsDialog->resize(800,740);
     settingsRow->addWidget(settingsButton);panels->addWidget(settingsBox);layout->addLayout(panels);
     // Les préférences Qt sont transmises au moteur et capturées ensuite dans chaque nouveau lot.
     verifyMd5 = I18n::localized(new QCheckBox(QString()),"text",[=]{return GAD_TR("Verify files using MD5");});
@@ -127,7 +134,20 @@ Window::Window(){
             error(GAD_TR("Unable to change Gad's startup setting."));
         }
     });
-    auto *checks=new QGridLayout;checks->addWidget(verifyMd5,0,0);checks->addWidget(verifyProperties,0,1);checks->addWidget(verifySpace,1,0);checks->addWidget(keepHistory,1,1);checks->addWidget(startup,2,0);checks->addWidget(resumeInterrupted,4,0,1,2);settingsLayout->addLayout(checks);
+    // Les noms CLI restent littéraux dans toutes les langues, sous la case correspondante.
+    const auto commandHint=[](const QString &name,const QString &command) {
+        auto *hint=new QLabel(command);hint->setObjectName(name+"CommandOption");
+        auto palette=hint->palette();palette.setColor(QPalette::WindowText,palette.color(QPalette::Disabled,QPalette::WindowText));hint->setPalette(palette);
+        hint->setWordWrap(true);hint->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));hint->setTextFormat(Qt::PlainText);hint->setTextInteractionFlags(Qt::TextSelectableByMouse);
+        return hint;
+    };
+    const auto commandOption=[commandHint](QCheckBox *check,const QString &command) {
+        auto *container=new QWidget;auto *column=new QVBoxLayout(container);column->setContentsMargins(0,0,0,0);column->setSpacing(2);
+        column->addWidget(check);auto *hint=commandHint(check->objectName(),command);
+        hint->setContentsMargins(check->style()->pixelMetric(QStyle::PM_IndicatorWidth)+check->style()->pixelMetric(QStyle::PM_CheckBoxLabelSpacing),0,0,4);
+        column->addWidget(hint);return container;
+    };
+    auto *checks=new QGridLayout;checks->addWidget(commandOption(verifyMd5,"--md5 / --no-md5"),0,0);checks->addWidget(commandOption(verifyProperties,"--properties / --no-properties"),0,1);checks->addWidget(commandOption(verifySpace,"--verify-space / --no-verify-space"),1,0);checks->addWidget(commandOption(keepHistory,"--keep-history / --no-keep-history"),1,1);checks->addWidget(commandOption(startup,"--autostart / --no-autostart"),2,0);checks->addWidget(commandOption(resumeInterrupted,"--resume-interrupted / --no-resume-interrupted"),4,0,1,2);settingsLayout->addLayout(checks);
     // Les préférences de sélection sont figées dans chaque requête, avant une éventuelle résolution KIO.
     exclusionRules={{"include_hidden",QSettings().value("includeHidden",true).toBool()},
         {"directories",QJsonArray::fromStringList(QSettings().value("excludeDirectories").toStringList())},
@@ -135,10 +155,10 @@ Window::Window(){
     auto *selectionOptions=new QVBoxLayout;
     includeHidden=I18n::localized(new QCheckBox, "text",[]{return GAD_TR("Include hidden items");});includeHidden->setObjectName("includeHidden");
     I18n::bindProperty(includeHidden,"toolTip",[]{return GAD_TR("Hidden items have a name starting with a dot.\nThis option applies to new copies and moves only.");});
-    includeHidden->setChecked(exclusionRules["include_hidden"].toBool());checks->addWidget(includeHidden,2,1);
+    includeHidden->setChecked(exclusionRules["include_hidden"].toBool());checks->addWidget(commandOption(includeHidden,"--include-hidden / --no-include-hidden"),2,1);
     allowDuplication=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Allow duplication in the same folder");});allowDuplication->setObjectName("allowDuplication");
     I18n::bindProperty(allowDuplication,"toolTip",[]{return GAD_TR("Copying into the source folder creates name_copied1, name_copied2, etc.\nFile extensions are preserved.\nApplies to new copies only; moves are not duplicated.");});
-    allowDuplication->setChecked(QSettings().value("allowDuplication",false).toBool());checks->addWidget(allowDuplication,3,0,1,2);
+    allowDuplication->setChecked(QSettings().value("allowDuplication",false).toBool());checks->addWidget(commandOption(allowDuplication,"--allow-duplication / --no-allow-duplication"),3,0,1,2);
     engine({{"command",Protocol::Command::Configure},{"allow_duplication",allowDuplication->isChecked()}});
     connect(allowDuplication,&QCheckBox::toggled,this,[this](bool enabled){
         const auto result=handle({{"command",Protocol::Command::Configure},{"allow_duplication",enabled}});
@@ -146,7 +166,8 @@ Window::Window(){
     });
     auto *exclusionsButton=I18n::localized(new QPushButton(QIcon::fromTheme("view-filter",style()->standardIcon(QStyle::SP_FileDialogContentsView)),QString()),"text",[]{return GAD_TR("Exclusions…");});exclusionsButton->setObjectName("exclusionsButton");
     I18n::bindProperty(exclusionsButton,"toolTip",[]{return GAD_TR("Choose folder and file name patterns to exclude.\nExcluded folders are not explored.\nExcluded items stay at the source during moves.");});
-    connect(exclusionsButton,&QPushButton::clicked,this,[this,settingsMenu]{settingsMenu->hide();showExclusions();});selectionOptions->addWidget(exclusionsButton);
+    connect(exclusionsButton,&QPushButton::clicked,this,[this]{showExclusions();});selectionOptions->addWidget(exclusionsButton);
+    selectionOptions->addWidget(commandHint("exclusions","--exclude-folder PATTERN / --exclude-file PATTERN / --clear-exclusions"));
     exclusionSummary=new QLabel;exclusionSummary->setObjectName("exclusionSummary");exclusionSummary->setTextFormat(Qt::PlainText);selectionOptions->addWidget(exclusionSummary);settingsLayout->addLayout(selectionOptions);
     I18n::onChange(exclusionSummary,"rules",[this]{updateExclusionSummary();});
     const auto exclusionsConfigured=engine({{"command",Protocol::Command::Configure},{"exclusions",exclusionRules}});
@@ -174,6 +195,7 @@ Window::Window(){
     auto *rateLabel=I18n::localized(new QLabel(QString()),"text",[=]{return GAD_TR("Global speed limit:");});rateLabel->setBuddy(globalRate);
     options->addWidget(rateLabel);options->addWidget(globalRate);
     settingsLayout->addLayout(options);
+    settingsLayout->addWidget(commandHint("globalRate","--rate-limit MiB/s"));
     // Les demandes actives ont leur propre débit et estimation, sans ajouter de niveaux à l’arbre.
     requestMetrics=new QLabel;requestMetrics->setObjectName("requestMetrics");requestMetrics->setTextFormat(Qt::PlainText);
     requestMetrics->setWordWrap(true);requestMetrics->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -398,38 +420,31 @@ Window::Window(){
     });
     auto *languageLabel=I18n::localized(new QLabel,"text",[]{return GAD_TR("Language");});languageLabel->setBuddy(language);
     auto *languageRow=new QHBoxLayout;languageRow->addWidget(languageLabel);languageRow->addWidget(language,1);settingsLayout->addLayout(languageRow);
+    settingsLayout->addWidget(commandHint("language","--language LOCALE (system / fr_FR / en_US / …)"));
     auto *requestRate=I18n::localized(new QPushButton(QIcon::fromTheme("speedometer"),QString()),"text",[]{return GAD_TR("Limit request speed…");});requestRate->setObjectName("settingsRequestRate");
-    settingsLayout->addWidget(requestRate);connect(requestRate,&QPushButton::clicked,this,[this,settingsMenu]{settingsMenu->hide();showRateLimit();});
-    connect(settingsMenu,&QMenu::aboutToShow,this,[this,requestRate]{requestRate->setEnabled(!tree->selectedItems().isEmpty());});
-    connect(settingsMenu,&QMenu::aboutToShow,this,[this,settingsPanel,settingsScroll]{settingsPanel->layout()->activate();settingsScroll->setFixedHeight(qMin(settingsPanel->sizeHint().height()+4,qMax(220,screen()->availableGeometry().height()-150)));});
-    auto *shortcuts=I18n::localized(new QGroupBox,"title",[]{return GAD_TR("Shortcuts");});auto *shortcutOptions=new QVBoxLayout(shortcuts);settingsLayout->addWidget(shortcuts);
-    auto *dolphinShortcut=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Ctrl+V with Gad in Dolphin");});dolphinShortcut->setObjectName("dolphinShortcut");shortcutOptions->addWidget(dolphinShortcut);
-    const auto helper=QStandardPaths::findExecutable("gad-dolphin-paste");dolphinShortcut->setEnabled(!helper.isEmpty());
+    controls->insertWidget(0,requestRate);connect(requestRate,&QPushButton::clicked,this,[this]{showRateLimit();});
+    // La sélection peut évoluer pendant que les paramètres restent ouverts.
+    connect(settingsButton,&QToolButton::clicked,this,[this,settingsDialog,requestRate]{requestRate->setEnabled(!tree->selectedItems().isEmpty());settingsDialog->show();settingsDialog->raise();settingsDialog->activateWindow();});
+    connect(tree,&QTreeWidget::itemSelectionChanged,requestRate,[this,requestRate]{requestRate->setEnabled(!tree->selectedItems().isEmpty());});
+    requestRate->setEnabled(!tree->selectedItems().isEmpty());
+    auto *shortcuts=new QWidget;auto *shortcutOptions=new QVBoxLayout(shortcuts);shortcutOptions->setContentsMargins(16,16,16,16);shortcutOptions->setSpacing(12);settingsTabs->addTab(shortcuts,GAD_TR("Shortcuts"));
+    auto *dolphinShortcut=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Ctrl+V with Gad in Dolphin");});dolphinShortcut->setObjectName("dolphinShortcut");shortcutOptions->addWidget(commandOption(dolphinShortcut,"--dolphin-ctrl-v / --no-dolphin-ctrl-v"));
+    const auto helper=dolphinIntegration();dolphinShortcut->setEnabled(!helper.isEmpty());
     QFile receipt(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)+"/gad/dolphin-paste.json");
     if(receipt.open(QIODevice::ReadOnly))dolphinShortcut->setChecked(!QJsonDocument::fromJson(receipt.readAll()).object()["files"].toObject().isEmpty());
     auto *shortcutNotice=I18n::localized(new QLabel,"text",[]{return GAD_TR("Restart Dolphin after changing its shortcut.");});shortcutNotice->setWordWrap(true);shortcutOptions->addWidget(shortcutNotice);
-    connect(dolphinShortcut,&QCheckBox::toggled,this,[this,dolphinShortcut,helper,settingsMenu](bool enabled){
-        if(helper.isEmpty())return;
-        dolphinShortcut->setEnabled(false);auto *process=new QProcess(this);auto *timeout=new QTimer(process);timeout->setSingleShot(true);
-        connect(timeout,&QTimer::timeout,process,[process]{process->kill();});
-        const auto finish=[this,dolphinShortcut,settingsMenu,process,enabled](bool success){
-            if(process->property("finishedSettings").toBool())return;
-            process->setProperty("finishedSettings",true);
-            dolphinShortcut->setEnabled(true);
-            if(!success){QSignalBlocker blocker(dolphinShortcut);dolphinShortcut->setChecked(!enabled);settingsMenu->hide();auto detail=QString::fromUtf8(process->readAllStandardError()).trimmed();error(detail.isEmpty()?GAD_TR("Unable to change the Dolphin shortcut."):detail);}
-            process->deleteLater();
-        };
-        connect(process,&QProcess::finished,this,[finish](int code,QProcess::ExitStatus status){finish(code==0 && status==QProcess::NormalExit);});
-        connect(process,&QProcess::errorOccurred,this,[finish](QProcess::ProcessError error){if(error==QProcess::FailedToStart)finish(false);});
-        process->start(helper,{enabled?"--enable-ctrl-v":"--disable-ctrl-v"});timeout->start(10000);
+    connect(dolphinShortcut,&QCheckBox::toggled,this,[this,dolphinShortcut](bool enabled){
+        {QSignalBlocker blocker(dolphinShortcut);dolphinShortcut->setChecked(!enabled);}
+        configureDolphin(enabled,[this](const QJsonObject &result){if(result.contains("error"))error(result["error"].toString());});
     });
-    auto *konquerorShortcut=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Ctrl+V with Gad in Konqueror");});konquerorShortcut->setObjectName("konquerorShortcut");shortcutOptions->addWidget(konquerorShortcut);
+    auto *konquerorShortcut=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Ctrl+V with Gad in Konqueror");});konquerorShortcut->setObjectName("konquerorShortcut");shortcutOptions->addWidget(commandOption(konquerorShortcut,"--konqueror-ctrl-v / --no-konqueror-ctrl-v"));
     I18n::bindProperty(konquerorShortcut,"toolTip",[]{return GAD_TR("Applies to Konqueror launched with Gad. Text pastes remain native.");});
     konquerorShortcut->setChecked(QSettings().value("konquerorCtrlV",true).toBool());
     connect(konquerorShortcut,&QCheckBox::toggled,this,[](bool enabled){QSettings settings;settings.setValue("konquerorCtrlV",enabled);settings.sync();});
     auto *openKonqueror=I18n::localized(new QPushButton(QIcon::fromTheme("konqueror",style()->standardIcon(QStyle::SP_DirIcon)),QString()),"text",[]{return GAD_TR("Open Konqueror with Gad");});openKonqueror->setObjectName("openKonqueror");shortcutOptions->addWidget(openKonqueror);
     const auto konquerorLauncher=QStandardPaths::findExecutable("gad-konqueror");openKonqueror->setEnabled(!konquerorLauncher.isEmpty() && !QStandardPaths::findExecutable("konqueror").isEmpty());
-    connect(openKonqueror,&QPushButton::clicked,this,[this,settingsMenu,konquerorLauncher]{settingsMenu->hide();if(!QProcess::startDetached(konquerorLauncher,{}))error(GAD_TR("Unable to start Konqueror."));});
+    connect(openKonqueror,&QPushButton::clicked,this,[this,konquerorLauncher]{if(!QProcess::startDetached(konquerorLauncher,{}))error(GAD_TR("Unable to start Konqueror."));});
+    shortcutOptions->addStretch();settingsLayout->addStretch();
     footer->addWidget(about);footer->addWidget(errorReport);footer->addStretch();footer->addWidget(summary,1);
     layout->addLayout(footer);
     setCentralWidget(body);

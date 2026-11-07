@@ -1,5 +1,6 @@
 // Tests unitaires Qt des chemins et actions d’ouverture ; aucune application externe n’est lancée.
 #include "../native/window.h"
+#include "../native/cli_options.h"
 #include "../native/documentation.h"
 #include "../native/kio_sources.h"
 #include "../native/error_report.h"
@@ -119,35 +120,75 @@ private Q_SLOTS:
         QVERIFY(Documentation::html().contains(QString(GAD_TR("Documentation is not installed.")).toHtmlEscaped()));
     }
 
-    /// Les widgets de réglage sont conservés dans le menu, sans dupliquer les contrôles ni fermer à chaque clic.
-    void settingsMenuGroupsControlsAndStaysOpen() {
+    /// Les paramètres persistants sont validés avant tout appel au moteur.
+    void commandSettingsParseBooleansRatesAndExclusions() {
+        QString error;
+        const QHash<QString,QString> flags{{"md5","verify_md5"},{"properties","verify_properties"},{"verify-space","verify_space"},{"keep-history","keep_history"},{"resume-interrupted","resume_interrupted"},{"allow-duplication","allow_duplication"}};
+        for(auto it=flags.begin();it!=flags.end();++it)for(bool enabled:{false,true}) {
+            const auto request=CliOptions::configure({"gad","--configure","--"+QString(enabled?"":"no-")+it.key()},error);QVERIFY(error.isEmpty());QCOMPARE(request[it.value()].toBool(),enabled);
+        }
+        const auto request=CliOptions::configure({"gad","--configure","--rate-limit","2.5","--exclude-folder","__*","--exclude-folder","node_modules","--no-include-hidden","--autostart","--no-konqueror-ctrl-v","--language","en_US"},error);
+        QVERIFY(error.isEmpty());QCOMPARE(request["rate_limit"].toInteger(),2621440);QCOMPARE(request["exclusion_patch"].toObject()["directories"].toArray().size(),2);QVERIFY(!request["exclusion_patch"].toObject()["include_hidden"].toBool());QVERIFY(request["gui_settings"].toObject()["autostart"].toBool());
+        const QList<QStringList> invalid{{},{"--md5","--no-md5"},{"--language"},{"--rate-limit","nan"},{"--rate-limit","-1"},{"--rate-limit","9999999"},{"--unknown"},{"--no-language","fr_FR"}};
+        for(const auto &arguments:invalid){QStringList cli{"gad","--configure"};cli.append(arguments);error.clear();CliOptions::configure(cli,error);QVERIFY(!error.isEmpty());}
+    }
+
+    /// Une commande reçue par IPC actualise les vrais widgets et préserve les règles non fournies.
+    void commandSettingsUpdateWidgetsAndPreserveRules() {
+        const QStringList keys{"verifyMd5","verifyProperties","verifySpace","keepHistory","resumeInterrupted","allowDuplication","includeHidden","excludeDirectories","excludeFiles","rateLimit","language","konquerorCtrlV"};
+        QHash<QString,QVariant> previous;for(const auto &key:keys)previous[key]=QSettings().value(key);
+        const auto restore=qScopeGuard([=]{for(const auto &key:keys){if(previous[key].isValid())QSettings().setValue(key,previous[key]);else QSettings().remove(key);}I18n::initialize("fr_FR");});
+        Window window;window.handle({{"command","configure"},{"exclusions",QJsonObject{{"include_hidden",true},{"directories",QJsonArray{"__*"}},{"files",QJsonArray{"*.tmp"}}}}});mutations.clear();
+        QString error;auto request=CliOptions::configure({"gad","--configure","--md5","--properties","--verify-space","--keep-history","--resume-interrupted","--allow-duplication","--no-include-hidden","--rate-limit","2.5"},error);
+        QVERIFY(!window.handle(request).contains("error"));QCOMPARE(mutations.size(),1);QCOMPARE(mutations.last()["exclusions"].toObject()["directories"].toArray(),QJsonArray{"__*"});
+        for(const auto &name:QStringList{"verifyMd5","verifyProperties","verifySpace","keepHistory","resumeInterrupted","allowDuplication"})QVERIFY(window.findChild<QCheckBox *>(name)->isChecked());
+        QVERIFY(!window.findChild<QCheckBox *>("includeHidden")->isChecked());QCOMPARE(QSettings().value("rateLimit").toLongLong(),2621440);
+        mutations.clear();request=CliOptions::configure({"gad","--configure","--language","en_US","--no-konqueror-ctrl-v"},error);QVERIFY(!window.handle(request).contains("error"));QVERIFY(mutations.isEmpty());QCOMPARE(QSettings().value("language").toString(),QString("en_US"));QVERIFY(!window.findChild<QCheckBox *>("konquerorShortcut")->isChecked());
+        request=CliOptions::configure({"gad","--configure","--language","invalid_locale","--no-md5"},error);QVERIFY(window.handle(request).contains("error"));QVERIFY(window.findChild<QCheckBox *>("verifyMd5")->isChecked());QVERIFY(mutations.isEmpty());
+    }
+
+    /// La boîte reste ouverte pendant les réglages et conserve ses widgets entre deux ouvertures.
+    void settingsDialogPreservesControlsAndUpdatesLanguage() {
         const auto previous=QSettings().value("verifyMd5"),previousLanguage=QSettings().value("language");
         const auto restore=qScopeGuard([previous,previousLanguage]{if(previous.isValid())QSettings().setValue("verifyMd5",previous);else QSettings().remove("verifyMd5");if(previousLanguage.isValid())QSettings().setValue("language",previousLanguage);else QSettings().remove("language");I18n::initialize("fr_FR");});
         publish(job({file("running")},"running"));Window window;window.show();
-        auto *box=window.findChild<QGroupBox *>("settingsBox"),*destination=window.findChild<QGroupBox *>("destinationBox");QVERIFY(box);QVERIFY(destination);QVERIFY(box->x()>destination->x());
-        auto *button=window.findChild<QToolButton *>("settingsButton");QVERIFY(button);QVERIFY(button->menu());
-        auto *panel=window.findChild<QWidget *>("settingsPanel");QVERIFY(panel);QCOMPARE(panel->findChildren<QCheckBox *>().size(),10);
-        for(const auto &name:QStringList{"verifyMd5","verifyProperties","verifySpace","keepHistory","resumeInterrupted","launchAtStartup","includeHidden","allowDuplication","dolphinShortcut","konquerorShortcut"})QVERIFY(panel->findChild<QCheckBox *>(name));
-        QVERIFY(panel->findChild<QPushButton *>("exclusionsButton"));QVERIFY(panel->findChild<QDoubleSpinBox *>("globalRateLimit"));QVERIFY(panel->findChild<QComboBox *>("languageSelector"));
-        button->menu()->popup(button->mapToGlobal(QPoint(0,button->height())));QCoreApplication::processEvents();QVERIFY(button->menu()->isVisible());
+        QCOMPARE(window.minimumSize(),QSize(1100,600));
+        auto *button=window.findChild<QToolButton *>("settingsButton");QVERIFY(button);QVERIFY(!button->menu());
+        auto *dialog=window.findChild<QDialog *>("settingsDialog");QVERIFY(dialog);QVERIFY(!dialog->isVisible());QCOMPARE(dialog->minimumSize(),QSize(800,740));
+        auto *panel=dialog->findChild<QWidget *>("settingsPanel");QVERIFY(panel);QCOMPARE(dialog->findChildren<QCheckBox *>().size(),10);
+        for(auto *check:dialog->findChildren<QCheckBox *>())QVERIFY(dialog->findChild<QLabel *>(check->objectName()+"CommandOption"));
+        QCOMPARE(panel->findChild<QLabel *>("verifyMd5CommandOption")->text(),QString("--md5 / --no-md5"));
+        QCOMPARE(panel->findChild<QLabel *>("verifyPropertiesCommandOption")->text(),QString("--properties / --no-properties"));
+        auto *tabs=dialog->findChild<QTabWidget *>("settingsTabs");QVERIFY(tabs);QCOMPARE(tabs->count(),2);
+        QTest::mouseClick(button,Qt::LeftButton);QVERIFY(dialog->isVisible());QVERIFY(!dialog->isModal());
         auto *md5=panel->findChild<QCheckBox *>("verifyMd5");const auto checked=md5->isChecked();mutations.clear();
-        QTest::mouseClick(md5,Qt::LeftButton);QCOMPARE(md5->isChecked(),!checked);QVERIFY(button->menu()->isVisible());QCOMPARE(mutations.size(),1);
-        auto *requestRate=panel->findChild<QPushButton *>("settingsRequestRate");QVERIFY(!requestRate->isEnabled());
-        button->menu()->hide();window.findChild<QTreeWidget *>()->setCurrentItem(window.entryRow(1,0));
-        button->menu()->popup(button->mapToGlobal(QPoint(0,button->height())));QCoreApplication::processEvents();QVERIFY(requestRate->isEnabled());
-        auto *language=panel->findChild<QComboBox *>("languageSelector");language->setCurrentIndex(language->findData("en_US"));QCOMPARE(box->title(),QString("Settings"));QCOMPARE(panel,window.findChild<QWidget *>("settingsPanel"));
-        button->menu()->hide();
+        QTest::mouseClick(md5,Qt::LeftButton,Qt::NoModifier,QPoint(md5->style()->pixelMetric(QStyle::PM_IndicatorWidth)/2,md5->height()/2));QCOMPARE(md5->isChecked(),!checked);QVERIFY(dialog->isVisible());QCOMPARE(mutations.size(),1);
+        auto *requestRate=window.findChild<QPushButton *>("settingsRequestRate");QVERIFY(requestRate);QVERIFY(!requestRate->isEnabled());
+        QVERIFY(!dialog->isAncestorOf(requestRate));auto *cancel=window.findChild<QPushButton *>("cancellationMenu");QVERIFY(cancel);
+        QCOMPARE(requestRate->y(),cancel->y());QVERIFY(requestRate->x()<cancel->x());
+        for(const auto &name:QStringList{"exclusionsCommandOption","globalRateCommandOption","languageCommandOption"})QVERIFY(panel->findChild<QLabel *>(name));
+        window.findChild<QTreeWidget *>()->setCurrentItem(window.entryRow(1,0));QVERIFY(requestRate->isEnabled());
+        auto *language=panel->findChild<QComboBox *>("languageSelector");language->setCurrentIndex(language->findData("en_US"));QCOMPARE(dialog->windowTitle(),QString("Settings"));QCOMPARE(tabs->tabText(1),QString("Shortcuts"));
+        auto *close=dialog->findChild<QPushButton *>("settingsCloseButton");QCOMPARE(close->text(),QString("Close"));
+        QTest::mouseClick(panel->findChild<QPushButton *>("exclusionsButton"),Qt::LeftButton);
+        auto *exclusions=dialog->findChild<QDialog *>("exclusionsDialog");QVERIFY(exclusions);QVERIFY(exclusions->isVisible());exclusions->reject();QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);
+        QTest::mouseClick(close,Qt::LeftButton);QVERIFY(!dialog->isVisible());
+        QTest::mouseClick(button,Qt::LeftButton);QVERIFY(dialog->isVisible());QCOMPARE(panel,dialog->findChild<QWidget *>("settingsPanel"));QCOMPARE(md5->isChecked(),!checked);
+        QTest::keyClick(dialog,Qt::Key_Escape);QVERIFY(!dialog->isVisible());
     }
 
     /// Un échec du gestionnaire réversible Dolphin rétablit la case sans toucher au moteur.
     void shortcutSettingsHandleHelperFailureAndPersistKonqueror() {
-        QTemporaryDir directory;QVERIFY(directory.isValid());const auto oldPath=qgetenv("PATH");const auto oldLanguage=QSettings().value("language"),oldKonqueror=QSettings().value("konquerorCtrlV");
-        const auto restore=qScopeGuard([=]{qputenv("PATH",oldPath);for(const auto &pair:QList<QPair<QString,QVariant>>{{"language",oldLanguage},{"konquerorCtrlV",oldKonqueror}}){if(pair.second.isValid())QSettings().setValue(pair.first,pair.second);else QSettings().remove(pair.first);}I18n::initialize("fr_FR");});
-        QFile helper(directory.path()+"/gad-dolphin-paste");QVERIFY(helper.open(QIODevice::WriteOnly));helper.write("#!/usr/bin/python3\nimport sys\nif '--disable-ctrl-v' in sys.argv:\n print('refused test change',file=sys.stderr)\n sys.exit(1)\n");helper.close();QVERIFY(helper.setPermissions(QFileDevice::ReadOwner|QFileDevice::WriteOwner|QFileDevice::ExeOwner));
-        qputenv("PATH",QFile::encodeName(directory.path())+":"+oldPath);
+        QTemporaryDir directory;QVERIFY(directory.isValid());const auto oldPath=qgetenv("XDG_DATA_DIRS");const auto oldLanguage=QSettings().value("language"),oldKonqueror=QSettings().value("konquerorCtrlV");
+        const auto restore=qScopeGuard([=]{qputenv("XDG_DATA_DIRS",oldPath);for(const auto &pair:QList<QPair<QString,QVariant>>{{"language",oldLanguage},{"konquerorCtrlV",oldKonqueror}}){if(pair.second.isValid())QSettings().setValue(pair.first,pair.second);else QSettings().remove(pair.first);}I18n::initialize("fr_FR");});
+        QVERIFY(QDir().mkpath(directory.path()+"/gad/integration"));QFile helper(directory.path()+"/gad/integration/dolphin_shortcut.py");QVERIFY(helper.open(QIODevice::WriteOnly));helper.write("#!/usr/bin/python3\nimport sys\nif '--disable-ctrl-v' in sys.argv:\n print('refused test change',file=sys.stderr)\n sys.exit(1)\n");helper.close();QVERIFY(helper.setPermissions(QFileDevice::ReadOwner|QFileDevice::WriteOwner|QFileDevice::ExeOwner));
+        qputenv("XDG_DATA_DIRS",QFile::encodeName(directory.path())+":"+oldPath);
         Window window;auto *dolphin=window.findChild<QCheckBox *>("dolphinShortcut");QVERIFY(dolphin->isEnabled());QVERIFY(!dolphin->isChecked());mutations.clear();
         dolphin->setChecked(true);QVERIFY(!dolphin->isEnabled());QTRY_VERIFY(dolphin->isEnabled());QVERIFY(dolphin->isChecked());QVERIFY(mutations.isEmpty());
         dolphin->setChecked(false);QTRY_VERIFY(dolphin->isEnabled());QVERIFY(dolphin->isChecked());QVERIFY(window.findChild<QMessageBox *>("errorDialog"));QVERIFY(mutations.isEmpty());
+        bool completed=false;QJsonObject reply;window.handleAsync({{"command","configure"},{"gui_settings",QJsonObject{{"dolphin_ctrl_v",false}}}},[&](QJsonObject result){reply=result;completed=true;});
+        QTRY_VERIFY(completed);QVERIFY(reply.contains("error"));QVERIFY(dolphin->isChecked());
+        completed=false;window.handleAsync({{"command","configure"},{"gui_settings",QJsonObject{{"dolphin_ctrl_v",true}}}},[&](QJsonObject result){reply=result;completed=true;});QTRY_VERIFY(completed);QVERIFY(!reply.contains("error"));QVERIFY(dolphin->isChecked());
         auto *konqueror=window.findChild<QCheckBox *>("konquerorShortcut");const auto before=konqueror->isChecked();konqueror->setChecked(!before);QCOMPARE(QSettings().value("konquerorCtrlV").toBool(),!before);
     }
 
@@ -264,7 +305,7 @@ private Q_SLOTS:
         for(int i=0;i<3;++i)records.append(QJsonObject{{"job",i+1},{"index",0},{"scope","entry"},{"mode","copy"},{"state",i==1?"done":"error"},{"kind","file"},{"source",i==2?"/tmp/second":"/tmp/first"},{"destination","/tmp/dest"},{"error","détail\n<texte>"},{"retryable",i!=1},{"retry_reason",i==1?"finalisation":""}});
         errorReport={{"records",records},{"jobs",QJsonArray{}},{"generated_unix",0}};
         Window window;window.findChild<QPushButton *>("errorReportButton")->click();
-        auto *dialog=window.findChild<QDialog *>("errorReportDialog");QVERIFY(dialog);
+        auto *dialog=window.findChild<QDialog *>("errorReportDialog");QVERIFY(dialog);QCOMPARE(dialog->minimumSize(),QSize(1100,600));
         auto *rows=dialog->findChild<QTreeWidget *>("errorReportRows");QCOMPARE(rows->topLevelItemCount(),3);
         dialog->findChild<QLineEdit *>("errorReportSearch")->setText("second");mutations.clear();
         dialog->findChild<QPushButton *>("retryAllErrors")->click();QCOMPARE(mutations.size(),1);

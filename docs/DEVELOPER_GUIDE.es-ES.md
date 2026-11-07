@@ -393,7 +393,7 @@ El éxito en el envío devuelve una identificación, no una prueba de que la tra
 
 El identificador de la aplicación es `org.hizoka.gad`; Las asociaciones de íconos y escritorio deben coincidir para que la barra de tareas use el ícono del software en lugar de una imagen de copia genérica. Los activos `gad-boucles-document` integrados se exportan en tamaños de escritorio mediante Qt.
 
-`gad-dolphin-paste --enable` instala una asociación reversible Dolphin Ctrl+V. `--disable` restaura la configuración guardada anteriormente. La integración conserva el pegado de texto nativo y la alternativa estándar Shift+Insert KIO. Localiza la carpeta Dolphin activa a través de la información de la sesión actual en lugar de un requisito de título de ventana de ruta completa. Valide los cambios de forma atómica, rechace registros de integración no relacionados o con formato incorrecto y conserve los accesos directos no relacionados.
+`gad --configure --dolphin-ctrl-v` instala una asociación reversible Dolphin Ctrl+V. `--no-dolphin-ctrl-v` restaura la configuración guardada anteriormente. La integración conserva el pegado de texto nativo y la alternativa estándar Shift+Insert KIO. Localiza la carpeta Dolphin activa a través de la información de la sesión actual en lugar de un requisito de título de ventana de ruta completa. Valide los cambios de forma atómica, rechace registros de integración no relacionados o con formato incorrecto y conserve los accesos directos no relacionados.
 
 El `make test-dolphin-paste` opcional utiliza KXMLGUI/KActionCollection real en un bus privado para activar accesos directos, pegar texto y restaurar sin copiar archivos ni reiniciar el Dolphin del usuario.
 
@@ -417,7 +417,7 @@ make test
 
 Las pruebas Rust utilizan árboles temporales para comprobar el estado observable y el contenido del archivo. Las pruebas de Python utilizan la biblioteca estándar y accesorios aislados; Las dependencias del renderizador de documentación se cargan solo durante el renderizado. Las pruebas Qt utilizan entornos privados D-Bus/HOME/XDG, dobles de motor y aperturas de escritorio interceptadas. Las pruebas de integración también ejercitan el ejecutable real y la recuperación ante fallos. Los simulacros no reproducen todos los servidores o versiones de Plasma.
 
-La validación local documentada comprende las suites **216 pruebas Rust**, **56 pruebas de Python**, Qt, incluido **81 casos de acción en fila**, y comprobaciones de integración, formato y Clippy. Un punto de referencia se ignora intencionalmente en ejecuciones de rutina. Esto describe evidencia local, no una afirmación de que el flujo de trabajo de GitHub proporcionado se haya ejecutado de forma remota o que las ediciones futuras se validen automáticamente.
+La validación local documentada comprende las suites **216 pruebas Rust**, **62 pruebas de Python**, Qt, incluido **83 casos de acción en fila**, y comprobaciones de integración, formato y Clippy. Un punto de referencia se ignora intencionalmente en ejecuciones de rutina. Esto describe evidencia local, no una afirmación de que el flujo de trabajo de GitHub proporcionado se haya ejecutado de forma remota o que las ediciones futuras se validen automáticamente.
 
 ### Diagnóstico de fallas {#diagnosing-failures}
 
@@ -445,7 +445,7 @@ Después de agregar cadenas de visualización, ejecute `make translations` para 
 
 ## Herramientas de documentación {#documentation-tooling}
 
-El archivo README raíz es un punto de entrada breve; Aquí se mantienen guías detalladas. La documentación cubre seis idiomas. Cada edición incluye Inicio rápido, Guía del usuario, Guía del desarrollador y 13 capturas de pantalla de su propia interfaz en el tema ligero. Los diagramas de arquitectura y ciclo de vida tienen etiquetas localizadas.
+El archivo README raíz es un punto de entrada breve; Aquí se mantienen guías detalladas. La documentación cubre seis idiomas. Cada edición incluye Inicio rápido, Guía del usuario, Guía del desarrollador y 14 capturas de pantalla de su propia interfaz en el tema ligero. Los diagramas de arquitectura y ciclo de vida tienen etiquetas localizadas.
 
 `doc_catalog.py` identifica el idioma y la audiencia de cada fuente. `build_docs.py` genera portadas con lenguaje correcto, cambios de idioma para la misma audiencia, enlaces/fragmentos relativos e imágenes incrustadas sin conexión. Los PDF en inglés utilizan Carta estadounidense; otros archivos PDF usan A4. `check_docs.py` valida todos los enlaces README/pruebas/guía, capturas, metadatos de idioma y las 36 exportaciones HTML/PDF.
 
@@ -515,12 +515,16 @@ El complemento también expone la carpeta activa a **Pegue en la carpeta abierta
 
 `native/konqueror/paste_filter.h` solo maneja Ctrl+V en una vista con una URL compatible y un portapapeles de archivos. Los campos de texto, las páginas HTTP, otras ventanas y Shift+Insert siguen siendo nativos. `plugin.cpp` deriva de `KonqParts::Plugin` y expone el destino activo a través de D-Bus. La interfaz lo lee dos veces antes de pegarlo. `scripts/konqueror_integration.py` crea el complemento con encabezados Konqueror, Qt6Xml/DBus/Widgets, KF6CoreAddons y KF6XmlGui. Se requieren encabezados Konqueror y bibliotecas de desarrollo CoreAddons/XmlGui. La ruta del complemento local se pasa exclusivamente al proceso iniciado por `gad-konqueror`, sin cambiar la configuración global de Qt ni los accesos directos del navegador.
 
-## Menú de configuración {#settings-menu}
+## Diálogo de configuración {#settings-menu}
 
-`Window` mantiene sus controles existentes en un panel `QWidgetAction` dentro de un `QScrollArea`. Los nombres de los objetos permanecen estables, incluido `destinationInput` para distinguir el campo de destino de los editores de cuadro de números. Se conservan los enlaces de traducción en vivo y las conexiones del motor. Los clics en las casillas de verificación mantienen el menú abierto; Los cuadros de diálogo de exclusión y calificación lo cierran primero. La altura está limitada por la pantalla.
+`Window` conserva un único `QDialog` no modal llamado `settingsDialog`, con un `QTabWidget` para configuración y atajos. `settingsPanel` permite desplazamiento; los controles, conexiones, traducciones y valores se conservan al volver a abrirlo. Cerrar y Esc ocultan el diálogo. Los diálogos de exclusiones y velocidad lo usan como padre mientras está visible. Los mínimos son 800 × 740 para opciones y 1100 × 600 para la ventana principal y el informe de errores. `settingsRequestRate` pertenece a la barra de acciones principal y se activa según la selección del árbol.
 
-La configuración de Dolphin lee `gad/dolphin-paste.json` e invoca `gad-dolphin-paste` de forma asincrónica con argumentos fijos. Los cambios fallidos restauran la casilla de verificación; un tiempo de espera de diez segundos limita el proceso. No se ejecutan comandos de acceso directo durante la construcción de la ventana. Konqueror utiliza la configuración `konquerorCtrlV`; su complemento lee `QSettings("Gad", "Gad")` en cada Ctrl+V, lo que permite cambios inmediatos. Otras pulsaciones de teclas siguen siendo nativas.
+Los comandos y la casilla de Dolphin comparten `Window::configureDolphin`. Ejecuta el componente privado `gad/integration/dolphin_shortcut.py` con Python y QProcess sin bloquear los traslados. El registro permanece en `gad/dolphin-paste.json`. El plazo máximo es de ocho segundos; un fallo restaura la casilla y devuelve un error al cliente. `Window::handleAsync` espera el resultado antes de responder por IPC. Konqueror conserva `konquerorCtrlV`, que su módulo lee en cada Ctrl+V. No se instala ningún comando público separado.
 
 ### Documentación desde Acerca de {#about-documentation}
 
 `docs/catalog.json` se genera mediante `doc_catalog.runtime_catalog()` y se instala con las exportaciones mediante `scripts/install_docs.py`, sin herramientas de renderizado. `native/documentation.h` busca `gad/docs/catalog.json` en los directorios XDG y después en ubicaciones portátiles o de desarrollo. Los campos `locale`, `kind`, `title`, `html` y `pdf` identifican los archivos. Se priorizan la configuración regional exacta, otra variante del mismo idioma y después el inglés. Las rutas se verifican contra la raíz canónica para rechazar recorridos y enlaces simbólicos externos. Los enlaces se actualizan al cambiar de idioma y se abren mediante `QDesktopServices`.
+
+## Configuración y páginas de manual {#command-settings}
+
+`native/cli_options.h` valida los argumentos de `--configure`. El protocolo 24 transmite ajustes gráficos y cambios parciales de exclusiones a `Window::handleAsync` / `Window::handle`, que valida el idioma, combina las reglas y sincroniza el motor, los controles y QSettings. `scripts/test_cli_settings.py` comprueba el comportamiento con una cuenta temporal y un bus D-Bus privado. `make manpages` genera seis manuales en seis idiomas; `make manpages-check` comprueba su actualización. Los catálogos adicionales están en `packaging/manpages/`. Los instaladores local y Debian colocan los manuales en `man1` y `<idioma>/man1`.

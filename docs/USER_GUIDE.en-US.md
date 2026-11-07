@@ -52,7 +52,7 @@ Gad integrates with Dolphin through **Paste with Gad** and its optional Ctrl+V s
 
 ### Reading the screenshots {#reading-the-screenshots}
 
-The 13 screenshots show real Gad widgets, sample files, and simulated transfer states. They use the light theme and the interface language of this edition. Personal files and the real desktop are never photographed. External Plasma notifications are not reproduced by these offscreen captures.
+The 14 screenshots show real Gad widgets, sample files, and simulated transfer states. They use the light theme and the interface language of this edition. Personal files and the real desktop are never photographed. External Plasma notifications are not reproduced by these offscreen captures.
 
 Gad provides French, US English, Spanish, Portuguese, German, and Japanese. Choose a language in **Settings → Options…**: it applies immediately without restarting Gad or interrupting transfers. Open dialogs and active notifications update while selection and entered values are preserved. **System** chooses an available variant of the desktop language, falling back to French or English. Uncataloged technical diagnostics and external-service messages may retain their original language.
 
@@ -90,11 +90,15 @@ For an update, finish or cancel active work and quit Gad normally before reopeni
 | Below the list | Conflict decisions and per-request speed/remaining-time information. |
 | Footer | **About**, **Error report…**, and the combined summary. |
 
-![Settings menu and shortcut controls](images/en-US/02-sources-options.png)
+![The settings dialog opens from the Settings block.](images/en-US/02-sources-options.png)
 
-*Options opens from the Settings block to the right of Destination.*
+*The settings dialog opens from the Settings block.*
 
-The menu groups verification, hidden items, duplication, history, startup, interrupted transfers, exclusions, language, and the global speed limit. Changes apply immediately and checkboxes leave the menu open. **Limit request speed…** applies to selected rows and is disabled without a selection. The menu scrolls on smaller screens.
+**Settings → Options…** opens a resizable dialog with **Settings** and **Shortcuts** tabs. Changes apply immediately; **Close** or Escape closes the dialog without undoing changes. It can remain open during transfers. Command-line parameter names appear in gray below the controls. Its minimum size is **800 × 740**; the main window and error report have a **1100 × 600** minimum. **Limit request speed…** is on the left of the main action bar, alongside pause/resume and cancellation. It is disabled without a selection and limits the selected requests separately from the global limit.
+
+![The Shortcuts tab controls file manager integrations.](images/en-US/14-options-raccourcis.png)
+
+*The Shortcuts tab controls file manager integrations.*
 
 **Shortcuts** enables or disables Ctrl+V with Gad for Dolphin and Konqueror. Dolphin changes use Gad’s reversible shortcut helper and require restarting Dolphin; a rejected change restores the checkbox and displays an error. Konqueror picks up changes on the next keypress in **Konqueror with Gad**. Its launch button is available when both the browser and launcher are installed. Text pastes stay native.
 
@@ -111,7 +115,7 @@ The right-click **Paste with Gad** action works without replacing Dolphin's nati
 To associate Ctrl+V with Gad in Dolphin:
 
 ```bash
-gad-dolphin-paste --enable
+gad --configure --dolphin-ctrl-v
 ```
 
 Close and reopen Dolphin. Ctrl+V then targets the currently open Dolphin folder. The integration resolves that folder through Dolphin's session information; it does not require a full path in the window title. In a text field, Ctrl+V remains a text paste.
@@ -119,7 +123,7 @@ Close and reopen Dolphin. Ctrl+V then targets the currently open Dolphin folder.
 **Shift+Insert** remains the standard KDE/Dolphin KIO paste alternative. It is not a new Gad shortcut. To restore the previous Dolphin shortcut configuration:
 
 ```bash
-gad-dolphin-paste --disable
+gad --configure --no-dolphin-ctrl-v
 ```
 
 The change applies to Dolphin, not to every application in Plasma. Existing shortcuts and actions are restored through the integration's saved configuration rather than by resetting unrelated user preferences.
@@ -325,9 +329,9 @@ Cancellation is available during a pause. An explicitly requested undo can also 
 
 ## Limiting bandwidth
 
-**Global speed limit** in **Settings → Options…** limits the **sum** of simultaneous copy traffic. The interface uses **MiB/s**, equivalent to **MiB/s**: 1 MiB = 1,048,576 bytes. This is not megabits per second. Zero, displayed as **Unlimited**, removes the limit. The setting is remembered and can be changed during transfers.
+The **Global speed limit** in **Settings → Options…** limits the combined data-copying throughput. Changes apply immediately. Zero means unlimited; fast rename moves are not throttled.
 
-Right-click a row and choose **Limit request speed…** in the context menu or **Settings → Options…** to limit its entire request. Selecting rows from several requests applies the chosen limit to each of them. Their global budget remains shared. Zero removes only the selected requests' individual limits. Tooltips show an individual limit when one is set.
+Select rows and click **Limit request speed…** on the left of the main action bar, or use the context menu. The limit applies to each selected request; all still share the global budget. Zero removes only their individual limits.
 
 Both constraints apply: a request limited to 10 MiB/s remains capped at 10 even if the global limit is 50. Two requests without individual limits can use at most 50 MiB/s combined. Equal sharing is not guaranteed.
 
@@ -594,3 +598,14 @@ The plugin also exposes the active folder to **Paste into the open folder with G
 ### Documentation from About {#about-documentation}
 
 **About** links to the **Quick Start**, **User Guide**, and **Developer Guide**, with HTML and PDF access. Links follow the selected Gad language, including when it changes while the dialog is open. Documents are installed locally and remain available without the project folder. If an edition is missing, Gad offers the available English edition; missing documents do not create broken links.
+
+## Configuration and manual pages {#command-settings}
+
+`gad --configure` saves preferences and updates controls in the running instance. If none is running, Gad starts in the background and the command returns. The `--no-…` forms disable checkboxes. Unspecified exclusion lists remain unchanged; repeated `--exclude-folder` or `--exclude-file` options replace the corresponding list. `--clear-exclusions` empties both lists. The global limit uses MiB/s; 0 means unlimited. `--md5` and `--properties` used with a copy or move affect only that transfer. Dolphin shortcuts use `gad --configure --dolphin-ctrl-v` or `--no-dolphin-ctrl-v`.
+
+```bash
+gad --configure --md5 --verify-space --no-include-hidden
+gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR --rate-limit 25
+```
+
+`man gad` · `make manpages`

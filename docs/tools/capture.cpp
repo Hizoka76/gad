@@ -75,8 +75,11 @@ int main(int argc,char **argv) {
     QJsonArray manifest;
     save(&window,output+"/01-vue-ensemble.png",manifest);
     auto *settingsButton=window.findChild<QToolButton *>("settingsButton");
-    settingsButton->menu()->popup(settingsButton->mapToGlobal(QPoint(0,settingsButton->height())));app.processEvents();
-    save(settingsButton->menu(),output+"/02-sources-options.png",manifest);settingsButton->menu()->hide();
+    settingsButton->click();app.processEvents();
+    auto *settings=window.findChild<QDialog *>("settingsDialog");
+    save(settings,output+"/02-sources-options.png",manifest);
+    auto *settingsTabs=settings->findChild<QTabWidget *>("settingsTabs");settingsTabs->setCurrentIndex(1);app.processEvents();
+    save(settings,output+"/14-options-raccourcis.png",manifest);settingsTabs->setCurrentIndex(0);settings->hide();
 
     window.handle({{"command","pause"},{"paused",true}});save(&window,output+"/03-pause.png",manifest);
     window.handle({{"command","pause"},{"paused",false}});

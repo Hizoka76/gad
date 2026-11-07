@@ -4,7 +4,7 @@ Version 0.1.0 · Español
 
 ## Elegir una guía
 
-Cada idioma tiene una guía de inicio rápido, una guía de usuario y una guía de desarrollo. Las guías de usuario incluyen trece capturas de los widgets reales con el tema claro y en su propio idioma.
+Cada idioma tiene una guía de inicio rápido, una guía de usuario y una guía de desarrollo. Las guías de usuario incluyen catorce capturas de los widgets reales con el tema claro y en su propio idioma.
 
 | Documento | Fuente | HTML | PDF |
 | --- | --- | --- | --- |
@@ -32,4 +32,4 @@ make docs
 make docs-check
 ```
 
-78 captures · 18 HTML · 18 PDF
+84 captures · 18 HTML · 18 PDF

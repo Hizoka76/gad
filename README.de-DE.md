@@ -45,7 +45,7 @@ Die Installation erfolgt pro Benutzer und erfordert keine Administratorrechte. V
 2. Klicken Sie mit der rechten Maustaste auf den Zielordner und wählen Sie **Paste mit Gad** (Einfügen mit Gad).
 3. Wiederholen Sie diesen Vorgang, um der Warteschlange eine weitere Anfrage hinzuzufügen.
 
-Das optionale **Integration von Strg+V in Dolphin** wird mit `gad-dolphin-paste --enable` aktiviert und mit `gad-dolphin-paste --disable` deaktiviert. Schließen Sie Dolphin und öffnen Sie es erneut, nachdem Sie es geändert haben. In Gad wird Strg+V in das angezeigte Ziel eingefügt; Drag-and-Drop kopiert Dateien.
+Die optionale **Ctrl+V-Integration mit Gad in Dolphin** wird mit `gad --configure --dolphin-ctrl-v` aktiviert und mit `gad --configure --no-dolphin-ctrl-v` deaktiviert. Dolphin anschließend schließen und erneut öffnen. In Gad fügt Ctrl+V Dateien am angezeigten Ziel ein; Ziehen und Ablegen kopiert Dateien.
 
 Für andere Dateimanager: [Pasting in Gad, Drag-and-Drop und benutzerdefinierte Aktionen](docs/USER_GUIDE.de-DE.md#using-gad-with-other-file-managers).
 

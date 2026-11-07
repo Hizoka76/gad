@@ -1,6 +1,0 @@
-#!/usr/bin/python3
-"""Exécuter le gestionnaire de raccourcis installé pour tous les utilisateurs."""
-import runpy
-import sys
-sys.path.insert(0, "/usr/share/gad/integration")
-runpy.run_path("/usr/share/gad/integration/dolphin_shortcut.py", run_name="__main__")

@@ -39,11 +39,11 @@ Erneut einfügen, um eine weitere Anfrage hinzuzufügen. Gad stellt die Arbeit i
 
 ## Einstellungen anpassen {#set-your-preferences}
 
-![Einstellungen und Verknüpfungssteuerung](images/de-DE/02-sources-options.png)
+![Der Optionsdialog wird über den Bereich Einstellungen geöffnet.](images/de-DE/02-sources-options.png)
 
-*Öffnen Sie „Optionen“ in den Einstellungen rechts neben „Ziel“.*
+*Der Optionsdialog wird über den Bereich Einstellungen geöffnet.*
 
-Wählen Sie in **Einstellungen → Optionen…** Ihre Sprache, die Handhabung versteckter Elemente, Verifizierungsoptionen, Verlauf, Start und Bandbreitenbeschränkungen. Kontrollkästchen gelten sofort und lassen das Menü geöffnet. Verwenden Sie **Ausschlüsse…** für Ordnermuster wie `__*` und Dateimuster wie `*.tmp` oder `*~`.
+Unter **Einstellungen → Optionen…** fassen die Reiter **Einstellungen** und **Tastenkürzel** Einstellungen und Integrationen zusammen. Änderungen gelten sofort; **Schließen** oder Escape schließt den Dialog. Befehlszeilenparameter erscheinen grau. **Ausschlüsse…** akzeptiert Ordnermuster wie `__*` und Dateimuster wie `*.tmp` oder `*~`. Die Geschwindigkeitsschaltfläche für ausgewählte Aufträge befindet sich links in der Hauptaktionsleiste.
 
 **Duplizieren im selben Ordner erlauben** erstellt beim Zurückkopieren in den ursprünglichen Ordner Namen wie `photo_copied1.jpg`. Sie ist standardmäßig deaktiviert und gilt nur für Kopien. Auswahl-, Verifizierungs- und Duplizierungsoptionen werden für neue Anfragen erfasst; Bestehende Anfragen behalten ihre Einstellungen. Die globale Geschwindigkeitsbegrenzung kann sich während des Transfers ändern.
 
@@ -66,3 +66,14 @@ Wählen Sie für eine vorhandene Datei **Bestehende Datei beibehalten**, **Beide
 Öffnen Sie **Fehlerbericht…** für fehlgeschlagene Übertragungen, kopieren oder exportieren Sie die Details und versuchen Sie es nur bei fehlgeschlagenen Dateien erneut. Wenn ein Gerät verschwindet, schließen Sie dasselbe Gerät am selben Standort erneut an und lassen Sie Gad dies überprüfen, bevor Sie fortfahren.
 
 **Verlauf speichern** behält Rückgängig-Informationen bei. **Löschen Sie abgeschlossene Vorgänge** entfernt die entsprechenden Wiederherstellungsinformationen. Fahren Sie für Wiederherstellung, Remote-Adressen, MD5-Prüfungen und alle Stornierungsoptionen mit [Benutzerhandbuch](USER_GUIDE.de-DE.md) fort.
+
+## Konfiguration und Handbuchseiten {#command-settings}
+
+`gad --configure` speichert Einstellungen und aktualisiert die laufende Oberfläche. Läuft noch keine Instanz, startet Gad im Hintergrund und der Befehl kehrt zurück. Die Formen `--no-…` deaktivieren Kontrollkästchen. Nicht angegebene Ausschlusslisten bleiben erhalten; wiederholtes `--exclude-folder` oder `--exclude-file` ersetzt die entsprechende Liste. `--clear-exclusions` leert beide Listen. Das globale Limit wird in MiB/s angegeben; 0 bedeutet unbegrenzt. `--md5` und `--properties` bei einer Kopie oder Verschiebung gelten nur für diese Übertragung. Dolphin-Tastenkürzel werden mit `gad --configure --dolphin-ctrl-v` oder `--no-dolphin-ctrl-v` verwaltet.
+
+```bash
+gad --configure --md5 --verify-space --no-include-hidden
+gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR --rate-limit 25
+```
+
+`man gad` · `make manpages`

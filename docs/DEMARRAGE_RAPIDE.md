@@ -39,11 +39,11 @@ Un nouveau collage ajoute une demande. Gad organise la file et peut traiter deux
 
 ## Régler les préférences
 
-![Le menu des paramètres et des raccourcis](images/fr/02-sources-options.png)
+![La boîte des options, ouverte depuis le bloc Paramètres.](images/fr/02-sources-options.png)
 
-*Ouvrez Options dans le bloc Paramètres, à droite de Destination.*
+*La boîte des options, ouverte depuis le bloc Paramètres.*
 
-Dans **Paramètres → Options…**, choisissez la langue, le traitement des éléments cachés, les vérifications, l’historique, le démarrage et les limites de débit. Les cases s’appliquent immédiatement et laissent le menu ouvert. **Exclusions…** accepte des motifs de dossiers comme `__*` et de fichiers comme `*.tmp` ou `*~`.
+Dans **Paramètres → Options…**, les onglets **Paramètres** et **Raccourcis** regroupent les préférences et les intégrations. Les changements s’appliquent immédiatement ; **Fermer** ou Échap ferme la boîte. Les paramètres de commande sont indiqués en gris. **Exclusions…** accepte des motifs de dossiers comme `__*` et de fichiers comme `*.tmp` ou `*~`. Le bouton de débit des lots sélectionnés se trouve à gauche de la barre d’actions principale.
 
 **Autoriser la duplication dans le même dossier** crée par exemple `photo_copied1.jpg` lorsqu’on recopie un fichier dans son dossier d’origine. Désactivée par défaut, cette option concerne uniquement les copies. Les choix de sélection, vérification et duplication sont figés pour les nouvelles demandes ; les anciennes gardent leurs réglages. Le débit global peut changer pendant les transferts.
 
@@ -66,3 +66,14 @@ Lorsqu’un fichier existe déjà, choisissez **Conserver le fichier existant**,
 Le **Bilan des erreurs…** permet de consulter, copier ou exporter les détails et de réessayer uniquement les fichiers en erreur. Si un périphérique disparaît, reconnectez le même au même emplacement et laissez Gad vérifier avant de reprendre.
 
 **Conserver l’historique** garde les informations de remise en état. **Effacer les opérations terminées** retire les informations de restauration correspondantes. Pour la récupération, les adresses distantes, MD5 et les différentes annulations, consultez le [guide utilisateur](GUIDE_UTILISATEUR.md).
+
+## Configuration et pages de manuel {#command-settings}
+
+`gad --configure` enregistre les préférences et met à jour les contrôles de l’instance ouverte. Sans instance, Gad démarre en arrière-plan et la commande rend la main. Les formes `--no-…` désactivent les cases. Les exclusions non fournies sont conservées ; répéter `--exclude-folder` ou `--exclude-file` remplace la liste correspondante. `--clear-exclusions` vide les deux listes. Le débit global est exprimé en Mio/s ; 0 signifie illimité. `--md5` et `--properties` utilisés avec une copie ou un déplacement ne modifient que ce transfert. Les raccourcis Dolphin utilisent `gad --configure --dolphin-ctrl-v` ou `--no-dolphin-ctrl-v`.
+
+```bash
+gad --configure --md5 --verify-space --no-include-hidden
+gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR --rate-limit 25
+```
+
+`man gad` · `make manpages`

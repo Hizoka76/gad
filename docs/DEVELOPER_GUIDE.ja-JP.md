@@ -393,7 +393,7 @@ Undoはジャーナルを使ってGadで作成されたコピーを削除し、�
 
 アプリケーション識別子は `org.hizoka.gad`デスクトップとアイコンの関連付けは、一般的なコピーイメージではなく、ソフトウェアアイコンを使用するように同意する必要があります。 `gad-boucles-document` 資産はデスクトップサイズでエクスポートされます。 Qt.
 
-`gad-dolphin-paste --enable`は、可逆的なDolphin Ctrl+Vアソシエーションをインストールする。`--disable`は、保存された設定を復元する。統合は、ネイティブテキストペーストと標準のShift+Insert KIOの代替である。フルパスウィンドウタイトル要件ではなく、現在のセッション情報を通じて、アクティブなDolphinフォルダを見つける。変更をアトミックに拒否し、非関連/不正な統合レコードを破棄し、無関係なショートカットを保存する。
+`gad --configure --dolphin-ctrl-v`は、可逆的なDolphin Ctrl+Vアソシエーションをインストールする。`--no-dolphin-ctrl-v`は、保存された設定を復元する。統合は、ネイティブテキストペーストと標準のShift+Insert KIOの代替である。フルパスウィンドウタイトル要件ではなく、現在のセッション情報を通じて、アクティブなDolphinフォルダを見つける。変更をアトミックに拒否し、非関連/不正な統合レコードを破棄し、無関係なショートカットを保存する。
 
 オプションの `make test-dolphin-paste` は、プライベートバスで実際の KXMLGUI/KActionCollection を使用して、ファイルのコピーやユーザーの Dolphin を再起動することなく、ショートカットのアクティベーション、テキストペースト、復元を行います。
 
@@ -417,7 +417,7 @@ make test
 
 Rustテストは、一時的なツリーを使用して、オブザーバブルな状態とファイル内容をチェックする。Pythonテストは、標準ライブラリと分離されたフィクスチャを使用する。ドキュメントレンダラの依存関係は、レンダリング時にのみロードされる。Qtテストは、プライベートD-Bus/HOME/XDG環境、エンジン倍率、およびインターセプトされたデスクトップオープンを使用する。統合テストはまた、実際の実行可能およびクラッシュリカバリを実行する。モックは、すべてのサーバまたはPlasmaリリースを再現するものではない。
 
-文書化された局所検証は、 **216 Rust テスト**, **Python 50テスト**, Qt スイートを含む **81例**あるベンチマークは、日常的な実行では意図的に無視されている。これは、提供されたGitHubワークフローがリモートで実行されていることや、将来の編集が自動的に検証されているという主張ではなく、ローカルな証拠を説明するものだ。
+文書化された局所検証は、 **216 Rust テスト**, **Python 62テスト**, Qt スイートを含む **83例**あるベンチマークは、日常的な実行では意図的に無視されている。これは、提供されたGitHubワークフローがリモートで実行されていることや、将来の編集が自動的に検証されているという主張ではなく、ローカルな証拠を説明するものだ。
 
 ### 障害の診断 {#diagnosing-failures}
 
@@ -515,12 +515,16 @@ Protocol 22 が追加 `allow_duplication` です `configure`, `enqueue`日記や
 
 `native/konqueror/paste_filter.h` テキストフィールド、HTTPページ、その他のウィンドウ、Shift+Insertは、サポートされているURLとファイルクリップボードを備えたビューでCtrl+Vのみを処理します。 `plugin.cpp` 由来は `KonqParts::Plugin` D-Bus 上でアクティブデスティネーションを公開し、フロントエンドはペースト前に2回読みます。 `scripts/konqueror_integration.py` プラグインをビルドします Konqueror ヘッダ、Qt6Xml/DBus/Widgets、KF6CoreAddon、KF6XmlGui。 Konqueror ヘッダとCoreAddons/XmlGui開発ライブラリが必要で、ローカルプラグインパスは、起動されたプロセスにのみ渡される。 `gad-konqueror`世界を変えることなく Qt 設定またはブラウザショートカット。
 
-## 設定メニュー {#settings-menu}
+## 設定ダイアログ {#settings-menu}
 
-`Window` 既存のコントロールを `QWidgetAction` パネル内部 `QScrollArea`オブジェクト名は安定している。 `destinationInput` 対象フィールドをスピンボックスエディタと区別する。ライブ翻訳バインディングとエンジン接続は維持される。チェックボックスクリックはメニューを開いたままにする。除外とレートダイアログは最初に閉じる。高さは画面によって制限される。
+`Window` は、設定用の非モーダルな `QDialog` を一つ保持します。名前は `settingsDialog` で、`QTabWidget` に設定とショートカットのタブがあります。`settingsPanel` はスクロール可能で、再表示してもウィジェット、接続、翻訳の関連付け、値は保持されます。閉じる操作と Escape はダイアログを非表示にします。表示中の除外・速度サブダイアログは、この設定ダイアログを親にします。最小サイズは設定が 800 × 740、メインウィンドウとエラー報告が 1100 × 600 です。`settingsRequestRate` はメイン操作バーに配置され、有効状態はツリーの選択に従います。
 
-Dolphin 設定 読み込み `gad/dolphin-paste.json` そして `gad-dolphin-paste` 修正された引数で非同期に. 変更が失敗したとチェックボックスが復元される。 Konqueror 使用します `konquerorCtrlV` 設定; そのプラグインは読み取ります `QSettings("Gad", "Gad")` 他のキープレスはネイティブのままです
+Dolphin のコマンドとチェックボックスは `Window::configureDolphin` を共有します。Python と QProcess で内部コンポーネント `gad/integration/dolphin_shortcut.py` を実行し、転送は止めません。復元記録は `gad/dolphin-paste.json` に保存します。制限時間は八秒で、失敗時はチェック状態を戻し、クライアントにエラーを返します。`Window::handleAsync` は完了後に IPC 応答を返します。Konqueror は、Ctrl+V のたびに連携モジュールが読む `konquerorCtrlV` を使います。独立した公開コマンドはインストールしません。
 
 ### 「Gadについて」からドキュメントを開く {#about-documentation}
 
 `docs/catalog.json`は`doc_catalog.runtime_catalog()`から生成し、`scripts/install_docs.py`で書き出し済みファイルとともにインストールします。インストール時にレンダリング用ツールは不要です。`native/documentation.h`はXDGデータディレクトリの`gad/docs/catalog.json`、続いてポータブル版や開発用の場所を検索します。`locale`、`kind`、`title`、`html`、`pdf`で実際のファイルを指定します。完全に一致する地域設定、同じ言語の別の地域設定、英語の順で選びます。パスは正規化されたドキュメントのルートと比較し、外部への移動やシンボリックリンクを拒否します。言語の変更時にリンクを再計算し、`QDesktopServices`で開きます。
+
+## コマンドによる設定とマニュアル {#command-settings}
+
+`native/cli_options.h` が `--configure` の引数を検証します。プロトコル 24 は GUI 設定と除外一覧の部分更新を `Window::handleAsync` / `Window::handle` に渡し、言語の検証、ルールの統合、エンジン・ウィジェット・QSettings の同期を行います。`scripts/test_cli_settings.py` は、一時ユーザー環境と独立した D-Bus で動作を検証します。`make manpages` は六言語で計六本のマニュアルを生成し、`make manpages-check` が更新漏れを確認します。追加の翻訳カタログは `packaging/manpages/` にあります。ローカル版と Debian 版のインストーラーは `man1` と `<言語>/man1` に配置します。

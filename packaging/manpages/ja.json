@@ -1,0 +1,49 @@
+{
+  "headings": {
+    "NAME": "名前",
+    "SYNOPSIS": "書式",
+    "DESCRIPTION": "説明",
+    "OPTIONS": "オプション",
+    "PATHS": "パス",
+    "EXAMPLES": "使用例",
+    "SETTINGS": "設定",
+    "FILES": "ファイル",
+    "SEE ALSO": "関連項目",
+    "AUTHOR": "作者"
+  },
+  "titles": {
+    "gad": "KDE 向けの待機列付きファイル転送マネージャー"
+  },
+  "texts": {
+    "Gad manages copies and moves with queuing, pause, resume, verification and restoration. Without arguments, it shows the main window. Commands are forwarded to the existing instance when available.": "Gad は、待機列、一時停止、再開、検証、復元を備えたコピーと移動の管理ツールです。引数なしで実行するとメインウィンドウを表示します。既存のインスタンスがある場合、コマンドはそのインスタンスへ転送されます。",
+    "Display command help and exit.": "コマンドのヘルプを表示して終了します。",
+    "Start Gad in the system tray without showing its main window.": "メインウィンドウを表示せず、システムトレイで Gad を起動します。",
+    "Queue copies of the sources into the destination folder.": "コピー元からコピー先フォルダーへのコピーを待機列に追加します。",
+    "Queue moves of the sources into the destination folder.": "移動元から移動先フォルダーへの移動を待機列に追加します。",
+    "Queue clipboard files into the destination. Cut clipboard data requests a move. Starts the transfer without opening the main window.": "クリップボードのファイルをコピー先への待機列に追加します。切り取られたファイルは移動します。メインウィンドウを開かずに転送を開始します。",
+    "Paste into the active supported Dolphin or Konqueror folder. Requires the corresponding file manager integration.": "対応する Dolphin または Konqueror の現在のフォルダーへ貼り付けます。ファイルマネージャーとの連携設定が必要です。",
+    "Paste using the folder or selected file context supplied by a KIO service menu.": "KIO サービスメニューから渡されたフォルダーまたは選択ファイルのコンテキストを使って貼り付けます。",
+    "Verify source and destination contents using MD5 for the submitted transfer. Does not change the saved preference.": "要求した転送について、コピー元とコピー先の内容を MD5 で検証します。保存済みの設定は変更しません。",
+    "Verify visible owners, groups, permissions, ACLs and extended attributes for the submitted transfer. This checks properties; it does not replicate them. Does not change the saved preference.": "要求した転送について、確認できる所有者、グループ、アクセス権、ACL、拡張属性を検証します。属性を検証する機能であり、属性を複製する機能ではありません。保存済みの設定は変更しません。",
+    "Print the current engine state as JSON.": "転送エンジンの現在の状態を JSON 形式で表示します。",
+    "Run an isolated graphical startup check with temporary storage.": "一時的な保存領域を使い、他のインスタンスから隔離した GUI 起動確認を実行します。",
+    "Show the main window of the running instance.": "実行中のインスタンスのメインウィンドウを表示します。",
+    "Save settings in the running instance, or start Gad in the tray to save them. Requires at least one setting. Boolean switches listed below must be used with \\-\\-configure; use their \\-\\-no\\- form to disable them.": "実行中のインスタンスに設定を保存します。未起動の場合はシステムトレイで Gad を起動して保存します。少なくとも一つの設定が必要です。以下の真偽値オプションは --configure と共に指定し、--no- 形式で無効にします。",
+    "With \\-\\-configure, disable the corresponding verification preference. \\-\\-configure \\-\\-md5 and \\-\\-configure \\-\\-properties enable it.": "--configure と共に指定し、対応する検証設定を無効にします。--configure --md5 と --configure --properties で有効にします。",
+    "With \\-\\-configure, enable or disable available space checks for new transfers.": "--configure と共に指定し、新しい転送に対する空き容量の確認を有効または無効にします。",
+    "With \\-\\-configure, enable or disable persistent transfer history.": "--configure と共に指定し、転送履歴の永続保存を有効または無効にします。",
+    "With \\-\\-configure, enable or disable durable checkpoints and automatic recovery for new transfers.": "--configure と共に指定し、新しい転送に対する永続的な再開地点と自動復旧を有効または無効にします。",
+    "With \\-\\-configure, include or exclude hidden items. Keep existing exclusion patterns.": "--configure と共に指定し、隠し項目を含めるか除外するかを設定します。既存の除外パターンは維持します。",
+    "With \\-\\-configure, enable or disable copies named name_copied1 in the source folder.": "--configure と共に指定し、元のフォルダー内で name_copied1 という名前のコピーを作成する機能を有効または無効にします。",
+    "With \\-\\-configure, enable or disable launching Gad when the current user signs in.": "--configure と共に指定し、現在のユーザーのログイン時に Gad を起動する設定を有効または無効にします。",
+    "With \\-\\-configure, enable or disable paste interception in Konqueror launched with Gad. The integration plugin must be installed.": "--configure と共に指定し、Gad 経由で起動した Konqueror の貼り付け操作の処理を有効または無効にします。連携プラグインのインストールが必要です。",
+    "With \\-\\-configure, select system or an installed locale such as fr_FR or en_US.": "--configure と共に指定し、system または fr_FR、en_US などのインストール済み言語を選択します。",
+    "With \\-\\-configure, set the global speed limit in MiB/s; 0 means unlimited. Applies immediately.": "--configure と共に指定し、全体の速度制限を MiB/s 単位で設定します。0 は無制限です。直ちに反映されます。",
+    "With \\-\\-configure, replace the corresponding pattern list. Repeat an option for multiple patterns; quote shell wildcards. Unspecified lists remain unchanged.": "--configure と共に指定し、対応するパターン一覧を置き換えます。複数のパターンにはオプションを繰り返し指定します。シェルのワイルドカードは引用符で囲んでください。指定しない一覧は変更しません。",
+    "With \\-\\-configure, clear both pattern lists. Later pattern options add rules. Does not change hidden item handling.": "--configure と共に指定し、両方のパターン一覧を空にします。後続のパターンオプションでルールを追加できます。隠し項目の扱いは変更しません。",
+    "With \\-\\-configure, enable or disable Ctrl+V integration in Dolphin. Restart Dolphin after changing it.": "--configure と共に指定し、Dolphin の Ctrl+V と Gad の連携を有効または無効にします。変更後は Dolphin を再起動してください。",
+    "Sources and destinations accept local paths and file, ftp, sftp, smb and kdeconnect URLs supported by KIO Fuse. The relevant services and mounts must be available. Quote paths containing spaces.": "コピー元とコピー先には、ローカルパスと、KIO Fuse が対応する file、ftp、sftp、smb、kdeconnect の URL を指定できます。対応するサービスとマウントが利用可能である必要があります。空白を含むパスは引用符で囲んでください。",
+    "Options supplied with \\-\\-configure are persistent and reflected in graphical settings. New transfers use saved preferences unless explicitly overridden. Not all settings apply retroactively to existing transfers. Configure Ctrl+V in Dolphin with \\-\\-configure \\-\\-dolphin\\-ctrl\\-v or \\-\\-no\\-dolphin\\-ctrl\\-v.": "--configure で指定したオプションは永続保存され、GUI の設定にも反映されます。明示的に上書きしない限り、新しい転送には保存済みの設定を使用します。既存の転送に遡って適用されない設定もあります。Dolphin の Ctrl+V は gad --configure --dolphin-ctrl-v / --no-dolphin-ctrl-v で設定します。",
+    "HTML and PDF guides in the supported languages.": "対応言語の HTML および PDF ガイドです。"
+  }
+}
