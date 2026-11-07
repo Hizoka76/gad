@@ -1,3 +1,10 @@
+gad (0.1.0b-0~resolute) resolute; urgency=medium
+
+  * Mise à jour automatique du PPA de test.
+  * Automated test PPA update.
+
+ -- Terence Belleguic <hizo@free.fr>  Sat, 07 Nov 2026 19:18:10 +0100
+
 gad (0.1.0a-0~resolute) resolute; urgency=medium
 
   * Prepare the first test PPA upload for Ubuntu Resolute.

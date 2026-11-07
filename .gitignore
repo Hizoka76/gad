@@ -20,3 +20,9 @@ __pycache__/
 /debian/*.substvars
 /debian/*.debhelper.log
 *.kate-swp
+
+# Outils personnels de publication PPA : ne pas versionner ni distribuer.
+/ppa.sh
+/scripts/ppa.py
+/tests/python/test_ppa.py
+/PPA.local.md

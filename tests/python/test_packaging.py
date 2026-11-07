@@ -50,6 +50,9 @@ class PackagingTests(unittest.TestCase):
                 (project / name).mkdir()
             (project / 'target/private').write_text('must stay private')
             (project / 'TOTO.md').write_text('private notes')
+            (project / 'scripts/ppa.py').write_text('local publishing script')
+            (project / 'tests/test_ppa.py').write_text('local publishing tests')
+            (project / 'ppa.sh').write_text('local publishing launcher')
             def vendor(*args, **kwargs):
                 (kwargs['cwd'] / 'vendor').mkdir()
                 return type('Result', (), {'stdout': '[source.vendored-sources]\ndirectory="vendor"\n'})()
@@ -63,6 +66,7 @@ class PackagingTests(unittest.TestCase):
                 names = archive.getnames()
                 self.assertIn('gad-0.1.0a/clean.sh', names)
                 self.assertIn('gad-0.1.0a/LICENSE', names)
+                self.assertFalse(any(name.endswith(('/ppa.py', '/ppa.sh', '/test_ppa.py')) for name in names))
                 self.assertFalse(any('/target' in name or '/debian' in name or 'TOTO' in name for name in names))
                 self.assertTrue(any('/vendor' in name for name in names))
                 self.assertTrue(all(member.mtime == 0 for member in archive.getmembers()))

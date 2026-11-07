@@ -38,7 +38,7 @@ def prepare(output, orig_format="xz"):
     for name in names:
         original = PROJECT / name
         if original.is_dir():
-            shutil.copytree(original, source / name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+            shutil.copytree(original, source / name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc', 'ppa.py', 'test_ppa.py'))
         else:
             shutil.copy2(original, source / name)
     # Cargo vérifie Cargo.lock et conserve les licences des dépendances dans vendor/.
