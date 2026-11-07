@@ -417,7 +417,7 @@ make test
 
 Rustテストは、一時的なツリーを使用して、オブザーバブルな状態とファイル内容をチェックする。Pythonテストは、標準ライブラリと分離されたフィクスチャを使用する。ドキュメントレンダラの依存関係は、レンダリング時にのみロードされる。Qtテストは、プライベートD-Bus/HOME/XDG環境、エンジン倍率、およびインターセプトされたデスクトップオープンを使用する。統合テストはまた、実際の実行可能およびクラッシュリカバリを実行する。モックは、すべてのサーバまたはPlasmaリリースを再現するものではない。
 
-文書化された局所検証は、 **216 Rust テスト**, **Python 62テスト**, Qt スイートを含む **83例**あるベンチマークは、日常的な実行では意図的に無視されている。これは、提供されたGitHubワークフローがリモートで実行されていることや、将来の編集が自動的に検証されているという主張ではなく、ローカルな証拠を説明するものだ。
+文書化された局所検証は、 **216 Rust テスト**, **Python 65テスト**, Qt スイートを含む **83例**あるベンチマークは、日常的な実行では意図的に無視されている。これは、提供されたGitHubワークフローがリモートで実行されていることや、将来の編集が自動的に検証されているという主張ではなく、ローカルな証拠を説明するものだ。
 
 ### 障害の診断 {#diagnosing-failures}
 
@@ -528,3 +528,13 @@ Dolphin のコマンドとチェックボックスは `Window::configureDolphin`
 ## コマンドによる設定とマニュアル {#command-settings}
 
 `native/cli_options.h` が `--configure` の引数を検証します。プロトコル 24 は GUI 設定と除外一覧の部分更新を `Window::handleAsync` / `Window::handle` に渡し、言語の検証、ルールの統合、エンジン・ウィジェット・QSettings の同期を行います。`scripts/test_cli_settings.py` は、一時ユーザー環境と独立した D-Bus で動作を検証します。`make manpages` は六言語で計六本のマニュアルを生成し、`make manpages-check` が更新漏れを確認します。追加の翻訳カタログは `packaging/manpages/` にあります。ローカル版と Debian 版のインストーラーは `man1` と `<言語>/man1` に配置します。
+
+## Dolphin のショートカット監視 {#dolphin-watchdog}
+
+`native/dolphin/` は公開 KXMLGUI インターフェースを使う汎用 Qt プラグインです。復元記録と XML 設定を検証し、ユーザーの変更を尊重します。モーダルダイアログの表示中は修復を延期します。状態とカウンターは D-Bus の `/GadDolphinWatchdog` に公開します。`scripts/dolphin_integration.py` がモジュールを構築・配置し、ユーザーのランチャーを可逆的に保護します。`gad/dolphin-launcher.json` の記録を使ってアンインストール時に復元します。単体テストと実際の Dolphin によるテストは、独立したファイルと D-Bus を使います。
+
+```sh
+gad --dolphin --new-window
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+```

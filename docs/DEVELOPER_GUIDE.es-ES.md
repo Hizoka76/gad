@@ -417,7 +417,7 @@ make test
 
 Las pruebas Rust utilizan árboles temporales para comprobar el estado observable y el contenido del archivo. Las pruebas de Python utilizan la biblioteca estándar y accesorios aislados; Las dependencias del renderizador de documentación se cargan solo durante el renderizado. Las pruebas Qt utilizan entornos privados D-Bus/HOME/XDG, dobles de motor y aperturas de escritorio interceptadas. Las pruebas de integración también ejercitan el ejecutable real y la recuperación ante fallos. Los simulacros no reproducen todos los servidores o versiones de Plasma.
 
-La validación local documentada comprende las suites **216 pruebas Rust**, **62 pruebas de Python**, Qt, incluido **83 casos de acción en fila**, y comprobaciones de integración, formato y Clippy. Un punto de referencia se ignora intencionalmente en ejecuciones de rutina. Esto describe evidencia local, no una afirmación de que el flujo de trabajo de GitHub proporcionado se haya ejecutado de forma remota o que las ediciones futuras se validen automáticamente.
+La validación local documentada comprende las suites **216 pruebas Rust**, **65 pruebas de Python**, Qt, incluido **83 casos de acción en fila**, y comprobaciones de integración, formato y Clippy. Un punto de referencia se ignora intencionalmente en ejecuciones de rutina. Esto describe evidencia local, no una afirmación de que el flujo de trabajo de GitHub proporcionado se haya ejecutado de forma remota o que las ediciones futuras se validen automáticamente.
 
 ### Diagnóstico de fallas {#diagnosing-failures}
 
@@ -528,3 +528,13 @@ Los comandos y la casilla de Dolphin comparten `Window::configureDolphin`. Ejecu
 ## Configuración y páginas de manual {#command-settings}
 
 `native/cli_options.h` valida los argumentos de `--configure`. El protocolo 24 transmite ajustes gráficos y cambios parciales de exclusiones a `Window::handleAsync` / `Window::handle`, que valida el idioma, combina las reglas y sincroniza el motor, los controles y QSettings. `scripts/test_cli_settings.py` comprueba el comportamiento con una cuenta temporal y un bus D-Bus privado. `make manpages` genera seis manuales en seis idiomas; `make manpages-check` comprueba su actualización. Los catálogos adicionales están en `packaging/manpages/`. Los instaladores local y Debian colocan los manuales en `man1` y `<idioma>/man1`.
+
+## Vigilancia del atajo de Dolphin {#dolphin-watchdog}
+
+`native/dolphin/` contiene un complemento genérico de Qt que utiliza las interfaces públicas KXMLGUI. Verifica el registro y las propiedades XML, respeta los cambios del usuario y aplaza las correcciones durante los diálogos modales. El estado y los contadores se exponen por D-Bus en `/GadDolphinWatchdog`. `scripts/dolphin_integration.py` construye e instala el módulo y protege de forma reversible el lanzador del usuario. El registro `gad/dolphin-launcher.json` permite restaurarlo al desinstalar. Las pruebas unitarias y la prueba con Dolphin real utilizan archivos y un bus privados.
+
+```sh
+gad --dolphin --new-window
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+```

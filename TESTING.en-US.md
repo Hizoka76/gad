@@ -231,3 +231,12 @@ Qt tests check window minimum sizes, both tabs, Close and Escape, retained contr
 make manpages-check
 make test-cli-settings
 ```
+
+## Automatic Ctrl+V watchdog {#dolphin-watchdog}
+
+Qt tests cover action recreation, the real timer, disabling, native paste restoration, user changes, modal dialogs, invalid receipts, and missing actions. Text pasting stays native. Python tests cover reversible launcher protection, arguments, and later customizations. The real Dolphin test refreshes its menus and presses Ctrl+V: a dummy command records the launch without copying files or accessing the desktop.
+
+```sh
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+```

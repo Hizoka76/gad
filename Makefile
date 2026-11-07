@@ -91,3 +91,12 @@ manpages-check:
 .PHONY: test-cli-settings
 test-cli-settings: build
 	dbus-run-session -- $(PYTHON) scripts/test_cli_settings.py
+
+# Simulation de la perte des raccourcis et contrôle de la réparation périodique.
+.PHONY: test-dolphin-watchdog
+test-dolphin-watchdog:
+	$(PYTHON) scripts/test_dolphin_watchdog.py
+
+.PHONY: test-dolphin-watchdog-real
+test-dolphin-watchdog-real:
+	$(PYTHON) scripts/test_dolphin_watchdog_real.py

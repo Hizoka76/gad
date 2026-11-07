@@ -548,7 +548,7 @@ Le lanceur `scripts/run_tests.py` propose filtres, sélection de groupes, poursu
 
 Les tests Rust couvrent validation, concurrence, publication, annulation, historique et restauration avec des répertoires temporaires. Les tests Python couvrent les chemins XDG, l’intégration et le lanceur. Les tests Qt emploient une session D-Bus et un environnement isolés, des doubles de moteur et des interceptions d’ouverture ; les tests d’intégration utilisent aussi le vrai binaire. Les serveurs réseau réels et toutes les versions de Plasma ne sont pas reproduits par ces doubles.
 
-La validation complète de cette version a réussi : 216 tests Rust, 62 tests Python, suites Qt dont les 83 cas des actions de lignes, intégration, Clippy et formatage. Les 31 cas spécifiques au déplacement rapide couvrent aussi les alias et changements de montage, la replanification, les races de publication et les récupérations incomplètes. Un benchmark Rust est ignoré dans la suite habituelle. Cela constitue une observation à cette date, pas une garantie pour des modifications futures. Le workflow CI est fourni ; son exécution distante n’est pas attestée ici.
+La validation complète de cette version a réussi : 216 tests Rust, 65 tests Python, suites Qt dont les 83 cas des actions de lignes, intégration, Clippy et formatage. Les 31 cas spécifiques au déplacement rapide couvrent aussi les alias et changements de montage, la replanification, les races de publication et les récupérations incomplètes. Un benchmark Rust est ignoré dans la suite habituelle. Cela constitue une observation à cette date, pas une garantie pour des modifications futures. Le workflow CI est fourni ; son exécution distante n’est pas attestée ici.
 
 ### Diagnostic
 
@@ -663,3 +663,13 @@ Le catalogue `docs/catalog.json` est généré depuis `doc_catalog.runtime_catal
 ## Configuration et pages de manuel {#command-settings}
 
 `native/cli_options.h` valide les paramètres de `--configure`. Le protocole 24 transporte les réglages GUI et les modifications partielles des exclusions vers `Window::handleAsync` / `Window::handle`, qui valide la langue, fusionne les règles et synchronise moteur, widgets et QSettings. `scripts/test_cli_settings.py` vérifie le comportement dans un compte temporaire sous un bus D-Bus privé. `make manpages` génère les six manuels dans les six langues ; `make manpages-check` contrôle leur fraîcheur. Les catalogues supplémentaires sont dans `packaging/manpages/`. Les manuels sont installés sous `man1` et `<langue>/man1` par l’installateur local et Debian.
+
+## Surveillance du raccourci Dolphin {#dolphin-watchdog}
+
+`native/dolphin/` contient un plugin générique Qt utilisant les interfaces publiques KXMLGUI. Le contrôle vérifie le reçu et les propriétés XML, respecte les changements utilisateur et diffère les corrections pendant un dialogue modal. L’état et les compteurs sont exposés sur `/GadDolphinWatchdog` via D-Bus. `scripts/dolphin_integration.py` construit et installe le module et protège de façon réversible le lanceur du compte courant. Le reçu `gad/dolphin-launcher.json` permet sa restauration à la désinstallation. Les tests unitaires et l’essai Dolphin réel utilisent des fichiers et un bus privés.
+
+```sh
+gad --dolphin --new-window
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+```

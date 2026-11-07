@@ -616,7 +616,7 @@ make test
 </code></pre>
 <p><code>scripts/run_tests.py</code> フィルタリング、依存関係認識グループ、継続実行、および JSON/JUnitレポート <code>target/test-results</code>JUnitはコマンドステージをカウントする。 Rust/Qt アサーション</p>
 <p>Rustテストは、一時的なツリーを使用して、オブザーバブルな状態とファイル内容をチェックする。Pythonテストは、標準ライブラリと分離されたフィクスチャを使用する。ドキュメントレンダラの依存関係は、レンダリング時にのみロードされる。Qtテストは、プライベートD-Bus/HOME/XDG環境、エンジン倍率、およびインターセプトされたデスクトップオープンを使用する。統合テストはまた、実際の実行可能およびクラッシュリカバリを実行する。モックは、すべてのサーバまたはPlasmaリリースを再現するものではない。</p>
-<p>文書化された局所検証は、 <strong>216 Rust テスト</strong>, <strong>Python 62テスト</strong>, Qt スイートを含む <strong>83例</strong>あるベンチマークは、日常的な実行では意図的に無視されている。これは、提供されたGitHubワークフローがリモートで実行されていることや、将来の編集が自動的に検証されているという主張ではなく、ローカルな証拠を説明するものだ。</p>
+<p>文書化された局所検証は、 <strong>216 Rust テスト</strong>, <strong>Python 65テスト</strong>, Qt スイートを含む <strong>83例</strong>あるベンチマークは、日常的な実行では意図的に無視されている。これは、提供されたGitHubワークフローがリモートで実行されていることや、将来の編集が自動的に検証されているという主張ではなく、ローカルな証拠を説明するものだ。</p>
 <h3 id="diagnosing-failures">障害の診断</h3>
 <p>始めましょう <code>gad --status</code>実行中のインスタンスのバージョン、エラーメッセージの完了など、インストールされている実行ファイルを区別します。 <code>target/debug/gad</code>.</p>
 <p>リモート入力の場合、別の URL バリデーション。 KIO D-Bus を融合します。 KDE 認証、マウント、および実際のファイルアクセス. アンドするには、必要なボリュームとバックアップを保持します。 <code>.gad-undo-*</code> ジャーナルを「修復」する. エラーのエクスポートは個人的なパスを含み、共有する前にレビューする必要があります。</p>
@@ -672,4 +672,10 @@ make docs-check
 <h3 id="about-documentation">「Gadについて」からドキュメントを開く</h3>
 <p><code>docs/catalog.json</code>は<code>doc_catalog.runtime_catalog()</code>から生成し、<code>scripts/install_docs.py</code>で書き出し済みファイルとともにインストールします。インストール時にレンダリング用ツールは不要です。<code>native/documentation.h</code>はXDGデータディレクトリの<code>gad/docs/catalog.json</code>、続いてポータブル版や開発用の場所を検索します。<code>locale</code>、<code>kind</code>、<code>title</code>、<code>html</code>、<code>pdf</code>で実際のファイルを指定します。完全に一致する地域設定、同じ言語の別の地域設定、英語の順で選びます。パスは正規化されたドキュメントのルートと比較し、外部への移動やシンボリックリンクを拒否します。言語の変更時にリンクを再計算し、<code>QDesktopServices</code>で開きます。</p>
 </section><section class="chapter"><h2 id="command-settings">コマンドによる設定とマニュアル</h2>
-<p><code>native/cli_options.h</code> が <code>--configure</code> の引数を検証します。プロトコル 24 は GUI 設定と除外一覧の部分更新を <code>Window::handleAsync</code> / <code>Window::handle</code> に渡し、言語の検証、ルールの統合、エンジン・ウィジェット・QSettings の同期を行います。<code>scripts/test_cli_settings.py</code> は、一時ユーザー環境と独立した D-Bus で動作を検証します。<code>make manpages</code> は六言語で計六本のマニュアルを生成し、<code>make manpages-check</code> が更新漏れを確認します。追加の翻訳カタログは <code>packaging/manpages/</code> にあります。ローカル版と Debian 版のインストーラーは <code>man1</code> と <code>&lt;言語&gt;/man1</code> に配置します。</p></section></main></body></html>
+<p><code>native/cli_options.h</code> が <code>--configure</code> の引数を検証します。プロトコル 24 は GUI 設定と除外一覧の部分更新を <code>Window::handleAsync</code> / <code>Window::handle</code> に渡し、言語の検証、ルールの統合、エンジン・ウィジェット・QSettings の同期を行います。<code>scripts/test_cli_settings.py</code> は、一時ユーザー環境と独立した D-Bus で動作を検証します。<code>make manpages</code> は六言語で計六本のマニュアルを生成し、<code>make manpages-check</code> が更新漏れを確認します。追加の翻訳カタログは <code>packaging/manpages/</code> にあります。ローカル版と Debian 版のインストーラーは <code>man1</code> と <code>&lt;言語&gt;/man1</code> に配置します。</p>
+</section><section class="chapter"><h2 id="dolphin-watchdog">Dolphin のショートカット監視</h2>
+<p><code>native/dolphin/</code> は公開 KXMLGUI インターフェースを使う汎用 Qt プラグインです。復元記録と XML 設定を検証し、ユーザーの変更を尊重します。モーダルダイアログの表示中は修復を延期します。状態とカウンターは D-Bus の <code>/GadDolphinWatchdog</code> に公開します。<code>scripts/dolphin_integration.py</code> がモジュールを構築・配置し、ユーザーのランチャーを可逆的に保護します。<code>gad/dolphin-launcher.json</code> の記録を使ってアンインストール時に復元します。単体テストと実際の Dolphin によるテストは、独立したファイルと D-Bus を使います。</p>
+<pre><code class="language-sh">gad --dolphin --new-window
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+</code></pre></section></main></body></html>

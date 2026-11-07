@@ -77,3 +77,9 @@ gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR -
 ```
 
 `man gad` · `make manpages`
+
+## Automatic Ctrl+V watchdog {#dolphin-watchdog}
+
+See the User Guide to protect the regular Dolphin launcher and load the automatic Ctrl+V watchdog.
+
+[Automatic Ctrl+V watchdog](USER_GUIDE.en-US.md#dolphin-watchdog)

@@ -6,6 +6,7 @@ from pathlib import Path
 from xdg_paths import data_home
 import shutil
 import subprocess
+from dolphin_integration import install as install_dolphin, protect_launcher
 from install_docs import install as install_documentation
 from install_manpages import install as install_manuals
 from dolphin_shortcut import configure
@@ -104,6 +105,8 @@ configure()
 install_documentation(data_dir / "gad/docs")
 install_manuals(data_dir / "man")
 install_konqueror(binary)
+install_dolphin()
+if (data_dir / "gad/dolphin-launcher.json").exists():protect_launcher(binary)
 entries_changed = True
 # Le lien gad://show de la progression est associé au lanceur par sa déclaration MIME.
 if entries_changed and (desktop_cache := shutil.which("update-desktop-database")):

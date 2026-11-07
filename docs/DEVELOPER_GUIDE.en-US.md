@@ -417,7 +417,7 @@ make test
 
 Rust tests use temporary trees to check observable state and file contents. Python tests use the standard library and isolated fixtures; documentation renderer dependencies are loaded only when rendering. Qt tests use private D-Bus/HOME/XDG environments, engine doubles, and intercepted desktop opens. Integration tests also exercise the real executable and crash recovery. Mocks do not reproduce every server or Plasma release.
 
-The documented local validation comprises **216 Rust tests**, **62 Python tests**, Qt suites including **83 row-action cases**, and integration, formatting, and Clippy checks. One benchmark is intentionally ignored in routine runs. This describes local evidence, not an assertion that the supplied GitHub workflow has run remotely or that future edits are validated automatically.
+The documented local validation comprises **216 Rust tests**, **65 Python tests**, Qt suites including **83 row-action cases**, and integration, formatting, and Clippy checks. One benchmark is intentionally ignored in routine runs. This describes local evidence, not an assertion that the supplied GitHub workflow has run remotely or that future edits are validated automatically.
 
 ### Diagnosing failures
 
@@ -528,3 +528,13 @@ Dolphin commands and its checkbox share `Window::configureDolphin`. It runs the 
 ## Configuration and manual pages {#command-settings}
 
 `native/cli_options.h` validates `--configure` arguments. Protocol 24 carries GUI settings and partial exclusion updates to `Window::handleAsync` / `Window::handle`, which validates the language, merges rules, and synchronizes the engine, widgets, and QSettings. `scripts/test_cli_settings.py` checks behavior in a temporary account on a private D-Bus session. `make manpages` generates six manuals in six languages; `make manpages-check` checks freshness. Additional catalogs live in `packaging/manpages/`. Both the local installer and Debian install manuals under `man1` and `<language>/man1`.
+
+## Dolphin shortcut watchdog {#dolphin-watchdog}
+
+`native/dolphin/` contains a generic Qt plugin using public KXMLGUI interfaces. Checks validate the receipt and XML properties, preserve user changes, and defer repairs while a modal dialog is open. Status and counters are exposed over D-Bus at `/GadDolphinWatchdog`. `scripts/dolphin_integration.py` builds and installs the module and reversibly protects the current account’s launcher. The `gad/dolphin-launcher.json` receipt supports restoration during uninstall. Unit tests and the real Dolphin test use private files and a private bus.
+
+```sh
+gad --dolphin --new-window
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+```

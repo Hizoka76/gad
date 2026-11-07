@@ -46,6 +46,8 @@ def escaped(value):
 
 GAD_OPTIONS.append(('--dolphin-ctrl-v, --no-dolphin-ctrl-v', 'With --configure, enable or disable Ctrl+V integration in Dolphin. Restart Dolphin after changing it.', 'Avec --configure, activer ou désactiver Ctrl+V avec Gad dans Dolphin. Redémarrer Dolphin après une modification.'))
 
+GAD_OPTIONS.append(('--dolphin [URL...]', 'Start Dolphin with the Gad watchdog, which checks and repairs lost Ctrl+V shortcuts every second. Existing Dolphin processes must be reopened to load the module.', 'Lancer Dolphin avec la surveillance Gad, qui vérifie et répare les raccourcis Ctrl+V perdus chaque seconde. Les processus Dolphin déjà ouverts doivent être relancés pour charger le module.'))
+
 MAN_TEXT = {'en': {'title': 'Queued file transfer manager for KDE',
         'description': 'Gad manages copies and moves with queuing, pause, resume, verification and '
                        'restoration. Without arguments, it shows the main window. Commands are '

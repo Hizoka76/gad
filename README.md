@@ -47,6 +47,13 @@ L’installation est propre au compte utilisateur et ne demande pas de droits ad
 
 L’association facultative de **Ctrl+V à Gad dans Dolphin** s’active avec `gad --configure --dolphin-ctrl-v` et se retire avec `gad --configure --no-dolphin-ctrl-v`. Fermer puis rouvrir Dolphin pour appliquer le changement. Dans Gad, Ctrl+V colle vers la destination affichée ; un glisser-déposer effectue une copie.
 
+Pour protéger le lanceur Dolphin habituel contre la perte du raccourci, installez le module de surveillance avec la commande ci-dessous, puis fermez et rouvrez les anciennes fenêtres une fois. Le module vérifie les raccourcis chaque seconde, répare l’action Gad et conserve le collage natif dans les champs de texte.
+
+```sh
+python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.local/bin/gad"
+```
+
+
 Pour les autres gestionnaires : [collage dans Gad, glisser-déposer et actions personnalisées](docs/GUIDE_UTILISATEUR.md#utiliser-gad-avec-un-autre-gestionnaire-de-fichiers).
 
 Une remise en état repose sur le journal et les sauvegardes conservées par Gad. **Effacer les opérations terminées** retire aussi cette possibilité de restauration. Consultez le [guide utilisateur](docs/GUIDE_UTILISATEUR.md) avant de nettoyer un historique à conserver.

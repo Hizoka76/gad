@@ -609,3 +609,18 @@ gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR -
 ```
 
 `man gad` · `make manpages`
+
+## Dolphin shortcut watchdog {#dolphin-watchdog}
+
+The regular Dolphin launcher can be protected by Gad. A startup module checks actual shortcuts every second and repairs losses after menu refreshes. Pasting is forwarded directly to Gad; text fields keep native behavior. Disabling Ctrl+V with Gad restores native pasting and stops repairs. Existing windows must be reopened once to load the module.
+
+
+To protect the regular Dolphin launcher against lost shortcuts, install the watchdog with the command below, then close and reopen existing windows once.
+
+```sh
+python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.local/bin/gad"
+```
+
+```sh
+gad --dolphin --new-window
+```

@@ -5,11 +5,14 @@ from xdg_paths import data_home, config_home
 import shutil
 import subprocess
 from dolphin_shortcut import configure
+from dolphin_integration import restore_launcher
 
 # Respecter le même emplacement XDG que lors de l’installation.
 data_dir = data_home()
 # Restaurer le collage avant de retirer l’action qui le remplace ; un reçu invalide arrête le retrait sans casser Ctrl+V.
 configure(remove=True)
+restore_launcher()
+shutil.rmtree(data_dir / "gad/dolphin",ignore_errors=True)
 for path in [config_home() / "autostart/org.hizoka.gad.desktop", Path.home() / ".local/bin/gad", data_dir / "applications/gad.desktop", data_dir / "applications/org.hizoka.gad.desktop", data_dir / "kio/servicemenus/gad-paste.desktop", data_dir / "kio/servicemenus/gad-paste-current.desktop"]:
     path.unlink(missing_ok=True)
     print(f"Supprimé : {path}")

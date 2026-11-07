@@ -47,6 +47,13 @@ gad
 
 Dolphin の **Ctrl+V と Gad の連携** は、`gad --configure --dolphin-ctrl-v` で有効にし、`gad --configure --no-dolphin-ctrl-v` で無効にします。変更後は Dolphin を閉じて開き直してください。Gad 内の Ctrl+V は表示中のコピー先へ貼り付け、ドラッグ＆ドロップはファイルをコピーします。
 
+通常の Dolphin ランチャーを保護するには、次のコマンドで監視モジュールをインストールし、既存のウィンドウを一度閉じて開き直してください。毎秒ショートカットを確認して Gad の操作を修復し、テキスト欄では通常の貼り付けを維持します。
+
+```sh
+python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.local/bin/gad"
+```
+
+
 他のファイルマネージャの場合:[ペーストして Gadドラッグ&ドロップ、カスタムアクション](docs/USER_GUIDE.ja-JP.md#using-gad-with-other-file-managers)。
 
 雲道は、その種類によって異なる。 Gad日記とバックアップを **完了した操作をクリアする** (クリア終了) アンド履歴も削除します [ユーザーガイド](docs/USER_GUIDE.ja-JP.md) 履歴をクリアする前に

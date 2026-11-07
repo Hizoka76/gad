@@ -231,3 +231,12 @@ Las pruebas Qt verifican los tamaños mínimos, ambas pestañas, Cerrar y Esc, l
 make manpages-check
 make test-cli-settings
 ```
+
+## Vigilancia automática de Ctrl+V {#dolphin-watchdog}
+
+Las pruebas Qt cubren la recreación de acciones, el temporizador real, la desactivación, la restauración del pegado nativo, los cambios del usuario, los diálogos modales, los registros inválidos y las acciones ausentes. El pegado de texto sigue siendo nativo. Python verifica la protección reversible del lanzador, sus argumentos y los cambios posteriores. La prueba con Dolphin real actualiza los menús y pulsa Ctrl+V: una orden ficticia registra el lanzamiento sin copiar archivos ni acceder al escritorio.
+
+```sh
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+```

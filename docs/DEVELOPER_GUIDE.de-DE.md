@@ -417,7 +417,7 @@ make test
 
 Rust Python-Tests verwenden die Standardbibliothek und isolierte Geräte; Dokumentation Rendering-Abhängigkeiten werden nur beim Rendern geladen. Qt Tests verwenden private D-Bus/HOME/XDG-Umgebungen, Motor-Doppel, und abgefangene Desktop-Öffnungen. Integrationstests trainieren auch die reale ausführbare und Crash-Recovery. Mocks reproduzieren nicht jeden Server oder Plasma Veröffentlichung.
 
-Die dokumentierte lokale Validierung umfasst **216 Rust-Tests**, **62 Python-Tests**, Qt Suiten einschließlich **83 Zeilen-Aktionsfälle** und Integration, Formatierung und Clippy-Checks. Ein Benchmark wird in Routineläufen bewusst ignoriert. Dies beschreibt lokale Beweise, nicht eine Behauptung, dass der gelieferte GitHub-Workflow remote ausgeführt hat oder dass zukünftige Edits automatisch validiert werden.
+Die dokumentierte lokale Validierung umfasst **216 Rust-Tests**, **65 Python-Tests**, Qt Suiten einschließlich **83 Zeilen-Aktionsfälle** und Integration, Formatierung und Clippy-Checks. Ein Benchmark wird in Routineläufen bewusst ignoriert. Dies beschreibt lokale Beweise, nicht eine Behauptung, dass der gelieferte GitHub-Workflow remote ausgeführt hat oder dass zukünftige Edits automatisch validiert werden.
 
 ### Diagnose von Fehlern {#diagnosing-failures}
 
@@ -528,3 +528,13 @@ Dolphin-Befehle und Kontrollkästchen verwenden gemeinsam `Window::configureDolp
 ## Konfiguration und Handbuchseiten {#command-settings}
 
 `native/cli_options.h` prüft die Argumente von `--configure`. Protokoll 24 überträgt GUI-Einstellungen und teilweise Ausschlussänderungen an `Window::handleAsync` / `Window::handle`, das Sprache und Regeln prüft und Übertragungssteuerung, Steuerelemente und QSettings synchronisiert. `scripts/test_cli_settings.py` prüft das Verhalten mit einem temporären Benutzerkonto und einem privaten D-Bus. `make manpages` erzeugt sechs Handbuchseiten in sechs Sprachen; `make manpages-check` prüft ihre Aktualität. Zusätzliche Kataloge liegen in `packaging/manpages/`. Lokale Installation und Debian legen Handbücher unter `man1` und `<Sprache>/man1` ab.
+
+## Überwachung des Dolphin-Tastenkürzels {#dolphin-watchdog}
+
+`native/dolphin/` enthält ein generisches Qt-Plugin mit öffentlichen KXMLGUI-Schnittstellen. Es prüft Nachweis und XML-Eigenschaften, respektiert Benutzeränderungen und verschiebt Korrekturen während modaler Dialoge. Zustand und Zähler werden über D-Bus unter `/GadDolphinWatchdog` bereitgestellt. `scripts/dolphin_integration.py` erstellt und installiert das Modul und schützt den Starter des Benutzerkontos reversibel. Der Nachweis `gad/dolphin-launcher.json` ermöglicht die Wiederherstellung bei der Deinstallation. Unit-Tests und der Test mit echtem Dolphin nutzen private Dateien und einen privaten Bus.
+
+```sh
+gad --dolphin --new-window
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+```

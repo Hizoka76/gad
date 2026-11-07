@@ -30,11 +30,12 @@ def plan(group, rust_filter=None):
     rust = Step("rust-unit", ("cargo", "test", "--locked", *([rust_filter] if rust_filter else [])))
     python_unit = Step("python-unit", (python, "-m", "unittest", "discover", "-s", "tests/python", "-v"))
     qt = Step("qt-unit", (python, "scripts/test_qt.py"))
+    watchdog = Step("dolphin-watchdog", (python, "scripts/test_dolphin_watchdog.py"))
     build = Step("integration-build", ("cargo", "build", "--locked"))
     integration = Step("integration", (python, "scripts/test_integration.py"), (build.name,))
     lint = [Step("rust-format", ("cargo", "fmt", "--check")), Step("rust-clippy", ("cargo", "clippy", "--locked", "--all-targets", "--", "-D", "warnings"))]
-    groups = {"unit": [rust, python_unit], "python": [python_unit], "qt": [qt], "integration": [build, integration],
-              "lint": lint, "all": [*lint, rust, python_unit, qt, build, integration],
+    groups = {"unit": [rust, python_unit], "python": [python_unit], "qt": [qt, watchdog], "integration": [build, integration],
+              "lint": lint, "all": [*lint, rust, python_unit, qt, watchdog, build, integration],
               "bench": [Step("history-benchmark", ("cargo", "test", "--locked", "benchmark_large_history_polling", "--", "--ignored", "--nocapture"))]}
     return groups[group]
 
@@ -107,7 +108,7 @@ def write_reports(results, report_dir):
 def doctor():
     """Signale les prérequis sans installation ni changement des préférences du bureau."""
     missing = []
-    for tool in ("cargo", "c++", "pkg-config", "qmake6", "dbus-run-session"):
+    for tool in ("cargo", "c++", "cmake", "pkg-config", "qmake6", "dbus-run-session"):
         available = shutil.which(tool) is not None
         print(f"{'OK' if available else 'MANQUANT'} : {tool}")
         if not available:

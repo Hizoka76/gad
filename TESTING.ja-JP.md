@@ -231,3 +231,12 @@ Qt テストでは、最小サイズ、二つのタブ、閉じる操作と Esca
 make manpages-check
 make test-cli-settings
 ```
+
+## Ctrl+V の自動監視 {#dolphin-watchdog}
+
+Qt テストでは、操作の再作成、実際のタイマー、無効化、通常の貼り付けへの復帰、ユーザーの変更、モーダルダイアログ、不正な復元記録、操作の欠落を検証します。テキストの貼り付けは通常どおりです。Python テストでは、ランチャーの可逆的な保護、引数、その後の変更を確認します。実際の Dolphin を使うテストではメニューを更新して Ctrl+V を押し、ダミーコマンドで起動を記録します。実際のファイルコピーやデスクトップへのアクセスは行いません。
+
+```sh
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+```

@@ -17,6 +17,8 @@ def install(destdir, binary):
         shutil.copyfile(source, target)
         target.chmod(mode)
     copy(binary, "usr/bin/gad", 0o755)
+    plugin=PROJECT / "target/dolphin-plugin/libgad_dolphin_watchdog.so"
+    if plugin.is_file():copy(plugin,"usr/lib/gad/plugins/generic/"+plugin.name,0o644)
     copy(PROJECT / "packaging/org.hizoka.gad.desktop", "usr/share/applications/org.hizoka.gad.desktop")
     for icon in (PROJECT / "packaging/icons").glob("*/apps/*.png"):
         copy(icon, "usr/share/icons/hicolor/" + str(icon.relative_to(PROJECT / "packaging/icons")))

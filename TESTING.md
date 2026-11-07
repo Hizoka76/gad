@@ -228,3 +228,12 @@ Les tests Qt contrôlent les minima des fenêtres, les deux onglets, Fermer et �
 make manpages-check
 make test-cli-settings
 ```
+
+## Surveillance automatique de Ctrl+V {#dolphin-watchdog}
+
+Les tests Qt du module couvrent la recréation des actions, le minuteur réel, la désactivation, la restauration du collage natif, les changements utilisateur, les dialogues modaux, les reçus invalides et les actions manquantes. Le collage de texte reste natif. Les tests Python vérifient la protection réversible du lanceur, ses arguments et les personnalisations ultérieures. L’essai avec Dolphin réel provoque un rafraîchissement des menus puis appuie sur Ctrl+V : une commande factice enregistre le lancement, sans copie réelle ni accès au bureau.
+
+```sh
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+```

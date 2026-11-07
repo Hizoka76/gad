@@ -12,6 +12,7 @@
 
 #include "application.h"
 #include "cli_options.h"
+#include "dolphin_launcher.h"
 #include "paths.h"
 #include "dolphin_destination.h"
 #include <memory>
@@ -83,13 +84,14 @@ extern "C" int sc_gui(int argc, char **argv) {
     app.setWindowIcon(applicationIcon());
     I18n::initialize();
     auto args = app.arguments();
+    if(args.size()>1 && args[1]=="--dolphin")return DolphinLauncher::launch(args.mid(2));
     const bool configuring=args.size()>1 && args[1]=="--configure";
     const bool explicitMd5 = !configuring && args.removeAll("--md5") > 0;
     const bool explicitProperties=!configuring && args.removeAll("--properties")>0;
     if (args.size() == 3 && args[1] == "--export-icons") return exportIcons(args[2]);
     if (args.contains("--help") || args.contains("-h")) {
         std::puts(qPrintable(GAD_TR("Gad copies. — File transfer manager for KDE\n  gad\n  gad --background\n  gad --paste FOLDER\n  gad --copy SOURCE… --to FOLDER\n  gad --move SOURCE… --to FOLDER\n  gad --status\n  gad --smoke-test\n  Add --md5 to verify file contents.")));
-        std::puts("  gad --paste-current\n  gad --paste-context URL...\n  gad --configure [--md5|--no-md5] [--properties|--no-properties]\n    [--verify-space|--no-verify-space] [--keep-history|--no-keep-history]\n    [--resume-interrupted|--no-resume-interrupted] [--include-hidden|--no-include-hidden]\n    [--allow-duplication|--no-allow-duplication] [--autostart|--no-autostart]\n    [--dolphin-ctrl-v|--no-dolphin-ctrl-v]\n    [--konqueror-ctrl-v|--no-konqueror-ctrl-v] [--language LOCALE]\n    [--rate-limit MIB_PER_SECOND] [--exclude-folder PATTERN] [--exclude-file PATTERN]\n    [--clear-exclusions]");
+        std::puts("  gad --paste-current\n  gad --paste-context URL...\n  gad --dolphin [URL...]\n  gad --configure [--md5|--no-md5] [--properties|--no-properties]\n    [--verify-space|--no-verify-space] [--keep-history|--no-keep-history]\n    [--resume-interrupted|--no-resume-interrupted] [--include-hidden|--no-include-hidden]\n    [--allow-duplication|--no-allow-duplication] [--autostart|--no-autostart]\n    [--dolphin-ctrl-v|--no-dolphin-ctrl-v]\n    [--konqueror-ctrl-v|--no-konqueror-ctrl-v] [--language LOCALE]\n    [--rate-limit MIB_PER_SECOND] [--exclude-folder PATTERN] [--exclude-file PATTERN]\n    [--clear-exclusions]");
         std::printf("  --properties: %s\n",qPrintable(GAD_TR("Verify properties")));return 0;
     }
     const bool smoke = args.size() == 2 && args[1] == "--smoke-test";

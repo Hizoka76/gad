@@ -2,13 +2,13 @@
 
 Gad requiert Linux, Rust/Cargo ≥ 1.85, un compilateur C++17, Python ≥ 3.11,
 pkg-config, Qt 6 (Widgets, Network, DBus, qmake, moc et rcc), et KDE
-Frameworks 6 WindowSystem. Les catalogues `.qm` sont fournis ; Linguist
+Frameworks 6 WindowSystem et XmlGui, ainsi que CMake pour le module Dolphin. Les catalogues `.qm` sont fournis ; Linguist
 n’est nécessaire que pour modifier les traductions.
 
 Sur Ubuntu disposant de KF6 :
 
 ```sh
-sudo apt install build-essential cargo rustc pkg-config python3 qt6-base-dev qt6-base-dev-tools qmake6 libkf6windowsystem-dev
+sudo apt install build-essential cmake cargo rustc pkg-config python3 qt6-base-dev qt6-base-dev-tools qmake6 libkf6windowsystem-dev libkf6xmlgui-dev
 ./build.sh
 ./target/release/gad
 ```
@@ -72,3 +72,28 @@ dput ppa:PROPRIETAIRE/NOM target/packages-ppa/*_source.changes
 Les scripts ne signent et n’envoient rien automatiquement. La clé, le nom du
 PPA et la série cible restent des choix du mainteneur. Les paquets non signés
 produits localement servent à la vérification avant cet envoi.
+
+## Surveillance du raccourci Dolphin
+
+Le module utilise les interfaces publiques Qt et KXMLGUI. Il vérifie les actions
+réelles chaque seconde, répare leurs raccourcis et transmet le collage directement
+à Gad, sans dépendre du contexte de menu recréé par Dolphin. Les champs de texte
+restent natifs. La désactivation de Ctrl+V avec Gad arrête la réparation et restaure
+le collage natif. Les modifications de raccourcis faites par l’utilisateur sont respectées.
+
+```sh
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+gad --dolphin --new-window
+```
+
+Pour protéger le lanceur habituel lors d’une installation locale :
+
+```sh
+python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.local/bin/gad"
+```
+
+Seul le lanceur du compte courant est surchargé. Sa configuration précédente
+est conservée dans `gad/dolphin-launcher.json` et restaurée à la désinstallation.
+Le chemin des plugins reste limité au processus Dolphin. Les processus déjà
+ouverts doivent être relancés une fois pour charger le module.

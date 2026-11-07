@@ -15,7 +15,7 @@ jobs:
       - name: Installer les dépendances
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git ca-certificates build-essential pkg-config python3 cargo rustc rustfmt rust-clippy qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qmake6 libkf6windowsystem-dev dbus fonts-dejavu-core
+          apt-get install -y --no-install-recommends git ca-certificates build-essential cmake pkg-config python3 cargo rustc rustfmt rust-clippy qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qmake6 libkf6windowsystem-dev libkf6xmlgui-dev dbus fonts-dejavu-core
       - uses: actions/checkout@v4
       - name: Vérifier les prérequis
         run: python3 scripts/run_tests.py doctor

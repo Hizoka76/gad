@@ -47,6 +47,13 @@ La instalación es por usuario y no requiere privilegios de administrador. Utili
 
 La integración opcional de **Ctrl+V con Gad en Dolphin** se activa con `gad --configure --dolphin-ctrl-v` y se desactiva con `gad --configure --no-dolphin-ctrl-v`. Cierre y vuelva a abrir Dolphin para aplicar el cambio. En Gad, Ctrl+V pega en el destino mostrado; arrastrar y soltar copia los archivos.
 
+Para proteger el lanzador habitual de Dolphin frente a la pérdida del atajo, instale el módulo con el comando siguiente y cierre y vuelva a abrir las ventanas existentes una vez. Comprueba los atajos cada segundo, repara la acción de Gad y conserva el pegado nativo en los campos de texto.
+
+```sh
+python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.local/bin/gad"
+```
+
+
 Para otros administradores de archivos: [pasta en Gad, arrastrar y soltar, y acciones personalizadas](docs/USER_GUIDE.es-ES.md#using-gad-with-other-file-managers).
 
 Deshacer depende del diario retenido y de las copias de seguridad de Gad. **Borrar operaciones completadas** (Borrar operaciones finalizadas) también elimina su historial de deshacer. Lea el [guía de usuario](docs/USER_GUIDE.es-ES.md) antes de borrar el historial que pueda necesitar.

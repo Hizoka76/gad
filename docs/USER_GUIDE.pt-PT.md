@@ -609,3 +609,18 @@ gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR -
 ```
 
 `man gad` · `make manpages`
+
+## Vigilância do atalho do Dolphin {#dolphin-watchdog}
+
+O Gad pode proteger o lançador habitual do Dolphin. Um módulo carregado no arranque verifica os atalhos reais a cada segundo e repara perdas após atualizar os menus. A colagem é enviada diretamente ao Gad; os campos de texto mantêm o comportamento nativo. Desativar Ctrl+V com o Gad restaura a colagem nativa e interrompe as correções. As janelas existentes têm de ser reabertas uma vez para carregar o módulo.
+
+
+Para proteger o lançador habitual do Dolphin contra a perda do atalho, instale o módulo com o comando seguinte e feche e volte a abrir as janelas existentes uma vez.
+
+```sh
+python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.local/bin/gad"
+```
+
+```sh
+gad --dolphin --new-window
+```

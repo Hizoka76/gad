@@ -732,3 +732,18 @@ gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR -
 ```
 
 `man gad` · `make manpages`
+
+## Surveillance du raccourci Dolphin {#dolphin-watchdog}
+
+Le lanceur habituel de Dolphin peut être protégé par Gad. Le module chargé au démarrage contrôle chaque seconde les raccourcis réels et répare leur perte après un rafraîchissement des menus. Le collage est transmis directement à Gad ; les champs de texte restent natifs. Désactiver Ctrl+V avec Gad restaure le collage natif et arrête les corrections. Les fenêtres déjà ouvertes doivent être relancées une fois pour charger le module.
+
+
+Pour protéger le lanceur Dolphin habituel contre la perte du raccourci, installez le module de surveillance avec la commande ci-dessous, puis fermez et rouvrez les anciennes fenêtres une fois.
+
+```sh
+python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.local/bin/gad"
+```
+
+```sh
+gad --dolphin --new-window
+```

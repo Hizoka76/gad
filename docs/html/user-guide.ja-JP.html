@@ -751,4 +751,11 @@ gad
 <pre><code class="language-bash">gad --configure --md5 --verify-space --no-include-hidden
 gad --configure --exclude-folder &quot;__*&quot; --exclude-file &quot;*.tmp&quot; --language fr_FR --rate-limit 25
 </code></pre>
-<p><code>man gad</code> · <code>make manpages</code></p></section></main></body></html>
+<p><code>man gad</code> · <code>make manpages</code></p>
+</section><section class="chapter"><h2 id="dolphin-watchdog">Dolphin のショートカット監視</h2>
+<p>Gad で通常の Dolphin ランチャーを保護できます。起動時に読み込むモジュールが、実際のショートカットを毎秒確認し、メニュー更新後に失われた割り当てを復元します。貼り付けは Gad に直接渡し、テキスト欄は通常の動作を維持します。Gad での Ctrl+V を無効にすると通常の貼り付けに戻り、修復を停止します。既存のウィンドウは、モジュールを読み込むために一度開き直してください。</p>
+<p>通常の Dolphin ランチャーを保護するには、次のコマンドで監視モジュールをインストールし、既存のウィンドウを一度閉じて開き直してください。</p>
+<pre><code class="language-sh">python3 scripts/dolphin_integration.py --install --protect-launcher &quot;$HOME/.local/bin/gad&quot;
+</code></pre>
+<pre><code class="language-sh">gad --dolphin --new-window
+</code></pre></section></main></body></html>

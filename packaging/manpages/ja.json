@@ -44,6 +44,7 @@
     "With \\-\\-configure, enable or disable Ctrl+V integration in Dolphin. Restart Dolphin after changing it.": "--configure と共に指定し、Dolphin の Ctrl+V と Gad の連携を有効または無効にします。変更後は Dolphin を再起動してください。",
     "Sources and destinations accept local paths and file, ftp, sftp, smb and kdeconnect URLs supported by KIO Fuse. The relevant services and mounts must be available. Quote paths containing spaces.": "コピー元とコピー先には、ローカルパスと、KIO Fuse が対応する file、ftp、sftp、smb、kdeconnect の URL を指定できます。対応するサービスとマウントが利用可能である必要があります。空白を含むパスは引用符で囲んでください。",
     "Options supplied with \\-\\-configure are persistent and reflected in graphical settings. New transfers use saved preferences unless explicitly overridden. Not all settings apply retroactively to existing transfers. Configure Ctrl+V in Dolphin with \\-\\-configure \\-\\-dolphin\\-ctrl\\-v or \\-\\-no\\-dolphin\\-ctrl\\-v.": "--configure で指定したオプションは永続保存され、GUI の設定にも反映されます。明示的に上書きしない限り、新しい転送には保存済みの設定を使用します。既存の転送に遡って適用されない設定もあります。Dolphin の Ctrl+V は gad --configure --dolphin-ctrl-v / --no-dolphin-ctrl-v で設定します。",
-    "HTML and PDF guides in the supported languages.": "対応言語の HTML および PDF ガイドです。"
+    "HTML and PDF guides in the supported languages.": "対応言語の HTML および PDF ガイドです。",
+    "Start Dolphin with the Gad watchdog, which checks and repairs lost Ctrl+V shortcuts every second. Existing Dolphin processes must be reopened to load the module.": "Ctrl+V の割り当てを毎秒確認し、失われた場合に復元する Gad の監視機能と共に Dolphin を起動します。既存の Dolphin プロセスには、モジュールを読み込むための再起動が必要です。"
   }
 }

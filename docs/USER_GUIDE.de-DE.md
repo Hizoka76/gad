@@ -609,3 +609,18 @@ gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR -
 ```
 
 `man gad` · `make manpages`
+
+## Überwachung des Dolphin-Tastenkürzels {#dolphin-watchdog}
+
+Gad kann den normalen Dolphin-Starter schützen. Ein beim Start geladenes Modul prüft die tatsächlichen Tastenkürzel jede Sekunde und stellt sie nach Menüaktualisierungen wieder her. Einfügen wird direkt an Gad weitergeleitet; Textfelder behalten ihr natives Verhalten. Das Deaktivieren von Ctrl+V mit Gad stellt natives Einfügen wieder her und beendet die Korrekturen. Bereits geöffnete Fenster müssen einmal neu geöffnet werden, um das Modul zu laden.
+
+
+Zum Schutz des normalen Dolphin-Starters vor verlorenen Tastenkürzeln das Modul mit dem folgenden Befehl installieren und bereits geöffnete Fenster einmal schließen und erneut öffnen.
+
+```sh
+python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.local/bin/gad"
+```
+
+```sh
+gad --dolphin --new-window
+```

@@ -86,6 +86,9 @@ With \-\-configure, clear both pattern lists. Later pattern options add rules. D
 .TP
 .B \-\-dolphin\-ctrl\-v, \-\-no\-dolphin\-ctrl\-v
 With \-\-configure, enable or disable Ctrl+V integration in Dolphin. Restart Dolphin after changing it.
+.TP
+.B \-\-dolphin [URL...]
+Start Dolphin with the Gad watchdog, which checks and repairs lost Ctrl+V shortcuts every second. Existing Dolphin processes must be reopened to load the module.
 .SH PATHS
 Sources and destinations accept local paths and file, ftp, sftp, smb and kdeconnect URLs supported by KIO Fuse. The relevant services and mounts must be available. Quote paths containing spaces.
 .SH EXAMPLES

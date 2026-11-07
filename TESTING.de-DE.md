@@ -231,3 +231,12 @@ Qt-Tests prüfen Mindestgrößen, beide Reiter, Schließen und Escape, erhaltene
 make manpages-check
 make test-cli-settings
 ```
+
+## Automatische Ctrl+V-Überwachung {#dolphin-watchdog}
+
+Qt-Tests decken neu erzeugte Aktionen, den tatsächlichen Timer, Deaktivierung, natives Einfügen, Benutzeränderungen, modale Dialoge, ungültige Nachweise und fehlende Aktionen ab. Texteingaben bleiben nativ. Python prüft reversible Starteränderungen, Argumente und spätere Anpassungen. Der Test mit echtem Dolphin aktualisiert die Menüs und drückt Ctrl+V: Ein Platzhalterbefehl protokolliert den Start, ohne Dateien zu kopieren oder auf den Desktop zuzugreifen.
+
+```sh
+make test-dolphin-watchdog
+make test-dolphin-watchdog-real
+```
