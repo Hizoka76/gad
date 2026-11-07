@@ -1581,6 +1581,10 @@ impl Engine {
                 if count == 0 {
                     break;
                 }
+                // Une source alimentée en continu ne doit pas prolonger indéfiniment la copie.
+                if total.saturating_add(count as u64) > meta.len() {
+                    return Err("Source changed during copying".into());
+                }
                 // Fractionner le tampon permet les très faibles débits sans retarder les commandes.
                 let mut written = 0;
                 while written < count {
@@ -1607,9 +1611,7 @@ impl Engine {
                     point_clock = std::time::Instant::now();
                 }
             }
-            if total != meta.len()
-                || source.metadata().map_err(io)?.modified().ok() != meta.modified().ok()
-            {
+            if total != meta.len() || !same_version(&meta, &source.metadata().map_err(io)?) {
                 return Err("Source changed during copying".into());
             }
             if record.resume.is_some() {
@@ -1663,6 +1665,8 @@ impl Engine {
                 );
             }
         }
+        // La pause, le MD5 et les contrôles de propriétés ont pu laisser la source évoluer.
+        verify_source(&entry.source, &source_metadata)?;
         record.resume = None;
         record.source_stamp = Some(undo::Stamp::read(&entry.source)?);
         record.result = Some(undo::Stamp::read(&temp)?);
@@ -1683,16 +1687,23 @@ impl Engine {
                 return Err("Destination changed before replacement; kept".into());
             }
             publish_new(&destination, backup).map_err(io)?;
+            let backed_up = fs::symlink_metadata(backup).map_err(io)?;
+            record.backup_ctime = Some((backed_up.ctime(), backed_up.ctime_nsec()));
+            self.record(id, index, record.clone())?;
             sync_directory(backup.parent().unwrap()).map_err(io)?;
             sync_directory(parent).map_err(io)?;
         }
-        if let Err(error) = publish_new(&temp, &destination) {
+        // Recontrôler après la sauvegarde et l’écriture du journal, juste avant publication.
+        let publication = verify_source(&entry.source, &source_metadata).and_then(|()| {
+            publish_new(&temp, &destination).map_err(|error| {
+                format!("Publication de la copie (destination conservée) : {error}")
+            })
+        });
+        if let Err(error) = publication {
             if let Some(backup) = &record.backup {
                 let _ = publish_new(backup, &destination);
             }
-            return Err(format!(
-                "Publication de la copie (destination conservée) : {error}"
-            ));
+            return Err(error);
         }
         drop(cleanup);
         self.set_destination(id, index, &destination);
@@ -1777,13 +1788,22 @@ fn source_kind(metadata: &fs::Metadata) -> Option<&'static str> {
         None
     }
 }
-/// Compare l’identité, la taille, la date et le type pour détecter un changement
-/// entre deux lectures de métadonnées ; ce contrôle ne remplace pas un MD5.
+/// Compare identité, taille, mtime, ctime et type, dans la précision du système de fichiers.
+/// Ctime complète mtime si cette dernière a été rétablie ; ce n’est pas un instantané.
 fn same_version(a: &fs::Metadata, b: &fs::Metadata) -> bool {
     (a.dev(), a.ino()) == (b.dev(), b.ino())
         && a.len() == b.len()
         && a.modified().ok() == b.modified().ok()
+        && (a.ctime(), a.ctime_nsec()) == (b.ctime(), b.ctime_nsec())
         && a.file_type() == b.file_type()
+}
+/// Contrôle le chemin en plus du descripteur ouvert : une substitution externe reste détectée.
+fn verify_source(path: &Path, expected: &fs::Metadata) -> Result<(), String> {
+    let current = fs::symlink_metadata(path).map_err(reconnect::io_error)?;
+    if !same_version(expected, &current) {
+        return Err("Source changed during copying".into());
+    }
+    Ok(())
 }
 /// Lit un fichier ordinaire par blocs, signale la progression et vérifie
 /// que sa version reste stable avant et après le calcul.
@@ -1845,11 +1865,7 @@ fn compare_md5(
 fn remove_original(path: &Path, expected: &fs::Metadata) -> Result<(), String> {
     let current = fs::symlink_metadata(path)
         .map_err(|e| format!("Copie créée ; vérification de l’original impossible : {e}"))?;
-    if (current.dev(), current.ino()) != (expected.dev(), expected.ino())
-        || current.len() != expected.len()
-        || current.modified().ok() != expected.modified().ok()
-        || current.file_type() != expected.file_type()
-    {
+    if !same_version(expected, &current) {
         return Err("Copy created; the source changed, so the original was kept".into());
     }
     fs::remove_file(path)

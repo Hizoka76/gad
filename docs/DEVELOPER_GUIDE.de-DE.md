@@ -538,3 +538,11 @@ gad --dolphin --new-window
 make test-dolphin-watchdog
 make test-dolphin-watchdog-real
 ```
+
+## Quellstabilität und Wiederherstellungsprüfungen {#file-integrity}
+
+`same_version` berücksichtigt ctime; `verify_source` prüft den Pfad vor der Veröffentlichung und `remove_original` verwendet denselben Vergleich. Lesen über die ursprüngliche Dateigröße hinaus wird abgelehnt. MD5 prüft die Stabilität vor und nach dem Lesen.
+
+`undo::Stamp` prüft Berechtigungen und speichert optionale Eigentümer-/Gruppenangaben. `undo::Record.backup_ctime` wird nach dem Umbenennen der Sicherung erfasst und vor der Veröffentlichung protokolliert. Die Vorprüfung validiert alle ausgewählten Einträge, vorhandene Elternpfade, Sicherungen und bereits wiederhergestellte Quellen. Ein fehlendes verschobenes Ergebnis blockiert den Vorgang vor Änderungen an benachbarten Einträgen. Wiederhergestellte Inhalte werden vor dem Entfernen des Ergebnisses mit dem Journal-Digest verglichen. Neue Felder bleiben für ältere Journale optional.
+
+`src/engine/tests/integrity.rs` deckt Änderungen bei unveränderter Größe/mtime, Pfadersetzung, Kopieren und Verschieben ohne MD5, geänderte Sicherungen, Berechtigungen, unterbrochene Wiederherstellungen und ältere Journale ab. Diese Prüfungen verringern übliche Wettlaufsituationen, isolieren jedoch nicht gegen gleichzeitige Pfadänderungen.

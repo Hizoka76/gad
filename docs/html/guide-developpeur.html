@@ -815,4 +815,8 @@ python3 scripts/check_docs.py
 <pre><code class="language-sh">gad --dolphin --new-window
 make test-dolphin-watchdog
 make test-dolphin-watchdog-real
-</code></pre></section></main></body></html>
+</code></pre>
+</section><section class="chapter"><h2 id="file-integrity">Contrôles de stabilité et de restauration</h2>
+<p><code>same_version</code> inclut ctime ; <code>verify_source</code> recontrôle le chemin avant publication et <code>remove_original</code> utilise la même comparaison. La lecture refuse aussi de dépasser la taille source initiale. Le MD5 vérifie la stabilité avant et après ses lectures.</p>
+<p><code>undo::Stamp</code> contrôle les permissions et conserve un propriétaire/groupe optionnel. <code>undo::Record.backup_ctime</code> est capturé après le renommage de la sauvegarde et journalisé avant publication. Le précontrôle de restauration valide tous les éléments sélectionnés, les parents existants, les sauvegardes et les sources déjà remises en place. Il refuse aussi un fichier déplacé absent avant de modifier ses voisins. Le contenu d’une source restaurée est comparé au digest journalisé avant le retrait du résultat. Les champs ajoutés restent optionnels pour relire les anciens journaux.</p>
+<p>Les régressions sont dans <code>src/engine/tests/integrity.rs</code> : sources éditées à taille/mtime constantes, chemin remplacé, copie et déplacement sans MD5, sauvegardes altérées, permissions, retour interrompu et anciens journaux. Ces contrôles limitent les courses ordinaires sans fournir une isolation contre un programme modifiant les chemins simultanément.</p></section></main></body></html>

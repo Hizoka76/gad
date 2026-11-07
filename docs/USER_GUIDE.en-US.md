@@ -624,3 +624,11 @@ python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.loca
 ```sh
 gad --dolphin --new-window
 ```
+
+## Modified sources and cautious restoration {#file-integrity}
+
+These protections run automatically, even without MD5. Gad compares identity, type, size and mtime/ctime of the open file and source path. A detected change during copying prevents publication; a late change during a move keeps the original and reports an error. A source edited while queued may be copied in its updated version.
+
+Before restoration, Gad checks the selected files, backups, parent paths and required volumes. Changed backups, file permissions or ownership, missing moved results, and previously restored sources edited afterwards can block restoration. Checks run again before deleting a result. Conflicting files are kept; inspect the error details before retrying.
+
+Timestamp checks depend on filesystem precision and information supplied by remote services. They do not provide a snapshot of a file another application is writing. Optional MD5 adds content comparison before publication; older journals use the information available in them.

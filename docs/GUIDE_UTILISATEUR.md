@@ -747,3 +747,11 @@ python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.loca
 ```sh
 gad --dolphin --new-window
 ```
+
+## Sources modifiées et restauration prudente {#file-integrity}
+
+Ces protections sont automatiques, même sans cocher MD5. Gad compare l’identité, le type, la taille et les dates mtime/ctime du fichier ouvert et du chemin source. Un changement détecté pendant la copie bloque sa publication ; une modification tardive pendant un déplacement conserve l’original et signale une erreur. Une source modifiée pendant son attente peut être copiée dans sa nouvelle version.
+
+Avant une restauration, Gad contrôle les fichiers sélectionnés, les sauvegardes, les chemins parents et les volumes nécessaires. Une sauvegarde modifiée, des permissions ou un propriétaire modifiés sur un fichier, un résultat déplacé disparu ou une source déjà restaurée puis éditée peuvent faire refuser l’opération. Les contrôles sont répétés avant la suppression du résultat. Les fichiers litigieux restent conservés ; consulter le détail de l’erreur avant une nouvelle tentative.
+
+Les contrôles de dates dépendent de la précision du système de fichiers et des informations fournies par le service distant. Ils ne constituent pas un instantané d’un fichier ouvert par un autre logiciel. Le MD5 optionnel ajoute une comparaison du contenu avant publication ; les anciens journaux utilisent les informations qu’ils contiennent.

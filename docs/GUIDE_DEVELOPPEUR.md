@@ -673,3 +673,11 @@ gad --dolphin --new-window
 make test-dolphin-watchdog
 make test-dolphin-watchdog-real
 ```
+
+## Contrôles de stabilité et de restauration {#file-integrity}
+
+`same_version` inclut ctime ; `verify_source` recontrôle le chemin avant publication et `remove_original` utilise la même comparaison. La lecture refuse aussi de dépasser la taille source initiale. Le MD5 vérifie la stabilité avant et après ses lectures.
+
+`undo::Stamp` contrôle les permissions et conserve un propriétaire/groupe optionnel. `undo::Record.backup_ctime` est capturé après le renommage de la sauvegarde et journalisé avant publication. Le précontrôle de restauration valide tous les éléments sélectionnés, les parents existants, les sauvegardes et les sources déjà remises en place. Il refuse aussi un fichier déplacé absent avant de modifier ses voisins. Le contenu d’une source restaurée est comparé au digest journalisé avant le retrait du résultat. Les champs ajoutés restent optionnels pour relire les anciens journaux.
+
+Les régressions sont dans `src/engine/tests/integrity.rs` : sources éditées à taille/mtime constantes, chemin remplacé, copie et déplacement sans MD5, sauvegardes altérées, permissions, retour interrompu et anciens journaux. Ces contrôles limitent les courses ordinaires sans fournir une isolation contre un programme modifiant les chemins simultanément.

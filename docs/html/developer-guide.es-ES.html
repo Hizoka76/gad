@@ -678,4 +678,8 @@ make docs-check
 <pre><code class="language-sh">gad --dolphin --new-window
 make test-dolphin-watchdog
 make test-dolphin-watchdog-real
-</code></pre></section></main></body></html>
+</code></pre>
+</section><section class="chapter"><h2 id="file-integrity">Estabilidad del origen y comprobaciones de restauración</h2>
+<p><code>same_version</code> incluye ctime; <code>verify_source</code> comprueba la ruta antes de publicar y <code>remove_original</code> aplica la misma comparación. Se rechazan lecturas que superen el tamaño inicial. MD5 verifica la estabilidad antes y después de leer.</p>
+<p><code>undo::Stamp</code> verifica permisos y guarda opcionalmente propietario/grupo. <code>undo::Record.backup_ctime</code> se captura después de renombrar la copia de seguridad y se registra antes de publicar. La comprobación previa valida todas las entradas seleccionadas, sus padres existentes, las copias de seguridad y los archivos ya restaurados. Un resultado movido ausente bloquea la operación antes de modificar sus vecinos. El contenido restaurado se compara con el digest registrado antes de eliminar el resultado. Los campos nuevos son opcionales para diarios antiguos.</p>
+<p><code>src/engine/tests/integrity.rs</code> cubre cambios con tamaño/mtime conservados, sustitución de rutas, copias y movimientos sin MD5, copias de seguridad alteradas, permisos, restauraciones interrumpidas y diarios antiguos. Estas comprobaciones reducen las carreras habituales sin aislar frente a modificaciones simultáneas de rutas.</p></section></main></body></html>

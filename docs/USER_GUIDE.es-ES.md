@@ -624,3 +624,11 @@ python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.loca
 ```sh
 gad --dolphin --new-window
 ```
+
+## Archivos de origen modificados y restauración prudente {#file-integrity}
+
+Estas protecciones son automáticas, incluso sin MD5. Gad compara la identidad, el tipo, el tamaño y las fechas mtime/ctime del archivo abierto y de su ruta. Un cambio detectado durante la copia impide publicarla; un cambio tardío durante un movimiento conserva el original y muestra un error. Un archivo editado mientras espera puede copiarse en su nueva versión.
+
+Antes de restaurar, Gad comprueba los archivos seleccionados, las copias de seguridad, las rutas padre y los volúmenes necesarios. Una copia de seguridad alterada, permisos o propietario modificados, un resultado movido ausente o un origen restaurado y editado después pueden bloquear la restauración. Las comprobaciones se repiten antes de eliminar el resultado. Los archivos afectados se conservan; consulte el detalle del error antes de reintentar.
+
+La comprobación de fechas depende de la precisión del sistema de archivos y del servicio remoto. No crea una instantánea de un archivo abierto por otra aplicación. MD5 añade una comparación del contenido antes de publicar; los diarios antiguos utilizan la información disponible.

@@ -760,4 +760,8 @@ gad --configure --exclude-folder &quot;__*&quot; --exclude-file &quot;*.tmp&quot
 <pre><code class="language-sh">python3 scripts/dolphin_integration.py --install --protect-launcher &quot;$HOME/.local/bin/gad&quot;
 </code></pre>
 <pre><code class="language-sh">gad --dolphin --new-window
-</code></pre></section></main></body></html>
+</code></pre>
+</section><section class="chapter"><h2 id="file-integrity">Modified sources and cautious restoration</h2>
+<p>These protections run automatically, even without MD5. Gad compares identity, type, size and mtime/ctime of the open file and source path. A detected change during copying prevents publication; a late change during a move keeps the original and reports an error. A source edited while queued may be copied in its updated version.</p>
+<p>Before restoration, Gad checks the selected files, backups, parent paths and required volumes. Changed backups, file permissions or ownership, missing moved results, and previously restored sources edited afterwards can block restoration. Checks run again before deleting a result. Conflicting files are kept; inspect the error details before retrying.</p>
+<p>Timestamp checks depend on filesystem precision and information supplied by remote services. They do not provide a snapshot of a file another application is writing. Optional MD5 adds content comparison before publication; older journals use the information available in them.</p></section></main></body></html>

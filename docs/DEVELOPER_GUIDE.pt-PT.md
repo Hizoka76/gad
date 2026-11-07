@@ -538,3 +538,11 @@ gad --dolphin --new-window
 make test-dolphin-watchdog
 make test-dolphin-watchdog-real
 ```
+
+## Estabilidade da origem e verificações de restauro {#file-integrity}
+
+`same_version` inclui ctime; `verify_source` verifica o caminho antes da publicação e `remove_original` usa a mesma comparação. Leituras superiores ao tamanho inicial são recusadas. O MD5 verifica a estabilidade antes e depois da leitura.
+
+`undo::Stamp` verifica permissões e guarda proprietário/grupo opcionais. `undo::Record.backup_ctime` é capturado após renomear a cópia de segurança e registado antes da publicação. A verificação prévia valida todas as entradas selecionadas, os ascendentes existentes, as cópias de segurança e as origens já restauradas. Um resultado movido ausente bloqueia a operação antes de modificar os restantes. O conteúdo restaurado é comparado com o digest registado antes de eliminar o resultado. Os novos campos são opcionais para registos antigos.
+
+`src/engine/tests/integrity.rs` cobre alterações com tamanho/mtime preservados, substituição de caminhos, cópias e movimentos sem MD5, cópias de segurança alteradas, permissões, restauros interrompidos e registos antigos. Estas verificações reduzem as condições de corrida habituais sem isolar modificações simultâneas dos caminhos.

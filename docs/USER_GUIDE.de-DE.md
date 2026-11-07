@@ -624,3 +624,11 @@ python3 scripts/dolphin_integration.py --install --protect-launcher "$HOME/.loca
 ```sh
 gad --dolphin --new-window
 ```
+
+## Geänderte Quellen und sichere Wiederherstellung {#file-integrity}
+
+Diese Schutzmaßnahmen arbeiten automatisch, auch ohne MD5. Gad vergleicht Identität, Typ, Größe sowie mtime/ctime der geöffneten Datei und ihres Quellpfads. Erkannte Änderungen während des Kopierens verhindern die Veröffentlichung; späte Änderungen beim Verschieben erhalten das Original und erzeugen einen Fehler. Während der Wartezeit bearbeitete Quellen können in ihrer neuen Version kopiert werden.
+
+Vor der Wiederherstellung prüft Gad ausgewählte Dateien, Sicherungen, übergeordnete Pfade und benötigte Datenträger. Geänderte Sicherungen, Dateiberechtigungen oder Eigentümer, fehlende verschobene Ergebnisse und nachträglich bearbeitete wiederhergestellte Quellen können den Vorgang blockieren. Vor dem Löschen eines Ergebnisses werden die Prüfungen wiederholt. Betroffene Dateien bleiben erhalten; vor einem erneuten Versuch die Fehlerdetails prüfen.
+
+Zeitstempelprüfungen hängen von der Genauigkeit des Dateisystems und den Angaben entfernter Dienste ab. Sie erzeugen keinen Schnappschuss einer anderweitig geöffneten Datei. Optionales MD5 ergänzt einen Inhaltsvergleich vor der Veröffentlichung; ältere Journale verwenden ihre vorhandenen Informationen.

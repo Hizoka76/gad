@@ -680,4 +680,8 @@ make docs-check
 <pre><code class="language-sh">gad --dolphin --new-window
 make test-dolphin-watchdog
 make test-dolphin-watchdog-real
-</code></pre></section></main></body></html>
+</code></pre>
+</section><section class="chapter"><h2 id="file-integrity">Source stability and restoration checks</h2>
+<p><code>same_version</code> includes ctime; <code>verify_source</code> checks the path before publication and <code>remove_original</code> uses the same comparison. Reading beyond the initial source size is rejected. MD5 checks stability before and after reading.</p>
+<p><code>undo::Stamp</code> checks permissions and stores optional owner/group information. <code>undo::Record.backup_ctime</code> is captured after the backup rename and journaled before publication. Restoration preflight validates every selected entry, existing parents, backups and already restored sources. A missing moved file is rejected before changing neighboring entries. Restored source contents are compared with the journal digest before removing the result. New fields remain optional for older journals.</p>
+<p>Regression tests in <code>src/engine/tests/integrity.rs</code> cover edits preserving size/mtime, path replacement, copies and moves without MD5, altered backups, permissions, interrupted restoration and older journals. These checks reduce ordinary races without isolating against concurrent path manipulation.</p></section></main></body></html>

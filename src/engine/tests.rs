@@ -6213,3 +6213,6 @@ fn duplication_retains_recursive_and_move_guards() {
         b"bonjour\0monde"
     );
 }
+
+// Régressions des contrôles de stabilité source et des préconditions de restauration.
+mod integrity;

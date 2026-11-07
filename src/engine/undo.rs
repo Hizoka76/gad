@@ -22,6 +22,9 @@ pub(super) struct Stamp {
     nanos: i64,
     /// Permissions Unix et bits de type observés.
     mode: u32,
+    /// Propriétaire et groupe ; absents des anciens journaux, qui restent lisibles.
+    #[serde(default)]
+    owner: Option<(u32, u32)>,
     /// Type attendu : fichier, dossier ou lien symbolique.
     kind: String,
     /// Texte de la cible si l’élément est un lien symbolique.
@@ -45,6 +48,7 @@ impl Stamp {
             seconds: m.mtime(),
             nanos: m.mtime_nsec(),
             mode: m.mode(),
+            owner: Some((m.uid(), m.gid())),
             kind: if m.is_dir() {
                 "directory"
             } else if m.file_type().is_symlink() {
@@ -78,6 +82,8 @@ impl Stamp {
                 && self.kind == m.kind
                 && (self.kind == "directory"
                     || (self.len == m.len
+                        && self.mode == m.mode
+                        && self.owner.is_none_or(|owner| m.owner == Some(owner))
                         && self.seconds == m.seconds
                         && self.nanos == m.nanos
                         && self.link == m.link))
@@ -165,6 +171,8 @@ pub(super) struct Record {
     pub backup: Option<PathBuf>,
     /// Empreinte de cette ancienne destination sauvegardée.
     pub original: Option<Stamp>,
+    /// Ctime de la sauvegarde après son renommage : détecte aussi une mtime rétablie.
+    pub backup_ctime: Option<(i64, i64)>,
     /// Version de la source avant sa suppression ou du dossier avant son retrait.
     pub source_stamp: Option<Stamp>,
     /// La suppression de la source d’un fichier a été journalisée.
@@ -282,14 +290,8 @@ pub(super) fn check_output(entry: &Entry, r: &Record) -> Result<bool, String> {
         entry.destination.display()
     ))
 }
-/// Vérifie les résultats, sauvegardes et sources avant les modifications de restauration.
-/// Une erreur conserve les fichiers litigieux au lieu de tenter de les écraser.
-pub(super) fn preflight(entry: &Entry) -> Result<(), String> {
-    let Some(r) = &entry.undo else { return Ok(()) };
-    if r.reverted {
-        return Ok(());
-    }
-    check_output(entry, r)?;
+/// Contrôle la sauvegarde avant toute suppression du résultat et avant son retour.
+fn check_backup(entry: &Entry, r: &Record) -> Result<(), String> {
     // L’ancienne destination doit encore correspondre au journal avant toute manipulation de sa sauvegarde.
     if let Some(backup) = &r.backup {
         if let Some(stamp) = &r.original {
@@ -302,6 +304,12 @@ pub(super) fn preflight(entry: &Entry) -> Result<(), String> {
                     .as_ref()
                     .ok_or("Journal de remplacement incomplet")?,
             )?;
+            if let Some(expected) = r.backup_ctime {
+                let meta = fs::symlink_metadata(backup).map_err(|error| error.to_string())?;
+                if expected != (meta.ctime(), meta.ctime_nsec()) {
+                    return Err("Backup changed since the transfer; files kept".into());
+                }
+            }
         } else if !r
             .original
             .as_ref()
@@ -311,6 +319,68 @@ pub(super) fn preflight(entry: &Entry) -> Result<(), String> {
                 "Sauvegarde du fichier remplacé absente ; destination conservée : {}",
                 backup.display()
             ));
+        }
+    }
+    Ok(())
+}
+/// Une source déjà remise en place peut avoir été éditée depuis une restauration interrompue.
+fn check_restored_source(entry: &Entry, r: &Record) -> Result<(), String> {
+    if r.source_removed && entry.kind == "file" && exists(&entry.source) {
+        if let Some(digest) = &r.digest {
+            if md5_file(&entry.source, None, |_| Ok(()))? != *digest {
+                return Err("Restored source changed; destination kept".into());
+            }
+        }
+    }
+    Ok(())
+}
+/// Les parents source peuvent manquer avant restauration ; les parents existants
+/// doivent rester des dossiers réels, sans redirection par lien symbolique.
+fn check_parents(path: &Path) -> Result<(), String> {
+    let mut parent = path.parent();
+    while let Some(directory) = parent {
+        match fs::symlink_metadata(directory) {
+            Ok(meta) if !meta.is_dir() || meta.file_type().is_symlink() => {
+                return Err(format!(
+                    "Dossier déplacé ou remplacé, conservé : {}",
+                    directory.display()
+                ));
+            }
+            Ok(_) => (),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (),
+            Err(error) => return Err(reconnect::io_error(error)),
+        }
+        parent = directory.parent();
+    }
+    Ok(())
+}
+/// Réutilisé après une copie de retour : ses parents peuvent avoir été redirigés entre-temps.
+fn check_paths(entry: &Entry, r: &Record) -> Result<(), String> {
+    check_parents(&entry.destination)?;
+    if r.source_removed || r.source_dir_removed {
+        check_parents(&entry.source)?;
+    }
+    if let Some(backup) = &r.backup {
+        check_parents(backup)?;
+    }
+    Ok(())
+}
+/// Vérifie les résultats, sauvegardes et sources avant les modifications de restauration.
+/// Une erreur conserve les fichiers litigieux au lieu de tenter de les écraser.
+pub(super) fn preflight(entry: &Entry) -> Result<(), String> {
+    let Some(r) = &entry.undo else { return Ok(()) };
+    if r.reverted {
+        return Ok(());
+    }
+    check_paths(entry, r)?;
+    let output = check_output(entry, r)?;
+    check_backup(entry, r)?;
+    if r.source_removed && !exists(&entry.source) {
+        if let Some(stamp) = &r.source_stamp {
+            stamp.volume(&entry.source)?;
+        }
+        if !output {
+            return Err("Restoration refused: a moved file is missing".into());
         }
     }
     if r.source_removed
@@ -329,6 +399,7 @@ pub(super) fn preflight(entry: &Entry) -> Result<(), String> {
             entry.source.display()
         ));
     }
+    check_restored_source(entry, r)?;
     Ok(())
 }
 /// Recrée un dossier source supprimé par un déplacement, en journalisant
@@ -496,6 +567,11 @@ pub(super) fn restore_file(
             entry.source.display()
         ));
     }
+    // La copie de retour et sa sauvegarde du journal ont pu prendre du temps : revalider
+    // les deux fichiers conservés avant de supprimer le seul résultat encore valide.
+    check_paths(entry, &r)?;
+    check_backup(entry, &r)?;
+    check_restored_source(entry, &r)?;
     if output {
         check_output(entry, &r)?;
         fs::remove_file(&entry.destination).map_err(|e| e.to_string())?;
