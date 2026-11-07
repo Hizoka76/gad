@@ -6,14 +6,19 @@ from pathlib import Path
 import shutil
 import subprocess
 import tarfile
-import tomllib
 
 PROJECT = Path(__file__).resolve().parent.parent
 
 
 def prepare(output):
     """Limiter les sources aux fichiers du projet et verrouiller les crates embarquées."""
-    version = tomllib.loads((PROJECT / 'Cargo.toml').read_text())['package']['version']
+    debian_version = subprocess.check_output(
+        ['dpkg-parsechangelog', '-l' + str(PROJECT / 'debian/changelog'), '-S', 'Version'],
+        text=True).strip()
+    # Cargo garde sa version ; le suffixe de test est propre au paquet Debian.
+    version = debian_version.split(':', 1)[-1].rsplit('-', 1)[0]
+    if not version or '/' in version or version in {'.', '..'}:
+        raise SystemExit('Version Debian invalide pour une archive source.')
     output.mkdir(parents=True, exist_ok=True)
     source = output / ('gad-' + version)
     if source.exists():
@@ -21,6 +26,8 @@ def prepare(output):
     source.mkdir()
     names = ['Cargo.toml', 'Cargo.lock', 'build.rs', 'Makefile', 'build.sh',
              'src', 'native', 'scripts', 'tests', 'translations', 'assets', 'docs', 'packaging']
+    if (PROJECT / 'clean.sh').exists():
+        names.append('clean.sh')
     names += [p.name for p in PROJECT.glob('README*.md')]
     names += [p.name for p in PROJECT.glob('TESTING*.md')]
     names += [p.name for p in PROJECT.glob('BUILDING*.md')]

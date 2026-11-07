@@ -47,14 +47,17 @@ class PackagingTests(unittest.TestCase):
             def vendor(*args, **kwargs):
                 (kwargs['cwd'] / 'vendor').mkdir()
                 return type('Result', (), {'stdout': '[source.vendored-sources]\ndirectory="vendor"\n'})()
-            with patch.object(package, 'PROJECT', project), patch.object(package.subprocess, 'run', side_effect=vendor), patch.object(package.subprocess, 'check_output', return_value='0'):
+            with patch.object(package, 'PROJECT', project), patch.object(package.subprocess, 'run', side_effect=vendor), patch.object(package.subprocess, 'check_output', side_effect=lambda args, **kw: '0.1.0a-0~resolute' if args[-1] == 'Version' else '0'):
                 source = package.prepare(root / 'output')
             self.assertTrue((source / 'debian').is_dir())
-            with tarfile.open(root / 'output/gad_0.1.0.orig.tar.xz') as archive:
+            self.assertEqual(source.name, 'gad-0.1.0a')
+            self.assertIn('0.1.0', (source / 'Cargo.toml').read_text())
+            self.assertNotIn('0.1.0a', (source / 'Cargo.toml').read_text())
+            with tarfile.open(root / 'output/gad_0.1.0a.orig.tar.xz') as archive:
                 names = archive.getnames()
                 self.assertFalse(any('/target' in name or '/debian' in name or 'TOTO' in name for name in names))
                 self.assertTrue(any('/vendor' in name for name in names))
                 self.assertTrue(all(member.mtime == 0 for member in archive.getmembers()))
-            with patch.object(package, 'PROJECT', project):
+            with patch.object(package, 'PROJECT', project), patch.object(package.subprocess, 'check_output', return_value='0.1.0a-0~resolute'):
                 with self.assertRaises(SystemExit):
                     package.prepare(root / 'output')

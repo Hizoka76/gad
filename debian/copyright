@@ -4,9 +4,17 @@ Upstream-Contact: Terence Belleguic <hizo@free.fr>
 
 Files: *
 Copyright: 2026 Terence Belleguic <hizo@free.fr>
-License: to-be-confirmed
- No distribution licence has yet been selected for Gad.
- Confirm the upstream licence before publishing this package.
+License: GPL-3
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of version 3 of the GNU General Public License
+ as published by the Free Software Foundation.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ .
+ On Debian systems the complete license text can be found in
+ /usr/share/common-licenses/GPL-3. The upstream archive includes LICENSE.
 
 Files: vendor/*
 Copyright: See individual crate metadata and licence files in vendor/.

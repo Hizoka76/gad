@@ -100,3 +100,11 @@ test-dolphin-watchdog:
 .PHONY: test-dolphin-watchdog-real
 test-dolphin-watchdog-real:
 	$(PYTHON) scripts/test_dolphin_watchdog_real.py
+
+# Nettoyage local : les releases publiées et les données personnelles sont conservées.
+.PHONY: clean clean-preview
+clean:
+	$(PYTHON) scripts/clean.py --apply
+
+clean-preview:
+	$(PYTHON) scripts/clean.py

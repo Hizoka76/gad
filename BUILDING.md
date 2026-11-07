@@ -18,8 +18,10 @@ Sur KDE neon, le paquet de développement KDE est `kf6-kwindowsystem-dev` ;
 fournie par Ubuntu Noble standard est insuffisante : utiliser un compilateur
 récent pour la compilation locale. Le PPA doit disposer de toutes les
 dépendances de construction pour sa série cible, y compris KF6 et Rust récent.
-Le fichier `debian/changelog` cible actuellement `noble` pour neon ; ce n’est
-pas une promesse de compilation sur un environnement Ubuntu Noble standard.
+Le fichier `debian/changelog` cible actuellement `resolute` (Ubuntu 26.04)
+pour le PPA `ppa:hizo/tests`. Noble standard ne fournit pas KF6 : la présence
+de ces bibliothèques dans KDE neon ne les rend pas disponibles aux builders Noble
+de Launchpad. Le PPA utilise les versions Qt/KF6 de la distribution cible.
 
 ## Paquets Debian
 
@@ -55,7 +57,7 @@ La suppression du paquet conserve l’historique et les réglages personnels.
 
 ## Publication sur Launchpad
 
-Confirmer d’abord la licence de Gad dans `debian/copyright`. Les licences des
+Gad est distribué sous GNU GPL v3 (`LICENSE` et `debian/copyright`). Les licences des
 crates sont conservées dans `vendor/`. Adapter la distribution et la version
 dans `debian/changelog` pour chaque série Ubuntu et vérifier ses dépendances
 dans un environnement propre. Un binaire compilé sur neon ne constitue pas
@@ -97,3 +99,42 @@ Seul le lanceur du compte courant est surchargé. Sa configuration précédente
 est conservée dans `gad/dolphin-launcher.json` et restaurée à la désinstallation.
 Le chemin des plugins reste limité au processus Dolphin. Les processus déjà
 ouverts doivent être relancés une fois pour charger le module.
+
+## Nettoyer les fichiers générés
+
+```sh
+./clean.sh             # Aperçu uniquement
+./clean.sh --apply     # Nettoyer
+make clean-preview    # Même aperçu
+make clean            # Même nettoyage
+```
+
+Le nettoyage retire les compilations et tests sous `target/`, les caches Python,
+les sorties Debian et les fichiers temporaires connus de l’éditeur. Il conserve
+`target/releases/`, les fichiers suivis par Git, les sources, la documentation et
+les notes personnelles. Il ne parcourt pas les liens symboliques et ne touche
+pas aux préférences, à l’historique ou aux transferts de Gad dans le compte utilisateur.
+Ne pas l’exécuter pendant une compilation ou la préparation de paquets.
+
+## Version Debian et fonction SOURCE
+
+La version du paquet provient uniquement de `debian/changelog` :
+`0.1.0a-0~resolute`. Pour la prochaine révision de test, remplacer `a` par `b`
+dans ce fichier. `Cargo.toml`, `Cargo.lock` et la version de l’application ne
+sont pas modifiés. Les archives upstream utilisent le préfixe `gad_0.1.0a`.
+
+Pour utiliser la fonction personnelle `SOURCE` du script `hizo`, préparer d’abord
+un arbre isolé contenant les crates Rust. Cela évite d’archiver le dépôt Git, les
+builds et les notes locales avec le `tar` générique de cette fonction :
+
+```sh
+python3 scripts/package.py prepare --output target/ppa-source
+cd target/ppa-source
+hizo --source
+```
+
+Choisir le dossier `gad-0.1.0a`, la distribution **resolute**, la création avec
+l’archive orig puis `ppa:hizo/tests`. Ne pas sélectionner toutes les versions
+Ubuntu : chaque série doit disposer des dépendances Qt/KF6 et Rust déclarées.
+Le script `hizo` reste inchangé. Sans cette fonction, les commandes de construction,
+`debsign` et `dput` décrites ci-dessus restent utilisables.

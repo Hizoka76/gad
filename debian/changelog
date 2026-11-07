@@ -1,3 +1,12 @@
+gad (0.1.0a-0~resolute) resolute; urgency=medium
+
+  * Prepare the first test PPA upload for Ubuntu Resolute.
+  * Distribute Gad under the GNU General Public License version 3.
+  * Add safe cleanup of generated files while preserving release artifacts.
+  * Use the Debian changelog version for source package archives.
+
+ -- Terence Belleguic <hizo@free.fr>  Sat, 07 Nov 2026 18:54:03 +0100
+
 gad (0.1.0-1~ppa1) noble; urgency=medium
 
   * Initial Debian packaging for the Rust and Qt 6 application.
