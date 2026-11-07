@@ -10,8 +10,10 @@ import tarfile
 PROJECT = Path(__file__).resolve().parent.parent
 
 
-def prepare(output):
+def prepare(output, orig_format="xz"):
     """Limiter les sources aux fichiers du projet et verrouiller les crates embarquées."""
+    if orig_format not in {"xz", "gz"}:
+        raise ValueError('Format orig non pris en charge.')
     debian_version = subprocess.check_output(
         ['dpkg-parsechangelog', '-l' + str(PROJECT / 'debian/changelog'), '-S', 'Version'],
         text=True).strip()
@@ -46,9 +48,9 @@ def prepare(output):
     (source / '.cargo/config.toml').write_text(vendor.stdout)
     epoch = subprocess.check_output(['dpkg-parsechangelog', '-l' + str(PROJECT / 'debian/changelog'),
                                     '-S', 'Timestamp'], text=True).strip()
-    archive = output / f'gad_{version}.orig.tar.xz'
+    archive = output / f'gad_{version}.orig.tar.{orig_format}'
     # L’archive upstream ne contient pas debian/, ajouté ensuite pour dpkg-source.
-    with tarfile.open(archive, 'w:xz') as tar:
+    with tarfile.open(archive, 'w:' + orig_format) as tar:
         def normalized(info):
             info.uid = info.gid = 0
             info.uname = info.gname = 'root'
@@ -64,12 +66,14 @@ def main():
     """Ne signer ni envoyer automatiquement ; les artefacts restent inspectables."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('kind', choices=['prepare', 'source', 'binary'])
+    parser.add_argument('--orig-format', choices=['xz', 'gz'], default='xz',
+                        help='Compression upstream ; gz pour la fonction SOURCE du script hizo.')
     parser.add_argument('--no-check-builddeps', action='store_true',
                         help='Test local avec rustup ; ne valide pas les dépendances du PPA.')
     parser.add_argument('--output', type=Path, default=None)
     args = parser.parse_args()
     output = args.output or PROJECT / ('target/packages-' + args.kind)
-    source = prepare(output.resolve())
+    source = prepare(output.resolve(), orig_format=args.orig_format)
     if args.kind != 'prepare':
         command = ['dpkg-buildpackage', '-S' if args.kind == 'source' else '-b', '-us', '-uc']
         if args.kind == 'source' or args.no_check_builddeps:

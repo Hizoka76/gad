@@ -125,10 +125,12 @@ sont pas modifiés. Les archives upstream utilisent le préfixe `gad_0.1.0a`.
 
 Pour utiliser la fonction personnelle `SOURCE` du script `hizo`, préparer d’abord
 un arbre isolé contenant les crates Rust. Cela évite d’archiver le dépôt Git, les
-builds et les notes locales avec le `tar` générique de cette fonction :
+builds et les notes locales avec le `tar` générique de cette fonction. Le format
+`gz` correspond au nom d’archive attendu par `SOURCE` et évite la présence
+de deux archives orig concurrentes :
 
 ```sh
-python3 scripts/package.py prepare --output target/ppa-source
+python3 scripts/package.py prepare --orig-format gz --output target/ppa-source
 cd target/ppa-source
 hizo --source
 ```
