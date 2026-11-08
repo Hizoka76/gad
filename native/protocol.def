@@ -1,5 +1,5 @@
 // Vocabulaire unique du JSON et du journal ; les noms sérialisés historiques restent inchangés.
-GAD_PROTOCOL_VERSION(24)
+GAD_PROTOCOL_VERSION(33)
 GAD_STATE(Scanning, scanning, false)
 GAD_STATE(Waiting, waiting, false)
 GAD_STATE(DeviceWaiting, device_waiting, false)
@@ -47,3 +47,12 @@ GAD_COMMAND(SetRateLimit, set_rate_limit)
 
 GAD_COMMAND(ErrorReport, error_report)
 GAD_COMMAND(RetryErrors, retry_errors)
+
+GAD_COMMAND(CompletionClaim, completion_claim)
+GAD_COMMAND(CompletionRelease, completion_release)
+
+GAD_COMMAND(SimulationBegin, simulation_begin)
+GAD_COMMAND(Simulate, simulate)
+GAD_COMMAND(SimulationCancel, simulation_cancel)
+
+GAD_COMMAND(StartPrepared, start_prepared)

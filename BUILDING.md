@@ -23,6 +23,15 @@ pour le PPA `ppa:hizo/tests`. Noble standard ne fournit pas KF6 : la présence
 de ces bibliothèques dans KDE neon ne les rend pas disponibles aux builders Noble
 de Launchpad. Le PPA utilise les versions Qt/KF6 de la distribution cible.
 
+## Installer une version déjà compilée
+
+Le [PPA Gad](https://launchpad.net/~hizo/+archive/ubuntu/gad) est le dépôt
+d’installation utilisateur. Les [releases GitHub](https://github.com/Hizoka76/gad/releases/latest)
+proposent aussi un `.deb`, une archive `.tar.gz` avec les sources et le binaire
+compilé sous `prebuilt/`, et l’exécutable direct `gad-linux-amd64`.
+Les commandes et dépendances figurent dans le [guide utilisateur](docs/GUIDE_UTILISATEUR.md#installer-et-demarrer).
+Le PPA `ppa:hizo/tests` cité plus bas sert aux essais de publication du mainteneur.
+
 ## Paquets Debian
 
 Installer les outils de paquetage :
@@ -119,9 +128,9 @@ Ne pas l’exécuter pendant une compilation ou la préparation de paquets.
 ## Version Debian et fonction SOURCE
 
 La version du paquet provient uniquement de `debian/changelog` :
-`0.1.0a-0~resolute`. Pour la prochaine révision de test, remplacer `a` par `b`
-dans ce fichier. `Cargo.toml`, `Cargo.lock` et la version de l’application ne
-sont pas modifiés. Les archives upstream utilisent le préfixe `gad_0.1.0a`.
+`0.2.0a-0~resolute`. Pour la prochaine révision de test, remplacer `a` par `b`
+dans ce fichier pour une révision de test seule. Pour une nouvelle version
+applicative, mettre aussi à jour `Cargo.toml`, `Cargo.lock` et les guides. Les archives upstream utilisent le préfixe `gad_0.2.0a`.
 
 Pour utiliser la fonction personnelle `SOURCE` du script `hizo`, préparer d’abord
 un arbre isolé contenant les crates Rust. Cela évite d’archiver le dépôt Git, les
@@ -135,8 +144,19 @@ cd target/ppa-source
 hizo --source
 ```
 
-Choisir le dossier `gad-0.1.0a`, la distribution **resolute**, la création avec
+Choisir le dossier `gad-0.2.0a`, la distribution **resolute**, la création avec
 l’archive orig puis `ppa:hizo/tests`. Ne pas sélectionner toutes les versions
 Ubuntu : chaque série doit disposer des dépendances Qt/KF6 et Rust déclarées.
 Le script `hizo` reste inchangé. Sans cette fonction, les commandes de construction,
 `debsign` et `dput` décrites ci-dessus restent utilisables.
+
+## Publication 0.2.0
+
+La version applicative est `0.2.0` dans `Cargo.toml` et `Cargo.lock`. La révision
+Debian est indépendante (`0.2.0-0~resolute`, avec un suffixe adapté à chaque série).
+Cette publication est envoyée sur `ppa:hizo/tests` pour Resolute, Stonking et
+Tenacious ; `ppa:hizo/gad` reste le canal d’installation documenté.
+Les releases GitHub fournissent les sources autonomes avec dépendances Rust
+embarquées, une archive contenant ces sources et les composants compilés,
+un binaire Linux amd64 et un paquet `.deb`. Les binaires dépendent toujours
+des bibliothèques Qt/KF6 de la distribution.

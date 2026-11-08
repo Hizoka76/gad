@@ -1,8 +1,22 @@
 # Gad — Início rápido {#gad-quick-start}
 
-**Gad, il copie. · Gestor avançado de duplicação · Versão 0.1.0**
+**Gad, il copie. · Gestor avançado de duplicação · Versão 0.2.0**
 
 [Guia do utilizador](USER_GUIDE.pt-PT.md) · [Guia do desenvolvedor](DEVELOPER_GUIDE.pt-PT.md) · [Todos os idiomas](README.pt-PT.md)
+
+## Instalar o Gad
+
+Utilize o [PPA do Gad](https://launchpad.net/~hizo/+archive/ubuntu/gad) numa versão Ubuntu suportada. As [versões do GitHub](https://github.com/Hizoka76/gad/releases/latest) também fornecem um `.deb`, um arquivo `.tar.gz` com as fontes e o programa compilado, e o binário direto `gad-linux-amd64`.
+
+```sh
+sudo add-apt-repository ppa:hizo/gad
+sudo apt update
+sudo apt install gad
+```
+
+Verifique na página do PPA se existe um pacote publicado para a sua versão do Ubuntu. Se faltar `add-apt-repository`, instale `software-properties-common`.
+
+Os comandos, dependências e diferenças entre formatos estão descritos no [guia do utilizador](USER_GUIDE.pt-PT.md#installation-and-startup).
 
 ## Iniciar o Gad {#start-gad}
 
@@ -16,18 +30,9 @@ Caso ainda não esteja instalado, siga o [instruções de instalação](USER_GUI
 
 ## Fazer a primeira cópia {#make-your-first-copy}
 
-![A janela Gad no tema de luz](images/pt-PT/01-vue-ensemble.png)
+![Preparar transferências na lista principal](images/pt-PT/22-preparation.png)
 
-*A Origem, o Destino e as Definições estão agrupados acima da lista de transferência.*
-
-1. No seu gestor de ficheiros, selecione os ficheiros ou pastas e prima **Ctrl+C**.
-2. Em Gad, configure **Destino** para a pasta existente que deverá recebê-los.
-3. Clique em **Colar aqui** ou prima **Ctrl+V dentro Gad**.
-4. Verifique o destino na lista. O trabalho de transferência é iniciado automaticamente, a menos que a fila seja colocada em pausa.
-
-Também pode utilizar **Adicionar ficheiros…**, **Adicionar pasta…** ou arrastar ficheiros para Gad após definir o destino. **Arrastar e largar copia sempre.** Para mover ficheiros, utilize **Ctrl+X** seguido de colagem, desde que o gestor de ficheiros publique um marcador de corte reconhecido. Verifique a operação apresentada na lista; consulte o [instruções de outro gestor](USER_GUIDE.pt-PT.md#using-gad-with-other-file-managers), se necessário.
-
-Cole novamente para adicionar outro pedido. Gad coloca o trabalho na fila e pode executar duas transferências compatíveis ao mesmo tempo. As operações pendentes duplicadas são ignoradas.
+Escolha destino e opções e adicione os ficheiros no Gad. Sem trabalho ativo, reveja a lista e clique em **Iniciar**. A colagem habitual inicia automaticamente; novos elementos durante uma transferência entram na fila. **Ctrl+C** copia e **Ctrl+X** move. Arrastar e largar prepara sempre uma cópia.
 
 ## Acompanhar e controlar as transferências {#read-and-control-transfers}
 
@@ -83,3 +88,21 @@ gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR -
 Consulte o guia do utilizador para proteger o lançador habitual do Dolphin e carregar a vigilância automática de Ctrl+V.
 
 [Vigilância automática de Ctrl+V](USER_GUIDE.pt-PT.md#dolphin-watchdog)
+
+
+## Perfis de transferência
+
+Em **Definições → Perfis**, guarde todas as opções com um nome e selecione-o para as aplicar com um clique. **O destino nunca é guardado nem alterado.** O idioma e o limite global têm o seu efeito habitual. **Gerir perfis…** permite atualizar, mudar o nome e eliminar. Consulte os [perfis de transferência](USER_GUIDE.pt-PT.md#transfer-profiles).
+
+Na linha de comandos, `gad --profile "Meu perfil"` aplica as definições sem iniciar uma transferência. Para copiar: `gad --profile "Meu perfil" --copy /caminho/origem --to /caminho/destino`; também funciona com `--move` / `--paste`. Gad aguarda a aplicação do perfil. O destino vem do comando e as opções explícitas, como `--md5`, têm prioridade. Um nome desconhecido devolve um erro sem colocar ficheiros em fila. `--configure --profile "Meu perfil"` aceita definições adicionais, aplicadas após o perfil.
+
+
+## Preparar transferências na lista principal
+
+Escolha destino e opções e adicione os ficheiros no Gad. Sem trabalho ativo, reveja a lista e clique em **Iniciar**. A colagem habitual inicia automaticamente; novos elementos durante uma transferência entram na fila. **Ctrl+C** copia e **Ctrl+X** move. Arrastar e largar prepara sempre uma cópia.
+
+## Opções
+
+**Definições → Opções…** abre uma janela modal que bloqueia a janela principal enquanto as transferências continuam. As alterações aplicam-se imediatamente; **Fechar** ou Esc não as anula. Os parâmetros de comando aparecem a cinzento. Tamanho mínimo: **800 × 740**; janela principal, relatório de erros e diagnóstico: **1100 × 600**.
+
+Os quatro separadores são **Definições**, **Atalhos**, **Limites de velocidade** e **Fim do lote**. Os limites incluem o global e o predefinido para novos pedidos. Para alterar um pedido existente, selecione as linhas e utilize **botão direito → Limitar a velocidade da solicitação…**. O limite aparece em **Detalhe**, incluindo nas pastas; sem limite não é acrescentado texto.

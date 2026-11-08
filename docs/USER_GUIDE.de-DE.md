@@ -1,8 +1,10 @@
 # Gad — Benutzerhandbuch {#gad-user-guide}
 
-**Gestionnaire Avancé de Duplication · Version 0.1.0**  
-**Gad, il copie.**  
-Deutsche Ausgabe, aktualisiert am 6. November 2026.
+**Gestionnaire Avancé de Duplication · Version 0.2.0**
+
+**Gad, il copie.**
+
+Deutsche Ausgabe, aktualisiert am 8. November 2026.
 
 [Schnellstart](QUICK_START.de-DE.md) · [Französisch](GUIDE_UTILISATEUR.md) · [Alle Ausgaben](README.de-DE.md)
 
@@ -52,11 +54,58 @@ Gad lässt sich über **Mit Gad einfügen** und das optionale Strg+V in Dolphin 
 
 ### Die Bildschirmaufnahmen lesen {#reading-the-screenshots}
 
-Die 14 Aufnahmen zeigen die echten Gad-Widgets, Beispieldateien und simulierte Übertragungszustände. Sie verwenden das helle Design und die Oberflächensprache dieser Ausgabe. Persönliche Dateien und der echte Desktop werden nicht aufgenommen. Externe Plasma-Benachrichtigungen werden in diesen Aufnahmen nicht nachgebildet.
+Die 22 Aufnahmen zeigen die echten Gad-Widgets, Beispieldateien und simulierte Übertragungszustände. Sie verwenden das helle Design und die Oberflächensprache dieser Ausgabe. Persönliche Dateien und der echte Desktop werden nicht aufgenommen. Externe Plasma-Benachrichtigungen werden in diesen Aufnahmen nicht nachgebildet.
 
 Gad bietet Französisch, US-Englisch, Spanisch, Portugiesisch, Deutsch und Japanisch. Wählen Sie die Sprache unter **Einstellungen → Optionen…**: Die Änderung gilt sofort, ohne Gad neu zu starten oder Übertragungen zu unterbrechen. Geöffnete Dialoge und aktive Benachrichtigungen werden aktualisiert; Auswahl und Eingaben bleiben erhalten. **System** wählt eine verfügbare Variante der Desktop-Sprache und verwendet andernfalls Französisch oder Englisch. Nicht erfasste technische Diagnosen und Meldungen externer Dienste können in ihrer ursprünglichen Sprache bleiben.
 
 ## Installation und Start {#installation-and-startup}
+
+### Ubuntu-PPA
+
+Das [Gad-PPA](https://launchpad.net/~hizo/+archive/ubuntu/gad) ermöglicht die Installation und Aktualisierung von Gad über APT:
+
+```sh
+sudo add-apt-repository ppa:hizo/gad
+sudo apt update
+sudo apt install gad
+```
+
+Prüfen Sie auf der PPA-Seite, ob für Ihre Ubuntu-Version ein Paket veröffentlicht wurde. Falls `add-apt-repository` fehlt, installieren Sie `software-properties-common`.
+
+### Vorkompilierte Downloads
+
+Die [GitHub-Releases](https://github.com/Hizoka76/gad/releases/latest) bieten mehrere Formate. Ersetzen Sie die Beispieldateinamen unten durch die Namen Ihrer heruntergeladenen Dateien.
+
+#### Debian-Paket `.deb`
+
+Laden Sie das Paket für Ihre Architektur herunter und installieren Sie es mit APT, um verfügbare Abhängigkeiten aus Ihren Paketquellen aufzulösen:
+
+```sh
+sudo apt install ./gad_VERSION_amd64.deb
+```
+
+#### `.tar.gz`-Archiv: Quellen und kompiliertes Programm
+
+Das Archiv `gad-VERSION-linux-amd64.tar.gz` enthält den Quellcode, eingebundene Rust-Abhängigkeiten, Dokumentation und das kompilierte Programm unter `prebuilt/`. Zum Starten ist keine Kompilierung erforderlich:
+
+```sh
+tar -xzf gad-VERSION-linux-amd64.tar.gz
+cd gad-VERSION
+./prebuilt/usr/bin/gad
+```
+
+#### Direkte Programmdatei
+
+Auch `gad-linux-amd64` ist eine bereits kompilierte Programmdatei:
+
+```sh
+chmod +x gad-linux-amd64
+./gad-linux-amd64
+```
+
+Linux-amd64-Downloads sind für x86-64-Prozessoren bestimmt. Die direkte Programmdatei installiert weder einen Starter noch das Dolphin-Modul; das `.deb` und das Archiv enthalten die Integrationsdateien der jeweiligen Version. Die Programme benötigen Qt/KF6 in den in den Release-Hinweisen angegebenen Versionen. Ein Release entspricht seinem Tag und kann älter als der aktuelle Repository-Code sein.
+
+### Aus dem Quellcode
 
 Installieren Sie die in [Entwicklerhandbuch](DEVELOPER_GUIDE.de-DE.md#building) und [Testanleitung](../TESTING.de-DE.md#requirements) beschriebenen Linux-Build-Abhängigkeiten. Aus dem Projektverzeichnis:
 
@@ -94,7 +143,11 @@ Beenden oder brechen Sie bei einem Update die aktive Arbeit ab und beenden Sie G
 
 *Der Optionsdialog wird über den Bereich Einstellungen geöffnet.*
 
-**Einstellungen → Optionen…** öffnet einen größenveränderbaren Dialog mit den Reitern **Einstellungen** und **Tastenkürzel**. Änderungen gelten sofort; **Schließen** oder Escape schließt den Dialog, ohne Änderungen rückgängig zu machen. Er kann während Übertragungen geöffnet bleiben. Befehlszeilenparameter erscheinen grau unter den Steuerelementen. Die Mindestgröße beträgt **800 × 740**; Hauptfenster und Fehlerbericht haben eine Mindestgröße von **1100 × 600**. **Geschwindigkeit des Auftrags begrenzen…** befindet sich links in der Hauptaktionsleiste neben Pause/Fortsetzen und Abbruch. Ohne Auswahl ist die Schaltfläche deaktiviert; sie begrenzt die ausgewählten Aufträge unabhängig vom globalen Limit.
+**Einstellungen → Optionen…** öffnet ein modales Fenster: Das Hauptfenster bleibt bis zum Schließen gesperrt, Übertragungen laufen weiter. Änderungen gelten sofort; **Schließen** oder Escape macht sie nicht rückgängig. Befehlszeilenoptionen stehen grau unter den Bedienelementen. Mindestgröße: **800 × 740**; Hauptfenster, Fehlerbericht und Diagnose: **1100 × 600**.
+
+Die vier Reiter heißen **Einstellungen**, **Tastenkürzel**, **Geschwindigkeitslimits** und **Stapelabschluss**. Die Limits umfassen die globale Grenze und den Standard für neue Aufträge. Bestehende Aufträge ändern Sie über die ausgewählten Zeilen und **Rechtsklick → Geschwindigkeit des Auftrags begrenzen…**. Das Limit steht in **Details**, auch bei Ordnern; bei unbegrenzter Geschwindigkeit entfällt der Zusatz.
+
+![Einstellungen → Optione](images/de-DE/21-options-debits.png)
 
 ![Der Reiter Tastenkürzel steuert die Dateiverwaltungsintegration.](images/de-DE/14-options-raccourcis.png)
 
@@ -175,7 +228,7 @@ Andere Manager, die KIO-Servicemenüs unterstützen, bieten möglicherweise auch
 
 ![Quell- und Zielkontrollen und Verifizierungsoptionen](images/de-DE/02-sources-options.png)
 
-Wählen Sie das Ziel **vor** zum Hinzufügen oder Einfügen von Dateien. Durch das Hinzufügen von Dateien wird die Anfrage sofort übermittelt. eine gesonderte Startbestätigung gibt es nicht.
+Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts läuft, prüfen Sie die Liste und klicken Sie auf **Starten**. Normales Einfügen startet automatisch; während einer Übertragung werden neue Aufträge eingereiht. **Strg+C** kopiert, **Strg+X** verschiebt. Ziehen und Ablegen bereitet immer eine Kopie vor.
 
 ### Von Dolphin {#from-dolphin}
 
@@ -632,3 +685,88 @@ Diese Schutzmaßnahmen arbeiten automatisch, auch ohne MD5. Gad vergleicht Ident
 Vor der Wiederherstellung prüft Gad ausgewählte Dateien, Sicherungen, übergeordnete Pfade und benötigte Datenträger. Geänderte Sicherungen, Dateiberechtigungen oder Eigentümer, fehlende verschobene Ergebnisse und nachträglich bearbeitete wiederhergestellte Quellen können den Vorgang blockieren. Vor dem Löschen eines Ergebnisses werden die Prüfungen wiederholt. Betroffene Dateien bleiben erhalten; vor einem erneuten Versuch die Fehlerdetails prüfen.
 
 Zeitstempelprüfungen hängen von der Genauigkeit des Dateisystems und den Angaben entfernter Dienste ab. Sie erzeugen keinen Schnappschuss einer anderweitig geöffneten Datei. Optionales MD5 ergänzt einen Inhaltsvergleich vor der Veröffentlichung; ältere Journale verwenden ihre vorhandenen Informationen.
+
+## Übertragungsprofile {#transfer-profiles}
+
+Die Schaltfläche **Profile** unter **Einstellungen** speichert und übernimmt **alle Optionen des Einstellungsdialogs**, aber **niemals das Ziel**: MD5-/Eigenschafts-/Speicherprüfungen, Ausschlüsse und versteckte Elemente, Duplizierung, Verlauf, Wiederaufnahme, globales und Standardlimit, Sprache, Autostart sowie Dolphin-/Konqueror-Tastenkürzel.
+
+1. Stellen Sie die Optionen unter **Optionen…** ein.
+2. Wählen Sie **Profile → Aktuelle Einstellungen speichern…** und vergeben Sie einen eindeutigen Namen.
+3. Wählen Sie den Namen aus, um alle Optionen anzuwenden. Das Ziel bleibt unverändert, auch wenn es leer ist. Keine Übertragung wird gestartet.
+
+**Profile verwalten…** bietet Anwenden, Umbenennen, Löschen und **Mit aktuellen Einstellungen aktualisieren**. Die Zusammenfassung zeigt alle gespeicherten Werte. Löschen entfernt die Definition, ohne angewendete Einstellungen zurückzusetzen. Bis zu 64 Profile bleiben zwischen Sitzungen erhalten.
+
+Sprache, globales Limit und andere globale Einstellungen wirken wie üblich sofort. Prüfungen, Ausschlüsse und Standardlimits werden für neue Aufträge erfasst; bestehende Aufträge behalten ihre Optionen. Dolphin-Tastenkürzel werden asynchron eingerichtet. Bei einem Fehler versucht Gad, vorherige Werte wiederherzustellen, und meldet eine unvollständige Rücknahme.
+
+Alte Profile werden automatisch migriert: Das Ziel wird entfernt, und bisher fehlende Optionen werden einmalig mit aktuellen Einstellungen ergänzt. Nutzen Sie danach **Mit aktuellen Einstellungen aktualisieren** für Anpassungen. Quellpfade, Ziele und Passwörter werden nicht gespeichert.
+
+![Verwaltung der Übertragungsprofile](images/de-DE/15-profils.png)
+
+In der Befehlszeile übernimmt `gad --profile "Mein Profil"` die Einstellungen ohne Transfer. Zum Kopieren: `gad --profile "Mein Profil" --copy /pfad/quelle --to /pfad/ziel`; auch mit `--move` / `--paste` verwendbar. Gad wartet auf die vollständige Anwendung des Profils. Das Ziel stammt aus dem Befehl; explizite Optionen wie `--md5` haben Vorrang. Bei unbekanntem Namen werden keine Dateien eingereiht. `--configure --profile "Mein Profil"` erlaubt zusätzliche Einstellungen, die anschließend angewendet werden.
+
+## Konfliktrichtlinien in Profilen
+
+Unter **Optionen → Dateikonflikte** stehen **Nachfragen**, **Vorhandene Dateien überspringen**, **Nur ältere Dateien ersetzen** und **Beide Dateien behalten** zur Auswahl. Speichern oder aktualisieren Sie das Profil. Bestehende Aufträge behalten ihre Richtlinie.
+
+Nur Zieldateien mit strikt früherem Änderungsdatum als die Quelle werden ersetzt; gleich alte oder neuere werden übersprungen. Unlesbare Daten und symbolische Links führen ohne Ersetzung zu einem Fehler: Richtlinie ändern und erneut versuchen. Die Zuverlässigkeit der Zeitangaben hängt vom Dateisystem oder entfernten Dienst ab. Vorhandene Ordner werden zusammengeführt; die Richtlinie gilt für Konflikte darin. Beide behalten verwendet ein nummeriertes Namenssuffix. Übersprungene Dateien bleiben beim Verschieben an der Quelle; Ersetzungen bleiben wiederherstellbar.
+
+Befehl: `gad --configure --conflict-policy newer`. Profile der Formate 1 und 2 werden auf **Nachfragen** migriert und speichern weiterhin kein Ziel.
+
+## Gespeicherten Verlauf durchsuchen {#history-search}
+
+Klicken Sie auf **Verlauf durchsuchen** oder drücken Sie **Strg+F**. Geben Sie einen Dateinamen oder einen Teil des Quell-/Zielpfads ein, auch entfernte URLs. Wörter werden mit UND verbunden, ohne Groß-/Kleinschreibung und ohne reguläre Ausdrücke. Wählen Sie einen Auftragsstatus und aktivieren Sie **Hinzugefügt zwischen**, um das Hinzufügedatum mit einschließlichen lokalen Daten zu begrenzen.
+
+**Nur Verlauf** zeigt abgeschlossene, abgebrochene, wiederhergestellte oder fehlerhafte Aufträge; deaktivieren Sie es für aktive Aufträge. Spaltenfilter gelten zusätzlich. Übergeordnete Ordner bleiben sichtbar. **Suche zurücksetzen** leert die Kriterien ohne Änderung der Spaltenfilter; Schließen oder **Escape** deaktiviert nur diese Suche. Reihenfolge und Prioritäten bleiben unverändert.
+
+Der Tooltip der Reihenfolgenspalte zeigt das Hinzufügedatum. Alte Vorgänge ohne Datum werden als unbekannt markiert und bleiben ohne Datumsfilter durchsuchbar. Der Verlauf muss gespeichert sein: gelöschte Vorgänge lassen sich nicht mehr finden.
+
+![Gespeicherten Verlauf durchsuchen](images/de-DE/16-recherche-historique.png)
+
+## Transferdiagnose {#transfer-diagnostics}
+
+Die Schaltfläche **Transferdiagnose…** unten öffnet eine nichtmodale Ansicht aktiver und wartender Aufträge. Sie zeigt Status, beobachtete Aktivität oder Wartezeit, globale und auftragsspezifische Grenzen, Geschwindigkeit und Restzeit. Die Nummern blockierender Aufträge beziehen sich auf die Hauptliste.
+
+Die Ursachen unterscheiden Pausen, Quellenanalyse, offene Konflikte, nicht verfügbare Geräte oder entfernte Einbindungen, MD5-Prüfung, Prüfung des Fortsetzungspräfixes, lokale Umbenennung, exklusive Wiederherstellung, zwei belegte Arbeiter, Zeilenpriorität, gemeinsame Festplatten oder überlappende Pfade und vorsichtige serielle Ausführung bei unbekannten Ressourcen.
+
+Eine Wartezeit auf das Geschwindigkeitsbudget wird nur gemeldet, wenn der Begrenzer sie in der letzten Sekunde beobachtet hat. Eine konfigurierte Grenze allein beweist keine Verlangsamung. Nach fünf Sekunden ohne Byte-Fortschritt beim Kopieren oder MD5 außerhalb von Begrenzungswartezeiten meldet Gad diesen Stillstand: Datei-E/A oder Abschlussarbeiten könnten warten, ohne einen konkreten Festplatten- oder Netzwerkengpass nachzuweisen. Die Diagnose ist kein Leistungstest und wird nicht im Verlauf gespeichert. Schließen ändert keine Transfers.
+
+![Transferdiagnose](images/de-DE/17-diagnostic-transferts.png)
+
+Geschwindigkeitsgrenzen gelten für kopierte Bytes; MD5-Lesevorgänge und lokale Umbenennungen sind eigene Phasen.
+
+## Schnelle Verschiebungen prüfen {#verify-fast-moves}
+
+Unter **Optionen** aktivieren Sie **Schnelle Verschiebungen prüfen**. Standardmäßig aus, wird die Einstellung in Profilen gespeichert und für neue Aufträge erfasst. Nach einer lokalen Umbenennung prüft Gad Identität (Gerät/Inode), Typ, Größe, Änderungsdatum, Berechtigungen, Eigentümer/Gruppe, Linkziele, den exakten Baum und das Verschwinden des Quellpfads. Zulässige ctime-Änderungen der umbenannten Wurzel werden akzeptiert; Nachfahren müssen ihre ctime behalten.
+
+Bei Erfolg erscheint **Schnelle Verschiebung geprüft**. Die Diagnose unterscheidet diese Phase von MD5. Unterschiede, zusätzliche oder fehlende Elemente, ein neu angelegter Quellpfad oder Lesefehler führen zu einem Fehler mit geprüftem Pfad. Verschobenes Ergebnis und Journal bleiben erhalten; keine automatische Rücknahme überschreibt geänderte Dateien. Pausieren oder Abbrechen löscht das bereits verschobene Ergebnis nicht.
+
+Geprüft werden Metadaten, keine Inhalte; dies ersetzt keinen kryptografischen Vergleich. MD5 bleibt separat und erzwingt Kopieren/Prüfen/Löschen. Normale Kopien erhalten kein falsches Ergebnis einer Schnellprüfung. Alte Profile werden mit deaktivierter Option migriert. Befehl: `gad --configure --verify-fast-move`; deaktivieren: `--no-verify-fast-move`.
+
+![Schnelle Verschiebung geprüft](images/de-DE/18-verification-deplacement-rapide.png)
+
+## Aktionen beim Stapelabschluss {#queue-completion}
+
+Wählen Sie unter **Optionen → Stapelabschluss** Benachrichtigen, Gad beenden, Bereitschaft oder Ausschalten. Stellen Sie **5 bis 3600 Sekunden** zum Abbrechen ein (Standard 30) und klicken Sie auf **Für diesen Stapel aktivieren**. Der Status zeigt die Aktivierung an. Die Auswahl einer Aktion oder das Laden eines Profils speichert nur Einstellungen. Änderungen der Abschlusseinstellungen deaktivieren eine frühere Aktivierung.
+
+Der Countdown beginnt nach erfolgreichem Abschluss aller erfassten Übertragungen einschließlich entfernter Vorbereitung und letzter Speicherung. Sie können weiterhin abbrechen. Neue Übertragungen verschieben die Aktion und starten danach den vollständigen Countdown neu. Fehler, Abbruch, Wiederherstellung oder entfernte Aufträge deaktivieren die Aktion. Pausieren verhindert die Ausführung.
+
+Deaktivieren oder Schließen des Countdowns bricht keine Übertragungen ab. Die Aktivierung gilt einmal und wird beim Neustart nicht wiederhergestellt. Das Abschlussmenü bietet dieselben Aktionen und öffnet den passenden Reiter. „Stapel“ bezeichnet hier alle erfassten Übertragungen, nicht nur eine ausgewählte Zeile.
+
+Bereitschaft und Ausschalten verwenden logind und beachten Berechtigungen und Inhibitoren. Eine Benachrichtigung öffnet das ausgeblendete Gad. `gad --configure --completion-action suspend --completion-delay 60` speichert nur Vorgaben; aktivieren Sie die Aktion anschließend in Gad.
+
+![Aktionen beim Stapelabschluss](images/de-DE/19-fin-de-file.png)
+
+![Aktionen beim Stapelabschluss](images/de-DE/20-options-fin-de-file.png)
+
+
+## Übertragungen in der Hauptliste vorbereiten {#preparing-transfers}
+
+Wenn keine Arbeit läuft, werden über das Fenster hinzugefügte Dateien (**Dateien hinzufügen…**, **Ordner hinzufügen…** oder Ziehen und Ablegen) analysiert und angezeigt, ohne die Übertragung zu starten. Wählen Sie zuerst Ziel und Optionen, prüfen Sie den Baum und klicken Sie auf **Starten**. Ein separates Simulationsfenster gibt es nicht mehr.
+
+Dieselbe Schaltfläche wechselt zu Alles pausieren und anschließend Warteschlange fortsetzen. Sind bereits Übertragungen freigegeben, werden neue Aufträge automatisch eingereiht. Normales Einfügen und externe Befehle starten automatisch ohne das Hauptfenster zu öffnen; eine abgelehnte externe Anforderung startet keine Vorbereitungen. Bereits wartende Duplikate werden mit einem Hinweis ignoriert.
+
+Während des Kopierens erscheint die Teildatei als `datei.ext.part` am Ziel und erhält nach Erfolg den endgültigen Namen. Bei belegtem Namen wählt Gad einen eindeutigen Zusatz. Unterbrochene Übertragungen können nach Prüfung dieselbe Teildatei fortsetzen. Das Löschen des Verlaufs entfernt die Möglichkeit, fertige Übertragungen wiederherzustellen.
+
+Fehlerbericht und Übertragungsdiagnose sperren ebenfalls das Hauptfenster. **In Liste anzeigen** schließt den Bericht und deaktiviert Suchvorgänge, die die Zielzeile ausblenden. Der Berichtsfilter folgt der gewählten Sprache.
+
+![Übertragungen in der Hauptliste vorbereiten](images/de-DE/22-preparation.png)

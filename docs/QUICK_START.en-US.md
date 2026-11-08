@@ -1,8 +1,22 @@
 # Gad — Quick Start
 
-**Gad, il copie. · Advanced Duplication Manager · Version 0.1.0**
+**Gad, il copie. · Advanced Duplication Manager · Version 0.2.0**
 
 [User Guide](USER_GUIDE.en-US.md) · [Developer Guide](DEVELOPER_GUIDE.en-US.md) · [All languages](README.en-US.md)
+
+## Install Gad
+
+Use the [Gad PPA](https://launchpad.net/~hizo/+archive/ubuntu/gad) for a supported Ubuntu release. [GitHub releases](https://github.com/Hizoka76/gad/releases/latest) also provide a `.deb`, a `.tar.gz` archive containing sources and the compiled program, and the direct `gad-linux-amd64` binary.
+
+```sh
+sudo add-apt-repository ppa:hizo/gad
+sudo apt update
+sudo apt install gad
+```
+
+Check the PPA page for a published package matching your Ubuntu release. If `add-apt-repository` is missing, install `software-properties-common`.
+
+Commands, dependencies and format differences are covered in the [user guide](USER_GUIDE.en-US.md#installation-and-startup).
 
 ## Start Gad
 
@@ -16,18 +30,9 @@ If it is not installed yet, follow the [installation instructions](USER_GUIDE.en
 
 ## Make your first copy
 
-![The Gad window in the light theme](images/en-US/01-vue-ensemble.png)
+![Prepare transfers in the main list](images/en-US/22-preparation.png)
 
-*Source, Destination, and Settings are grouped above the transfer list.*
-
-1. In your file manager, select the files or folders and press **Ctrl+C**.
-2. In Gad, set **Destination** to the existing folder that should receive them.
-3. Click **Paste here**, or press **Ctrl+V inside Gad**.
-4. Check the destination in the list. Transfer work starts automatically unless the queue is paused.
-
-You can also use **Add files…**, **Add folder…**, or drag files into Gad after setting the destination. **Drag-and-drop always copies.** To move files, use **Ctrl+X** followed by pasting, provided the file manager publishes a recognized cut marker. Check the operation shown in the list; see the [other-manager instructions](USER_GUIDE.en-US.md#using-gad-with-other-file-managers) if needed.
-
-Paste again to add another request. Gad queues the work and may run two compatible transfers at once. Duplicate pending operations are ignored.
+Choose the destination and options, then add files in Gad. When idle, review the list and click **Start**. Normal paste starts automatically; additions during a transfer join the queue. **Ctrl+C** copies and **Ctrl+X** moves. Drag and drop into Gad always prepares a copy.
 
 ## Read and control transfers
 
@@ -83,3 +88,21 @@ gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR -
 See the User Guide to protect the regular Dolphin launcher and load the automatic Ctrl+V watchdog.
 
 [Automatic Ctrl+V watchdog](USER_GUIDE.en-US.md#dolphin-watchdog)
+
+
+## Transfer profiles
+
+In **Settings → Profiles**, save all current options under a name, then choose it to apply them in one click. **The destination is never saved or changed.** Global settings, including language and the global speed limit, take their normal effect. **Manage profiles…** supports updating, renaming and deletion. See [transfer profiles](USER_GUIDE.en-US.md#transfer-profiles).
+
+From the command line, `gad --profile "My profile"` applies settings without starting a transfer. Combine it with a copy: `gad --profile "My profile" --copy /path/source --to /path/destination`, or with `--move` / `--paste`. Gad waits for profile application before starting the transfer. The destination comes from the command; explicit options such as `--md5` override the profile. An unknown name returns an error without queuing files. `--configure --profile "My profile"` also accepts additional settings, applied after the profile.
+
+
+## Prepare transfers in the main list
+
+Choose the destination and options, then add files in Gad. When idle, review the list and click **Start**. Normal paste starts automatically; additions during a transfer join the queue. **Ctrl+C** copies and **Ctrl+X** moves. Drag and drop into Gad always prepares a copy.
+
+## Options
+
+**Settings → Options…** opens a modal window: the main window is blocked until it closes, while transfers continue. Settings apply immediately; **Close** or Escape does not undo them. Command-line options appear in gray below each control. Minimum size: **800 × 740**; main window, error report and diagnostics: **1100 × 600**.
+
+The four tabs are **Settings**, **Shortcuts**, **Speed limits** and **Batch completion**. **Speed limits** contains the global cap and the default cap for new requests. To change an existing request, select its rows and choose **right-click → Limit request speed…**. The limit appears in the **Detail** cell, including folders; unlimited transfers have no extra limit text.

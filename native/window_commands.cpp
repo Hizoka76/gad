@@ -92,10 +92,13 @@ void Window::updateRowActions(){
     I18n::bindProperty(rowLaunchFile,"toolTip",[=]{return oneFile?GAD_TR("Opens with the associated application:\n")+locations[0].path:GAD_TR("Select a single file to open it.");});
 }
 
-/// Soumet des chemins ajoutés depuis la fenêtre en utilisant le dossier de destination courant.
+/// Dans une file inactive, les ajouts manuels attendent le contrôle de démarrage.
 QJsonObject Window::enqueue(const QStringList &sources){
     QJsonArray array; for (const auto &source : sources) array.append(source);
-    return handle({{"command", Protocol::Command::Enqueue}, {"sources", array}, {"destination", destination->text()}});
+    bool active=false;for(const auto &value:state["jobs"].toArray()){const auto job=value.toObject();active|=!job["start_required"].toBool() && !finished(job["state"].toString()) && !job["cancel"].toBool();}
+    // Capturer cette intention avant une éventuelle attente de montage distant.
+    for(const auto &request:sourceQueue)active|=!request["prepare_only"].toBool();
+    auto result=handle({{"command", Protocol::Command::Enqueue}, {"sources", array}, {"destination", destination->text()},{"prepare_only",!active}});refresh();return result;
 }
 
 /// Lit le presse-papiers immédiatement et conserve le mode Copier/Couper ainsi que le lancement en arrière-plan.
@@ -110,6 +113,7 @@ QJsonObject Window::pasteInto(const QString &path, bool background){
 
 /// Affiche une erreur sans bloquer la réponse JSON au client ni la préparation des lots suivants.
 QJsonObject Window::error(const QString &text){
+    if(!completionExecuting)cancelCompletion();
     auto *dialog=new QMessageBox(QMessageBox::Warning,"Gad",I18n::message(text),QMessageBox::Ok,this);
     I18n::bindProperty(dialog,"text",[text]{return I18n::message(text);});
     dialog->setObjectName("errorDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);
@@ -180,11 +184,65 @@ void Window::configureDolphin(bool enabled,std::function<void(QJsonObject)> repl
     process->start(python,{script,enabled?"--enable-ctrl-v":"--disable-ctrl-v"});timeout->start(8000);
 }
 
+/// Configure l’action utilisateur Krusader sans bloquer les transferts.
+void Window::configureKrusader(bool enabled,std::function<void(QJsonObject)> reply) {
+    auto *check=findChild<QCheckBox *>("krusaderShortcut");
+    if(check->property("configuring").toBool()){reply({{"error","Krusader shortcut configuration is already running."}});return;}
+    auto script=QStandardPaths::locate(QStandardPaths::GenericDataLocation,"gad/integration/krusader_shortcut.py");
+    if(script.isEmpty() && QStringList{"debug","release"}.contains(QFileInfo(QCoreApplication::applicationDirPath()).fileName()))script=QCoreApplication::applicationDirPath()+"/../../scripts/krusader_shortcut.py";
+    const auto python=QStandardPaths::findExecutable("python3");
+    if(script.isEmpty() || python.isEmpty()){reply({{"error",GAD_TR("Unable to change the Krusader shortcut.")}});return;}
+    const auto old=check->isChecked();
+    check->setProperty("configuring",true);check->setEnabled(false);
+    auto *process=new QProcess(this);auto *timeout=new QTimer(process);timeout->setSingleShot(true);
+    connect(timeout,&QTimer::timeout,process,[process]{process->kill();});
+    const auto finish=[check,process,enabled,old,reply](bool success){
+        if(process->property("finishedSettings").toBool())return;
+        process->setProperty("finishedSettings",true);check->setProperty("configuring",false);check->setEnabled(true);
+        {QSignalBlocker blocker(check);check->setChecked(success?enabled:old);}
+        const auto detail=QString::fromUtf8(process->readAllStandardError()).trimmed();
+        reply(success?QJsonObject{{"ok",true}}:QJsonObject{{"error",detail.isEmpty()?GAD_TR("Unable to change the Krusader shortcut."):detail}});
+        process->deleteLater();
+    };
+    connect(process,&QProcess::finished,this,[finish](int code,QProcess::ExitStatus status){finish(code==0 && status==QProcess::NormalExit);});
+    connect(process,&QProcess::errorOccurred,this,[finish](QProcess::ProcessError error){if(error==QProcess::FailedToStart)finish(false);});
+    process->start(python,{script,enabled?"--enable-ctrl-v":"--disable-ctrl-v","--binary",QCoreApplication::applicationFilePath()});timeout->start(8000);
+}
+
 void Window::handleAsync(QJsonObject request,std::function<void(QJsonObject)> reply) {
+    if(completionExecuting && (request["command"]==Protocol::Command::Configure || request["command"]==Protocol::Command::Enqueue || request["command"]==Protocol::Command::StartPrepared || request["command"]==Protocol::Command::Paste)){reply({{"error",GAD_TR("A completion action is being dispatched; no operation was added")}});return;}
+    if(request.contains("profile")) {
+        const auto name=request.take("profile");
+        if(!name.isString() || name.toString().trimmed().isEmpty() || name.toString().size()>100){reply({{"error",GAD_TR("Enter a profile name (up to 100 characters).")}});return;}
+        if(!QStringList{Protocol::Command::Configure,Protocol::Command::Enqueue,Protocol::Command::Paste,Protocol::Command::Background}.contains(request["command"].toString())){reply({{"error",GAD_TR("Invalid request")}});return;}
+        if(request["command"]==Protocol::Command::Paste){const auto files=Clipboard::current();if(!files.error.isEmpty()){reply({{"error",files.error}});return;}const auto context=request.value("destination_context");auto paste=Clipboard::request(files,request["destination"].toString());if(context.isArray())paste["destination_context"]=context;paste["background"]=true;request=paste;}
+        QString failure;const auto profiles=TransferProfiles::load(failure);if(!failure.isEmpty()){reply({{"error",failure}});return;}
+        const auto key=TransferProfiles::nameKey(name.toString().trimmed());
+        for(const auto &profile:profiles)if(TransferProfiles::nameKey(profile.name)==key){
+            applyTransferProfile(profile.id,[this,request,reply](QJsonObject result){if(result.contains("error") || (request["command"]==Protocol::Command::Configure && request.size()==1)){reply(result);return;}handleAsync(request,reply);});return;
+        }
+        reply({{"error",GAD_TR("Transfer profile not found.")},{"profile",name}});return;
+    }
+    if(profileApplying && !profileCommitting && request["command"]==Protocol::Command::Configure){reply({{"error",GAD_TR("A transfer profile is already being applied.")}});return;}
+    // Le même scan reçu par la socket reste asynchrone, comme celui de la fenêtre.
+    if(request["command"]==Protocol::Command::Simulate) {
+        auto result=std::make_shared<QJsonObject>();auto *worker=QThread::create([request,result]{*result=engine(request);});
+        connect(worker,&QThread::finished,this,[reply,result]{reply(*result);});
+        connect(worker,&QThread::finished,worker,&QObject::deleteLater);worker->start();return;
+    }
     auto gui=request["gui_settings"].toObject();
+    if(gui.contains("completion_action") && (!gui["completion_action"].isString() || !Completion::validAction(gui["completion_action"].toString()))){reply({{"error",GAD_TR("Invalid completion action")}});return;}
+    if(gui.contains("completion_delay") && !Completion::validDelay(gui["completion_delay"])){reply({{"error",GAD_TR("Invalid countdown: use 5 to 3600 whole seconds.")}});return;}
+
+    if(request["command"]==Protocol::Command::Configure && gui.contains("krusader_ctrl_v")) {
+        if(!gui["krusader_ctrl_v"].isBool()){reply({{"error",GAD_TR("Invalid transfer profile settings.")}});return;}
+        const bool enabled=gui.take("krusader_ctrl_v").toBool();request["gui_settings"]=gui;
+        configureKrusader(enabled,[this,request,reply](QJsonObject result){if(result.contains("error") || (request.size()==2 && request["gui_settings"].toObject().isEmpty())){reply(result);return;}handleAsync(request,reply);});return;
+    }
     if(request["command"]!=Protocol::Command::Configure || !gui.contains("dolphin_ctrl_v")){reply(handle(request));return;}
     if(gui.contains("language") && findChild<QComboBox *>("languageSelector")->findData(gui["language"].toString())<0){reply({{"error","Unknown language: "+gui["language"].toString()}});return;}
     const bool enabled=gui.take("dolphin_ctrl_v").toBool();request["gui_settings"]=gui;
+    if(gui.contains("request_rate_limit") && !TransferProfiles::validRate(gui["request_rate_limit"])) {reply({{"error",GAD_TR("Invalid transfer profile settings.")}});return;}
     configureDolphin(enabled,[this,request,reply](QJsonObject result){
         if(result.contains("error")){reply(result);return;}
         if(request.size()==2 && request["gui_settings"].toObject().isEmpty()){reply(result);return;}
@@ -195,8 +253,19 @@ void Window::handleAsync(QJsonObject request,std::function<void(QJsonObject)> re
 /// Traite les commandes d’interface avant délégation au moteur ; un collage en arrière-plan ne relève pas la fenêtre.
 QJsonObject Window::handle(QJsonObject request){
     const auto command = request["command"].toString();
+    if(completionExecuting && (command==Protocol::Command::Enqueue || command==Protocol::Command::StartPrepared || command==Protocol::Command::Paste || command==Protocol::Command::Configure))return {{"error",GAD_TR("A completion action is being dispatched; no operation was added")}};
+    if(command==Protocol::Command::Enqueue && completionPlan.counting){completionPlan.counting=false;if(auto *dialog=findChild<QDialog *>("completionCountdown")){dialog->setObjectName("completionCountdownClosed");dialog->accept();}}
+
+    if(request.contains("conflict_policy") && (!request["conflict_policy"].isString() || !QStringList{"ask","skip","newer","rename"}.contains(request["conflict_policy"].toString())))return {{"error","Invalid conflict policy"}};
+    if(request.contains("verify_fast_move") && !request["verify_fast_move"].isBool())return {{"error","Invalid fast-move verification option"}};
+    if(request.contains("profile"))return {{"error",GAD_TR("Invalid request")}};
     const auto gui=request.take("gui_settings").toObject();
+    if(gui.contains("completion_action") && (!gui["completion_action"].isString() || !Completion::validAction(gui["completion_action"].toString())))return {{"error",GAD_TR("Invalid completion action")}};
+    if(gui.contains("completion_delay") && !Completion::validDelay(gui["completion_delay"]))return {{"error",GAD_TR("Invalid countdown: use 5 to 3600 whole seconds.")}};
+
+    if(profileApplying && !profileCommitting && (command==Protocol::Command::Configure || command==Protocol::Command::Shutdown))return {{"error",GAD_TR("A transfer profile is already being applied.")}};
     if(command==Protocol::Command::Configure) {
+        if(gui.contains("request_rate_limit") && !TransferProfiles::validRate(gui["request_rate_limit"]))return {{"error",GAD_TR("Invalid transfer profile settings.")}};
         if(gui.contains("language")) {
             const auto locale=gui["language"].toString();auto *selector=findChild<QComboBox *>("languageSelector");
             if(selector->findData(locale)<0)return {{"error","Unknown language: "+locale}};
@@ -227,6 +296,9 @@ QJsonObject Window::handle(QJsonObject request){
         if(!invalid.isEmpty())return error(invalid);
         request["destination"]=path;
     }
+    if(command==Protocol::Command::Enqueue && !request.contains("conflict_policy"))request["conflict_policy"]=conflictPolicy->currentData().toString();
+    if(command==Protocol::Command::Enqueue && !request.contains("rate_limit"))request["rate_limit"]=qRound64(requestRate->value()*1048576);
+    if(command==Protocol::Command::Enqueue && !request.contains("verify_fast_move"))request["verify_fast_move"]=verifyFastMove->isChecked();
     if (command == Protocol::Command::Enqueue && !request.contains("verify_md5")) request["verify_md5"] = verifyMd5->isChecked();
     if(command==Protocol::Command::Enqueue && !request.contains("allow_duplication"))request["allow_duplication"]=allowDuplication->isChecked();
     if(command==Protocol::Command::Enqueue && !request.contains("exclusions"))request["exclusions"]=exclusionRules;
@@ -235,13 +307,27 @@ QJsonObject Window::handle(QJsonObject request){
     if(command== Protocol::Command::Enqueue && !request.take("_sources_resolved").toBool() && (resolvingSources || SourceUrls::needsResolution(request))) {
         sourceQueue.enqueue(request);
         if(!resolvingSources)resolveNextSources();
+        // Le montage n’a pas encore de lot moteur : activer immédiatement les
+        // commandes de file, sans attendre le prochain rafraîchissement périodique.
+        refresh();
         return {{"ok",true},{"preparing",true}};
     }
 
     auto result = command==Protocol::Command::Configure && request.size()==1 && !gui.isEmpty()?QJsonObject{{"ok",true}}:engine(request);
+    if(command==Protocol::Command::Enqueue && result.contains("error"))cancelCompletion();
     if(!result.contains("error") && (command== Protocol::Command::CancelAll || command== Protocol::Command::UndoAll))
         result["cancelled_preparations"]=cancelSourcePreparation();
     if (command == Protocol::Command::Configure && !result.contains("error")) {
+        if(gui.contains("completion_action") || gui.contains("completion_delay")){
+            cancelCompletion();QSignalBlocker action(completionAction),delay(completionDelay);
+            if(gui.contains("completion_action")){completionAction->setCurrentIndex(completionAction->findData(gui["completion_action"].toString()));QSettings().setValue("completionAction",gui["completion_action"].toString());}
+            if(gui.contains("completion_delay")){completionDelay->setValue(gui["completion_delay"].toInt());QSettings().setValue("completionDelay",gui["completion_delay"].toInt());}
+            updateCompletionControls();
+        }
+
+        if(request.contains("verify_fast_move")){QSignalBlocker blocker(verifyFastMove);verifyFastMove->setChecked(request["verify_fast_move"].toBool());QSettings().setValue("verifyFastMove",verifyFastMove->isChecked());}
+        if(request.contains("conflict_policy")){QSignalBlocker blocker(conflictPolicy);conflictPolicy->setCurrentIndex(conflictPolicy->findData(request["conflict_policy"].toString()));QSettings().setValue("conflictPolicy",request["conflict_policy"].toString());}
+        if(gui.contains("request_rate_limit")){QSignalBlocker blocker(requestRate);const auto bytes=gui["request_rate_limit"].toInteger();requestRate->setValue(bytes/1048576.0);QSettings().setValue("requestRateLimit",bytes);}
         if(request.contains("allow_duplication")){QSignalBlocker blocker(allowDuplication);allowDuplication->setChecked(request["allow_duplication"].toBool());QSettings().setValue("allowDuplication",allowDuplication->isChecked());}
         if(request.contains("exclusions")) {
             const auto supplied=request["exclusions"].toObject();
@@ -263,14 +349,14 @@ QJsonObject Window::handle(QJsonObject request){
         if(gui.contains("konqueror_ctrl_v")) {
             const auto enabled=gui["konqueror_ctrl_v"].toBool();auto *check=findChild<QCheckBox *>("konquerorShortcut");QSignalBlocker blocker(check);check->setChecked(enabled);QSettings().setValue("konquerorCtrlV",enabled);
         }
-        if(gui.contains("language")){auto *selector=findChild<QComboBox *>("languageSelector");selector->setCurrentIndex(selector->findData(gui["language"].toString()));}
+        if(gui.contains("language")){auto *selector=findChild<QComboBox *>("languageSelector");const auto locale=gui["language"].toString();const auto index=selector->findData(locale);if(selector->currentIndex()==index){QSettings().setValue("language",locale);I18n::initialize(locale);}else selector->setCurrentIndex(index);}
     }
     if (command == Protocol::Command::Enqueue) {
         if (!request["background"].toBool()) { showMainWindow(); }
         if (result.contains("error")) error(result["error"].toString());
         else {
             destination->setText(request.contains("destination_url")?request["destination_url"].toString():request["destination"].toString());
-            if (!isVisible() || isMinimized()) {
+            if (!request["prepare_only"].toBool() && (!isVisible() || isMinimized())) {
                 desktopTransfers->begin(result["id"].toInteger());
             }
         }

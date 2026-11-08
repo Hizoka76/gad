@@ -16,6 +16,9 @@ Gad regroupe les copies et déplacements de fichiers dans une fenêtre native po
 - Reprise partielle, attente de reconnexion et réessai ciblé des fichiers en erreur.
 - Sources et destinations locales ou distantes via KIO Fuse : KDE Connect, FTP, SFTP et SMB.
 
+
+**0.2.0** — Choisissez la destination et les options, puis ajoutez vos fichiers dans Gad. Lorsque rien n’est en cours, vérifiez la liste et cliquez sur **Démarrer**. Un collage habituel démarre automatiquement ; les ajouts pendant un transfert rejoignent sa file. **Ctrl+C** copie, **Ctrl+X** déplace. Le glisser-déposer dans Gad prépare toujours une copie.
+
 ## Documentation
 
 Le README sert de point d’entrée. Les explications complètes et les limites de chaque fonction sont dans les guides, pour éviter de maintenir deux descriptions concurrentes.
@@ -30,7 +33,54 @@ Le README sert de point d’entrée. Les explications complètes et les limites 
 
 ## Installer et lancer
 
-Sous Linux, prévoir Rust/Cargo, un compilateur C++17, `pkg-config`, Qt 6 Widgets/Network/DBus, les outils Qt, KF6 WindowSystem et Python 3. Sous Wayland, installer `wl-clipboard` ; les adresses distantes demandent KIO Fuse. Les détails sont dans le [guide développeur](docs/GUIDE_DEVELOPPEUR.md#compilation).
+### PPA Ubuntu
+
+Le [PPA Gad](https://launchpad.net/~hizo/+archive/ubuntu/gad) permet d’installer Gad et de recevoir ses mises à jour via APT :
+
+```sh
+sudo add-apt-repository ppa:hizo/gad
+sudo apt update
+sudo apt install gad
+```
+
+Vérifiez sur la page du PPA qu’un paquet est publié pour votre version d’Ubuntu. Si `add-apt-repository` est absent, installez `software-properties-common`.
+
+### Téléchargements précompilés
+
+Les [releases GitHub](https://github.com/Hizoka76/gad/releases/latest) proposent plusieurs formats. Remplacez les noms d’exemple ci-dessous par ceux des fichiers téléchargés.
+
+#### Paquet Debian `.deb`
+
+Téléchargez le paquet adapté à votre architecture, puis installez-le avec APT pour résoudre les dépendances disponibles dans vos dépôts :
+
+```sh
+sudo apt install ./gad_VERSION_amd64.deb
+```
+
+#### Archive `.tar.gz` : sources et binaire compilé
+
+L’archive `gad-VERSION-linux-amd64.tar.gz` contient le code source, les dépendances Rust embarquées, la documentation et le programme déjà compilé dans `prebuilt/`. Aucune compilation n’est nécessaire pour lancer ce programme :
+
+```sh
+tar -xzf gad-VERSION-linux-amd64.tar.gz
+cd gad-VERSION
+./prebuilt/usr/bin/gad
+```
+
+#### Exécutable direct
+
+Le fichier `gad-linux-amd64` est également un binaire déjà compilé :
+
+```sh
+chmod +x gad-linux-amd64
+./gad-linux-amd64
+```
+
+Les téléchargements Linux amd64 visent les processeurs x86-64. Le binaire direct n’installe ni lanceur ni module Dolphin ; le `.deb` et l’archive contiennent les fichiers d’intégration distribués avec la version. Ces binaires ne sont pas autonomes : Qt/KF6 restent nécessaires, avec les versions indiquées dans les notes de release. Une release correspond à son tag et peut être plus ancienne que le code actuel du dépôt.
+
+### Depuis les sources
+
+Sous Linux, prévoir Rust/Cargo, un compilateur C++17, `pkg-config`, Qt 6 Widgets/Network/DBus, les outils Qt, KF6 WindowSystem/XmlGui, CMake et Python 3. Sous Wayland, installer `wl-clipboard` ; les adresses distantes demandent KIO Fuse. Les détails sont dans le [guide développeur](docs/GUIDE_DEVELOPPEUR.md#compilation).
 
 ```bash
 python3 scripts/install.py

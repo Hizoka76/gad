@@ -1,6 +1,6 @@
 # Gad — Guia de desenvolvimento {#gad-developer-guide}
 
-Versão documentada: **0.1.0**, protocolo **22**, 6 de novembro de 2026.
+Versão documentada: **0.2.0**, protocolo **33**, 8 de novembro de 2026.
 
 Gad significa **Gestionnaire Avancé de Duplication**; o seu slogan é **Gad, il copie.** Este guia descreve a implementação neste repositório. O código permanece oficial para os campos exatos e padrões.
 
@@ -74,7 +74,9 @@ KIO Fuse expõe os endpoints remotos como caminhos montados; o motor Rust ainda 
 
 ## Compilação {#building}
 
-Os requisitos incluem o Rust/Cargo, um compilador C++ 17, `pkg-config`, Python 3, Qt 6 Widgets/Network/DBus e as suas ferramentas `moc`, `rcc` e `qmake6`, bem como o KF6 WindowSystem. Os testes Qt também requerem o teste Qt e `dbus-run-session`. O acesso à área de transferência do Wayland utiliza o `wl-clipboard`; endpoints remotos requerem fusível KIO. As dependências Rust estão bloqueadas em `Cargo.lock`.
+Para instalar uma versão compilada, utilize o [PPA do Gad](https://launchpad.net/~hizo/+archive/ubuntu/gad) ou as [versões do GitHub](https://github.com/Hizoka76/gad/releases/latest): pacote `.deb`, arquivo com fontes e binário em `prebuilt/`, ou executável direto. Consulte as [instruções de instalação](USER_GUIDE.pt-PT.md#installation-and-startup). Os passos de compilação seguintes destinam-se ao desenvolvimento e à instalação a partir das fontes.
+
+Os requisitos incluem o Rust/Cargo, um compilador C++ 17, `pkg-config`, Python 3, Qt 6 Widgets/Network/DBus e as suas ferramentas `moc`, `rcc` e `qmake6`, bem como o KF6 WindowSystem/XmlGui, CMake. Os testes Qt também requerem o teste Qt e `dbus-run-session`. O acesso à área de transferência do Wayland utiliza o `wl-clipboard`; endpoints remotos requerem fusível KIO. As dependências Rust estão bloqueadas em `Cargo.lock`.
 
 ```bash
 cargo build --locked
@@ -96,7 +98,7 @@ Os argumentos tornam-se um comando, com área de transferência e processamento 
 
 O socket é `gad.sock` no diretório de tempo de execução do utilizador. Os pedidos são JSON terminados em nova linha, uma resposta por ligação, com um limite de pedidos de entrada de 16 MiB e acesso apenas do utilizador. `--status` sem instância deve falhar em vez de iniciar um motor gráfico.
 
-Apenas as próprias definições e localizações do diário do Gad são utilizadas. A versão atual do protocolo é **22**. As verificações de capacidade/versão evitam o envio silencioso de um pedido de movimentação, endpoint remoto ou verificação para uma instância mais antiga que não o consegue implementar. Um executável recém-instalado pode ainda entrar em contacto com um processo mais antigo; atualizar uma instância ociosa através do encerramento normal.
+Apenas as próprias definições e localizações do diário do Gad são utilizadas. A versão atual do protocolo é **33**. As verificações de capacidade/versão evitam o envio silencioso de um pedido de movimentação, endpoint remoto ou verificação para uma instância mais antiga que não o consegue implementar. Um executável recém-instalado pode ainda entrar em contacto com um processo mais antigo; atualizar uma instância ociosa através do encerramento normal.
 
 ```bash
 gad
@@ -220,7 +222,7 @@ A pausa é também uma sobreposição de apresentação/controlo e não é um no
 
 ## Cópia de ficheiros e publicação do resultado {#file-copy-and-publication}
 
-Para um ficheiro normal, verifique novamente os controlos e a disponibilidade de montagem, valide os pais de destino, resolva conflitos, reserve o nome de destino e aloque um ficheiro `.gad-…part` privado no diretório de destino. Utilize a criação exclusiva e permissões iniciais restritivas. As fontes são abertas sem seguir o seu link simbólico final e são verificadas em relação às identidades digitalizadas.
+Para um ficheiro normal, verifique novamente os controlos e a disponibilidade de montagem, valide os pais de destino, resolva conflitos, reserve o nome de destino e aloque um ficheiro `file.ext.part` privado no diretório de destino. Utilize a criação exclusiva e permissões iniciais restritivas. As fontes são abertas sem seguir o seu link simbólico final e são verificadas em relação às identidades digitalizadas.
 
 O buffer de cópia é **64 KiB** e pode ser escrito em frações concedidas mais pequenas quando a taxa é limitada. O progresso avança em bytes escritos reais. Um resumo MD5 incremental é mantido mesmo sem a verificação MD5 independente porque o desfazer utiliza evidência de conteúdo.
 
@@ -296,7 +298,7 @@ Ao carregar o trabalho interrompido, o motor classifica cópias não concluídas
 
 `Job.resume_enabled` captura a preferência automática de recuperação de falhas; `resume_pending` marca trabalho interrompido recuperável. A reconexão local de sessão ainda cria pontos de verificação quando essa preferência está desligada. Faltam campos antigos de forma conservadora.
 
-A recuperação requer um `.gad-…part` privado esperado no pai correto, sem um link simbólico ou links rígidos extras, combinando o dispositivo salvo e o inode. Verifique também descritores abertos. Compare os prefixos fonte e temporário bloco por bloco, verifique o hash gravado e as versões novamente, e só então truncar bytes de rastreamento não confirmados e reposicionar ambos os fluxos. Reconstrua o contexto incremental MD5 e mantenha o inode temporário.
+A recuperação requer um `file.ext.part` privado esperado no pai correto, sem um link simbólico ou links rígidos extras, combinando o dispositivo salvo e o inode. Verifique também descritores abertos. Compare os prefixos fonte e temporário bloco por bloco, verifique o hash gravado e as versões novamente, e só então truncar bytes de rastreamento não confirmados e reposicionar ambos os fluxos. Reconstrua o contexto incremental MD5 e mantenha o inode temporário.
 
 `resume_checking`, `resume_checked` e `resumed_from` descrevem a validação e o progresso do reinício. Uma permissão de leitura previamente aplicada só é ajustada apenas em um temporário validado. Remova o registro do currículo antes da publicação final e da transição para o diário de desfazer comum. O MD5 independente final ainda é executado quando solicitado.
 
@@ -352,7 +354,7 @@ O `window_errors.cpp` é um instantâneo não- modal, explicitamente atualizado,
 
 ## Referência do protocolo {#protocol-reference}
 
-`native/protocol.def` é o vocabulário compartilhado; estruturas e validadores Rust definem contratos exatos. A versão atual é **22**. Os comandos específicos da GUI são roteados por Qt e os comandos do motor por Rust.
+`native/protocol.def` é o vocabulário compartilhado; estruturas e validadores Rust definem contratos exatos. A versão atual é **33**. Os comandos específicos da GUI são roteados por Qt e os comandos do motor por Rust.
 
 | Comando | Parâmetros principais | Comportamento |
 |---|---|---|
@@ -445,7 +447,7 @@ Depois de adicionar strings de exibição, execute `make translations` para sinc
 
 ## Ferramentas da documentação {#documentation-tooling}
 
-A raiz do README é um ponto de entrada curto; guias detalhados são mantidos aqui. A documentação abrange seis idiomas. Cada edição inclui Início Rápido, Guia do utilizador, Guia do Desenvolvedor e 14 capturas de ecrã de sua própria interface no tema de luz. Os diagramas de arquitetura e ciclo de vida têm etiquetas localizadas.
+A raiz do README é um ponto de entrada curto; guias detalhados são mantidos aqui. A documentação abrange seis idiomas. Cada edição inclui Início Rápido, Guia do utilizador, Guia do Desenvolvedor e 20 capturas de ecrã de sua própria interface no tema de luz. Os diagramas de arquitetura e ciclo de vida têm etiquetas localizadas.
 
 O `doc_catalog.py` identifica a língua e o público de cada fonte. O `build_docs.py` gera capas corretas para o idioma, switches de linguagem de mesma audiência, links/fragmentos relativos e imagens incorporadas offline. O inglês PDFs usa a Carta dos EUA; outros PDFs usam o A4. O `check_docs.py` valida todos os links README/testing/guide, captura, metadados de linguagem e todas as 36 exportações HTML/PDF.
 
@@ -517,7 +519,11 @@ O `native/konqueror/paste_filter.h` lida apenas com Ctrl+V numa vista com uma UR
 
 ## Diálogo de definições {#settings-menu}
 
-`Window` mantém um único `QDialog` não modal, chamado `settingsDialog`, com um `QTabWidget` para definições e atalhos. `settingsPanel` permite deslocamento; os controlos, ligações, traduções e valores são conservados entre aberturas. Fechar e Esc ocultam o diálogo. Os diálogos de exclusões e velocidade utilizam-no como pai quando está visível. Os mínimos são 800 × 740 para opções e 1100 × 600 para a janela principal e o relatório de erros. `settingsRequestRate` pertence à barra de ações principal e acompanha a seleção da árvore.
+**Definições → Opções…** abre uma janela modal que bloqueia a janela principal enquanto as transferências continuam. As alterações aplicam-se imediatamente; **Fechar** ou Esc não as anula. Os parâmetros de comando aparecem a cinzento. Tamanho mínimo: **800 × 740**; janela principal, relatório de erros e diagnóstico: **1100 × 600**.
+
+Os quatro separadores são **Definições**, **Atalhos**, **Limites de velocidade** e **Fim do lote**. Os limites incluem o global e o predefinido para novos pedidos. Para alterar um pedido existente, selecione as linhas e utilize **botão direito → Limitar a velocidade da solicitação…**. O limite aparece em **Detalhe**, incluindo nas pastas; sem limite não é acrescentado texto.
+
+`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`. `rowRateLimit` → `Window::showRateLimit`.
 
 Os comandos e a caixa do Dolphin partilham `Window::configureDolphin`. Executa o componente privado `gad/integration/dolphin_shortcut.py` com Python e QProcess sem bloquear transferências. O registo permanece em `gad/dolphin-paste.json`. O prazo máximo é de oito segundos; uma falha repõe a caixa e devolve um erro ao cliente. `Window::handleAsync` aguarda o resultado antes de responder por IPC. O Konqueror mantém `konquerorCtrlV`, lido pelo módulo em cada Ctrl+V. Não é instalado nenhum comando público separado.
 
@@ -546,3 +552,70 @@ make test-dolphin-watchdog-real
 `undo::Stamp` verifica permissões e guarda proprietário/grupo opcionais. `undo::Record.backup_ctime` é capturado após renomear a cópia de segurança e registado antes da publicação. A verificação prévia valida todas as entradas selecionadas, os ascendentes existentes, as cópias de segurança e as origens já restauradas. Um resultado movido ausente bloqueia a operação antes de modificar os restantes. O conteúdo restaurado é comparado com o digest registado antes de eliminar o resultado. Os novos campos são opcionais para registos antigos.
 
 `src/engine/tests/integrity.rs` cobre alterações com tamanho/mtime preservados, substituição de caminhos, cópias e movimentos sem MD5, cópias de segurança alteradas, permissões, restauros interrompidos e registos antigos. Estas verificações reduzem as condições de corrida habituais sem isolar modificações simultâneas dos caminhos.
+
+## Perfis de transferência {#transfer-profiles}
+
+O esquema QSettings `transferProfiles` versão 5 separa `options`, `gui` e `request_rate_limit`, sem destino. Ao carregar a versão 1, preserva as opções existentes, completa as ausentes com as preferências atuais e remove o destino antes de guardar a versão 5. Documentos inválidos ou desconhecidos mantêm-se intactos.
+
+`currentTransferProfile` captura todos os controlos. A aplicação valida o idioma, prepara o atalho Dolphin de forma assíncrona, guarda a entrada exata de arranque e aplica a configuração interna. Se falhar, tenta repor configuração, arranque e atalhos; comunica uma reposição incompleta. Alterações concorrentes de configuração e a saída são bloqueadas durante a operação. Os perfis nunca iniciam transferências. O protocolo do motor mantém-se em 32.
+
+Os testes Qt cobrem migração, remoção do destino, todas as opções, falhas externas e do motor, reposição do arranque, concorrência, idiomas ausentes e persistência.
+
+Na linha de comandos, `gad --profile "Meu perfil"` aplica as definições sem iniciar uma transferência. Para copiar: `gad --profile "Meu perfil" --copy /caminho/origem --to /caminho/destino`; também funciona com `--move` / `--paste`. Gad aguarda a aplicação do perfil. O destino vem do comando e as opções explícitas, como `--md5`, têm prioridade. Um nome desconhecido devolve um erro sem colocar ficheiros em fila. `--configure --profile "Meu perfil"` aceita definições adicionais, aplicadas após o perfil.
+
+## Políticas de conflitos nos perfis
+
+Em **Opções → Conflitos de ficheiros**, escolha **Perguntar**, **Ignorar ficheiros existentes**, **Substituir apenas ficheiros mais antigos** ou **Manter ambos os ficheiros**. Guarde ou atualize o perfil. Os pedidos existentes mantêm a sua política.
+
+Só são substituídos destinos com data de modificação estritamente anterior à da origem; datas iguais ou posteriores são ignoradas. Datas ilegíveis e ligações simbólicas causam um erro sem substituição: altere a política e tente novamente. A fiabilidade das datas depende do sistema de ficheiros ou serviço remoto. As pastas existentes são unidas e a política aplica-se aos conflitos interiores. Manter ambos acrescenta um sufixo numerado. Os ficheiros ignorados ficam na origem ao mover; as substituições permitem restauração.
+
+Comando: `gad --configure --conflict-policy newer`. Os perfis antigos são migrados para **Perguntar**, sem destino.
+
+`conflict_policy` (protocolo 27) é capturado em `Job.policy`. `src/engine/conflicts.rs` valida as políticas e compara datas sem seguir ligações simbólicas. O esquema 3 de perfis migra versões anteriores para `ask`.
+
+## Pesquisar no histórico guardado
+
+Clique em **Pesquisar no histórico** ou prima **Ctrl+F**. Introduza um nome ou parte do caminho de origem/destino, incluindo URL remotos. As palavras combinam-se com E, sem distinguir maiúsculas e sem expressões regulares. Escolha um estado do lote e ative **Adicionado entre** para filtrar a data de adição, com datas locais inclusivas.
+
+**Apenas histórico** mostra lotes concluídos, cancelados, restaurados ou com erro; desmarque para incluir pedidos ativos. Os filtros de colunas combinam-se com a pesquisa. As pastas ascendentes dos resultados continuam visíveis. **Repor pesquisa** limpa os seus critérios sem alterar os filtros de colunas; fechar a barra ou premir **Escape** desativa apenas esta pesquisa. A fila e as prioridades não mudam.
+
+A dica da coluna de ordem mostra a data de adição. Operações antigas sem data são identificadas e continuam pesquisáveis sem filtro de data. É necessário manter o histórico: operações apagadas já não podem ser encontradas.
+
+`Job.created_at` → Unix UTC, `0` = ?; `HistorySearch::Query` → `TableView::Settings` → `TransferTree::setHistorySearch`; `native/window_history.cpp` → Ctrl+F, Escape, 150 ms.
+
+## Diagnóstico de transferências
+
+O botão **Diagnóstico de transferências…**, no rodapé, abre uma vista não modal dos pedidos ativos e em espera. Mostra o estado, a atividade ou espera observada, os limites globais e por pedido, a velocidade e o tempo restante. Os números dos lotes bloqueadores correspondem à lista principal.
+
+As causas distinguem pausas, análise da origem, conflitos pendentes, dispositivos ou montagens remotas indisponíveis, verificação MD5, verificação do prefixo de retoma, mudança de nome local, restauração exclusiva, dois trabalhadores ocupados, prioridade de linhas, discos partilhados ou caminhos sobrepostos e execução em série quando os recursos são desconhecidos.
+
+Uma espera de orçamento de velocidade só é indicada se o limitador a observou no último segundo. Um limite configurado não prova uma lentidão. Após cinco segundos sem progresso de bytes durante uma cópia ou MD5, fora das esperas pelo limite, o Gad informa dessa ausência de progresso: as operações de ficheiros ou a finalização podem estar em espera, mas não permitem identificar um limite concreto do disco ou da rede. Não são testes de desempenho e não são guardados no histórico. Fechar a janela não altera as transferências.
+
+`src/engine/diagnostics.rs` → `status` / `poll` (`diagnostics`, protocol 29); `rate::Limiter::waiting` → 1 s. `QueueSnapshot` → `TransferDiagnostics::Tracker` → `window_diagnostics.cpp`.
+
+## Verificar movimentos rápidos
+
+Em **Opções**, marque **Verificar movimentos rápidos**. Está desativado por predefinição, é guardado nos perfis e capturado por novo pedido. Após uma mudança de nome local, o Gad verifica identidade (dispositivo/inode), tipo, tamanho, data de modificação, permissões, proprietário/grupo, destinos de ligações e árvore exata, além do desaparecimento do caminho original. Aceita alterações legítimas de ctime da raiz renomeada; os descendentes devem conservá-lo.
+
+O detalhe indica **Movimento rápido verificado** no fim. O diagnóstico distingue esta fase de MD5. Diferenças, elementos adicionados ou em falta, um caminho original recriado ou erros de leitura fazem falhar o lote e identificam o caminho verificado. O resultado movido e o diário são mantidos, sem restauração automática que substitua ficheiros modificados. Pausar ou cancelar não elimina o resultado já movido.
+
+Verifica metadados, não o conteúdo; não substitui uma comparação criptográfica. MD5 continua separado e obriga a copiar/verificar/eliminar. Cópias normais não recebem um falso resultado de verificação rápida. Perfis antigos migram com a opção desativada. Comando: `gad --configure --verify-fast-move`; desativar: `--no-verify-fast-move`.
+
+`verify_fast_move` (30) → `fast_verify.rs` → `Entry.fast_move_check`; `TransferProfiles` → schema 4.
+
+## Ações de fim de fila
+
+Em **Opções → Fim de fila**, escolha notificar, fechar o Gad, suspender ou desligar, com **5 a 3600 segundos** (30 por predefinição). Os perfis guardam as preferências mas nunca ativam a ação. Abra **Quando a fila terminar…**: escolher uma ação ativa-a para uma única fila; **Ativar uma vez a ação guardada** usa as definições atuais. O botão indica que está ativa. **Não fazer nada** ou **Cancelar ação de fim de fila** desativa-a.
+
+Com a fila vazia, aguarda um novo pedido; o histórico não desencadeia a ação. A contagem começa após o êxito de todos os pedidos, preparações remotas e gravações finais. Erros, cancelamentos, restaurações ou pedidos removidos desativam a ação. Novos pedidos, mesmo muito rápidos, reiniciam o prazo completo após terminar. Uma pausa impede o envio.
+
+O diálogo mostra a ação e o tempo restante. **Cancelar ação** ou fechar o diálogo desativa sem alterar transferências. Uma notificação reabre o Gad se estiver oculto. A zero, uma proteção atómica impede novas operações durante o envio. O logind aplica as regras de autorização e inibição para suspender ou desligar; uma recusa é apresentada sem comandos alternativos forçados. Não é reativada após executar ou reiniciar.
+
+Preferência passiva: `gad --configure --completion-action suspend --completion-delay 60`. Ative-a separadamente no menu gráfico.
+
+`Completion::Plan` → `window_completion.cpp`; `queue_guard` → `completion_claim` / `completion_release` (32). `completion.rs`: `Activity`, `Shared.requests`. `org.freedesktop.login1.Manager`: `CanSuspend` / `Suspend(true)`, `CanPowerOff` / `PowerOff(true)`. `TransferProfiles`: schema 5, `gui.completion_action`, `gui.completion_delay`.
+
+
+## Preparar transferências na lista principal {#preparing-transfers}
+
+O protocolo atual é **33**. `Job.start_required` é persistido; `prepare_only` distingue a preparação manual dos pedidos externos. O escalonador ignora preparações não validadas. O controlo único envia `pause` com `paused=false` para iniciar ou retomar. `staging.rs` cria temporários visíveis; `resume.rs` verifica identidade e prefixo. Os comandos de simulação só de leitura permanecem internos, sem janela própria.

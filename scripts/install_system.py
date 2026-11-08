@@ -22,7 +22,7 @@ def install(destdir, binary):
     copy(PROJECT / "packaging/org.hizoka.gad.desktop", "usr/share/applications/org.hizoka.gad.desktop")
     for icon in (PROJECT / "packaging/icons").glob("*/apps/*.png"):
         copy(icon, "usr/share/icons/hicolor/" + str(icon.relative_to(PROJECT / "packaging/icons")))
-    for name in ("dolphin_shortcut.py", "xdg_paths.py"):
+    for name in ("dolphin_shortcut.py", "krusader_shortcut.py", "xdg_paths.py"):
         copy(PROJECT / "scripts" / name, "usr/share/gad/integration/" + name)
     for name in ("gad-paste.desktop", "gad-paste-current.desktop"):
         copy(PROJECT / "packaging" / name, "usr/share/kio/servicemenus/" + name)

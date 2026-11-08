@@ -67,6 +67,12 @@ inline int requiredProtocol(const QJsonObject &request) {
         const auto scheme=QUrl::fromEncoded(value.toString().toUtf8(),QUrl::StrictMode).scheme();
         version=qMax(version,scheme=="smb"?9:(scheme=="ftp" || scheme=="sftp"?8:7));
     }
+    if(request["gui_settings"].toObject().contains("completion_action") || request["gui_settings"].toObject().contains("completion_delay"))version=qMax(version,31);
+    if(request["prepare_only"].toBool() || request["command"]=="start_prepared")version=qMax(version,33);
+    if(request.contains("verify_fast_move"))version=qMax(version,30);
+    if(request.contains("conflict_policy"))version=qMax(version,27);
+    if(request.contains("profile"))version=qMax(version,26);
+    if(request.contains("rate_limit") || request["gui_settings"].toObject().contains("request_rate_limit"))version=qMax(version,25);
     if(request.contains("allow_duplication"))version=qMax(version,22);
     if(request.contains("exclusions"))version=qMax(version,21);
     if(request["verify_space"].toBool())version=qMax(version,14);

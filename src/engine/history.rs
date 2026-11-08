@@ -35,6 +35,17 @@ impl Engine {
         let mut kept = vec![];
         let mut resume_ids = Vec::new();
         for mut job in state.jobs {
+            // Une demande jamais validée n’est pas un transfert interrompu à reprendre.
+            if job.start_required && !terminal(&job.state) && !job.cancel && !job.undo_requested {
+                job.resume_pending = false;
+                job.recovery = false;
+                if job.state == TransferState::Scanning {
+                    job.state = TransferState::Error;
+                    job.error = "File preparation was interrupted. Add the sources again.".into();
+                }
+                kept.push(job);
+                continue;
+            }
             if !terminal(&job.state) {
                 job.resume_pending = job.resume_enabled
                     && !job.cancel

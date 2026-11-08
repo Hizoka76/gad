@@ -281,6 +281,7 @@ impl Engine {
             entry.size = if entry.kind == "file" { meta.len() } else { 0 };
             entry.copied = 0;
             entry.verified = 0;
+            entry.fast_move_check = None;
             entry.md5_source = None;
             entry.md5_destination = None;
             entry.cancel = false;

@@ -119,7 +119,9 @@ impl Engine {
         prepare: impl FnOnce() -> Result<Prepared, String> + Send + 'static,
     ) -> thread::JoinHandle<()> {
         let engine = self.clone();
+        let activity = completion::Activity::new(self.clone(), true);
         thread::spawn(move || {
+            let _preparation = activity;
             let result = prepare().and_then(|(destination, entries, disks)| {
                 let filtered = engine.filter_duplicates(id, entries)?;
                 let entries = filtered.entries;
@@ -225,6 +227,18 @@ impl Engine {
                                 .iter()
                                 .all(|e| e.hidden && e.state == TransferState::Skipped))
                     {
+                        // Un collage entièrement dupliqué peut démarrer les fichiers
+                        // déjà préparés, sans lever une pause explicite de la file.
+                        let automatic = state
+                            .jobs
+                            .iter()
+                            .find(|j| j.id == id)
+                            .is_some_and(|j| !j.start_required);
+                        if automatic {
+                            for job in &mut state.jobs {
+                                job.start_required = false;
+                            }
+                        }
                         state.jobs.retain(|j| j.id != id);
                         state.row_layout = None;
                         drop(state);
@@ -278,6 +292,12 @@ impl Engine {
                     Err(error) => {
                         job.error = error;
                         job.state = TransferState::Error;
+                    }
+                }
+                let automatic = !job.start_required && job.state == TransferState::Waiting;
+                if automatic {
+                    for job in &mut state.jobs {
+                        job.start_required = false;
                     }
                 }
                 state.row_layout = None;

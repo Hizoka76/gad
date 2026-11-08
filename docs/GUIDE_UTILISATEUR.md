@@ -1,8 +1,10 @@
 # Gad — Guide utilisateur
 
-**Gestionnaire Avancé de Duplication · Version 0.1.0**  
-**Gad, il copie.**  
-Documentation de l’interface actuelle, mise à jour le 6 novembre 2026.
+**Gestionnaire Avancé de Duplication · Version 0.2.0**
+
+**Gad, il copie.**
+
+Documentation de l’interface actuelle, mise à jour le 8 novembre 2026.
 
 [Démarrage rapide](DEMARRAGE_RAPIDE.md)
 
@@ -57,6 +59,51 @@ Les captures suivantes proviennent des **vrais widgets de Gad**, avec des fichie
 
 ## Installer et démarrer
 
+### PPA Ubuntu
+
+Le [PPA Gad](https://launchpad.net/~hizo/+archive/ubuntu/gad) permet d’installer Gad et de recevoir ses mises à jour via APT :
+
+```sh
+sudo add-apt-repository ppa:hizo/gad
+sudo apt update
+sudo apt install gad
+```
+
+Vérifiez sur la page du PPA qu’un paquet est publié pour votre version d’Ubuntu. Si `add-apt-repository` est absent, installez `software-properties-common`.
+
+### Téléchargements précompilés
+
+Les [releases GitHub](https://github.com/Hizoka76/gad/releases/latest) proposent plusieurs formats. Remplacez les noms d’exemple ci-dessous par ceux des fichiers téléchargés.
+
+#### Paquet Debian `.deb`
+
+Téléchargez le paquet adapté à votre architecture, puis installez-le avec APT pour résoudre les dépendances disponibles dans vos dépôts :
+
+```sh
+sudo apt install ./gad_VERSION_amd64.deb
+```
+
+#### Archive `.tar.gz` : sources et binaire compilé
+
+L’archive `gad-VERSION-linux-amd64.tar.gz` contient le code source, les dépendances Rust embarquées, la documentation et le programme déjà compilé dans `prebuilt/`. Aucune compilation n’est nécessaire pour lancer ce programme :
+
+```sh
+tar -xzf gad-VERSION-linux-amd64.tar.gz
+cd gad-VERSION
+./prebuilt/usr/bin/gad
+```
+
+#### Exécutable direct
+
+Le fichier `gad-linux-amd64` est également un binaire déjà compilé :
+
+```sh
+chmod +x gad-linux-amd64
+./gad-linux-amd64
+```
+
+Les téléchargements Linux amd64 visent les processeurs x86-64. Le binaire direct n’installe ni lanceur ni module Dolphin ; le `.deb` et l’archive contiennent les fichiers d’intégration distribués avec la version. Ces binaires ne sont pas autonomes : Qt/KF6 restent nécessaires, avec les versions indiquées dans les notes de release. Une release correspond à son tag et peut être plus ancienne que le code actuel du dépôt.
+
 ### Première installation depuis les sources
 
 Depuis le dossier du projet :
@@ -110,7 +157,11 @@ La fenêtre se lit de haut en bas :
 
 *La boîte des options, ouverte depuis le bloc Paramètres.*
 
-Le bouton **Paramètres → Options…** ouvre une boîte de dialogue redimensionnable, avec les onglets **Paramètres** et **Raccourcis**. Les réglages s’appliquent immédiatement ; **Fermer** ou Échap ferme la boîte sans annuler les changements. Elle peut rester ouverte pendant les transferts. Les noms des paramètres de commande apparaissent en gris sous les contrôles. Sa taille minimale est **800 × 740** ; la fenêtre principale et le bilan des erreurs ont un minimum de **1100 × 600**. Le bouton **Limiter le débit de la demande…** se trouve à gauche de la barre d’actions principale, sur la même ligne que pause/reprise et annulation. Il reste grisé sans sélection et règle le débit des lots sélectionnés, indépendamment du plafond global.
+**Paramètres → Options…** ouvre une fenêtre modale : la fenêtre principale reste bloquée jusqu’à sa fermeture, tandis que les transferts continuent. Les réglages s’appliquent immédiatement ; **Fermer** ou Échap ne les annule pas. Les paramètres de commande apparaissent en gris sous les contrôles. Taille minimale : **800 × 740** ; fenêtre principale, bilan des erreurs et diagnostic : **1100 × 600**.
+
+Les quatre onglets sont **Paramètres**, **Raccourcis**, **Débits** et **Fin de lot**. **Débits** contient le plafond global et celui appliqué par défaut aux nouveaux lots. Pour modifier un lot existant, sélectionnez ses lignes puis utilisez **clic droit → Limiter le débit de la demande…**. La limite apparaît dans la cellule **Détail**, y compris sur les dossiers ; la valeur illimitée n’ajoute aucun texte.
+
+![Paramètres → Options…](images/fr/21-options-debits.png)
 
 ![L’onglet Raccourcis et les intégrations des gestionnaires de fichiers.](images/fr/14-options-raccourcis.png)
 
@@ -124,9 +175,9 @@ La section **Raccourcis** permet d’activer ou désactiver Ctrl+V avec Gad dans
 - **Parcourir…** permet de choisir un dossier de destination existant.
 - Le champ de destination accepte un chemin local, un chemin de montage ou une adresse `sftp://`, `ftp://`, `smb://` ou `kdeconnect://` vers un dossier existant.
 
-Choisissez la destination **avant** d’ajouter ou coller les éléments. L’ajout soumet le lot immédiatement : il n’existe pas de bouton « Démarrer » à valider ensuite. Mettre toute la file en pause permet de préparer plusieurs lots sans les transférer immédiatement, sous réserve du comportement particulier du collage externe décrit plus bas.
+Choisissez la destination et les options, puis ajoutez vos fichiers dans Gad. Lorsque rien n’est en cours, vérifiez la liste et cliquez sur **Démarrer**. Un collage habituel démarre automatiquement ; les ajouts pendant un transfert rejoignent sa file. **Ctrl+C** copie, **Ctrl+X** déplace. Le glisser-déposer dans Gad prépare toujours une copie.
 
-Gad ignore automatiquement une opération déjà prévue dans une demande encore active, y compris en pause : même fichier source, même destination et même type (copie ou déplacement). Cela couvre un double collage, les ajouts simultanés et les fichiers déjà inclus dans un dossier. Les fichiers nouveaux restent dans la file ; un message temporaire indique le nombre d’éléments ignorés. Un collage entièrement composé de doublons ne lève pas la pause.
+Gad ignore automatiquement une opération déjà prévue dans une demande encore active, y compris en pause : même fichier source, même destination et même type (copie ou déplacement). Cela couvre un double collage, les ajouts simultanés et les fichiers déjà inclus dans un dossier. Les fichiers nouveaux restent dans la file ; un message temporaire indique le nombre d’éléments ignorés. Un collage externe entièrement composé de doublons peut démarrer la préparation existante, sans ajouter une seconde copie.
 
 Une autre destination ou un autre type d’opération reste accepté. Deux fichiers source distincts portant le même nom restent soumis au traitement des conflits. Une copie volontaire répétée après la fin de la demande précédente reste possible. Le premier ajout conserve ses options de vérification.
 
@@ -755,3 +806,88 @@ Ces protections sont automatiques, même sans cocher MD5. Gad compare l’identi
 Avant une restauration, Gad contrôle les fichiers sélectionnés, les sauvegardes, les chemins parents et les volumes nécessaires. Une sauvegarde modifiée, des permissions ou un propriétaire modifiés sur un fichier, un résultat déplacé disparu ou une source déjà restaurée puis éditée peuvent faire refuser l’opération. Les contrôles sont répétés avant la suppression du résultat. Les fichiers litigieux restent conservés ; consulter le détail de l’erreur avant une nouvelle tentative.
 
 Les contrôles de dates dépendent de la précision du système de fichiers et des informations fournies par le service distant. Ils ne constituent pas un instantané d’un fichier ouvert par un autre logiciel. Le MD5 optionnel ajoute une comparaison du contenu avant publication ; les anciens journaux utilisent les informations qu’ils contiennent.
+
+## Profils de transfert {#transfer-profiles}
+
+Le bouton **Profils**, dans le bloc **Paramètres**, enregistre et applique **toutes les options du dialogue de paramètres**, mais **jamais la destination** : vérifications MD5/propriétés/espace, exclusions et éléments cachés, duplication, historique, reprise après interruption, débits global et par défaut des nouvelles demandes, langue, démarrage automatique et raccourcis Dolphin/Konqueror.
+
+1. Réglez les options souhaitées dans **Options…**.
+2. Choisissez **Profils → Enregistrer les réglages actuels…** et donnez un nom unique.
+3. Cliquez ensuite sur ce nom dans **Profils** pour retrouver l’ensemble des options. La destination affichée reste inchangée, même si elle est vide. Aucune copie ne démarre.
+
+**Gérer les profils…** permet d’appliquer, renommer, supprimer ou **mettre à jour avec les réglages actuels**. Le résumé affiche toutes les valeurs enregistrées. Supprimer un profil retire sa définition sans annuler les réglages déjà appliqués. Jusqu’à 64 profils sont conservés entre les sessions.
+
+La langue, le débit global et les autres réglages globaux prennent leur effet habituel immédiatement. Les vérifications, exclusions et plafonds par défaut restent capturés pour les nouvelles demandes ; les lots existants conservent leurs propres options. L’application du raccourci Dolphin est asynchrone. Si une étape échoue, Gad tente de rétablir les valeurs précédentes et signale explicitement un éventuel échec du retour arrière.
+
+Les anciens profils sont migrés automatiquement : leur destination est supprimée et les options qu’ils ne stockaient pas sont initialisées avec les réglages courants, une seule fois. Utilisez ensuite **Mettre à jour avec les réglages actuels** pour ajuster chaque profil. Aucun chemin source, destination ou mot de passe n’est enregistré.
+
+![Gestion des profils de transfert](images/fr/15-profils.png)
+
+En ligne de commande, `gad --profile "Mon profil"` applique le profil sans lancer de transfert. Combinez-le avec une copie : `gad --profile "Mon profil" --copy /chemin/source --to /chemin/destination`, ou avec `--move` / `--paste`. Gad attend la fin de l’application du profil avant de lancer le transfert. La destination vient de la commande ; les options explicites, telles que `--md5`, priment sur le profil. Un nom inconnu renvoie une erreur sans ajouter de fichiers. `--configure --profile "Mon profil"` accepte aussi des réglages supplémentaires, appliqués après le profil.
+
+## Politique de conflits par profil
+
+Dans **Options → Conflits de fichiers**, choisissez **Demander**, **Ignorer les fichiers existants**, **Remplacer uniquement les fichiers plus anciens** ou **Conserver les deux fichiers**. Enregistrez ou mettez à jour le profil pour conserver ce choix. Les demandes déjà ajoutées gardent leur politique.
+
+Le remplacement compare la date de modification de la destination à celle de la source : seules les destinations strictement plus anciennes sont remplacées. Les dates égales ou plus récentes sont ignorées. Les dates illisibles et les liens symboliques provoquent une erreur sans remplacement automatique ; choisissez alors une autre politique et réessayez. La fiabilité des dates dépend du système de fichiers ou du service distant. Les dossiers existants sont fusionnés ; le choix s’applique aux fichiers et liens rencontrés à l’intérieur. Conserver les deux utilise le renommage habituel avec un suffixe numéroté. Les fichiers ignorés restent à la source lors d’un déplacement, et les remplacements gardent leur possibilité de restauration.
+
+Commande : `gad --configure --conflict-policy newer`. Les profils des formats 1 et 2 reçoivent **Demander** lors de leur migration ; leur destination reste exclue.
+
+## Recherche dans l’historique {#history-search}
+
+Cliquez sur **Rechercher dans l’historique** ou utilisez **Ctrl+F**. Saisissez un nom de fichier ou une partie d’un chemin source/destination, y compris une URL distante. Les mots sont combinés par ET, sans distinction de casse et sans expression régulière. Choisissez éventuellement un état du lot et activez **Ajouté entre** pour limiter la date d’ajout, bornes incluses et dans le fuseau horaire local.
+
+**Historique uniquement** affiche les lots terminés, annulés, restaurés ou en erreur ; décochez cette option pour inclure les demandes actives. Les filtres de colonnes se combinent avec cette recherche. Les dossiers parents des résultats restent visibles. **Réinitialiser la recherche** efface ses critères sans toucher aux filtres de colonnes ; fermer la barre ou appuyer sur **Échap** désactive seulement la recherche. La file et ses priorités restent inchangées.
+
+La date d’ajout apparaît dans l’infobulle de la colonne d’ordre. Les anciennes opérations sans date sont indiquées comme telles et restent recherchables hors filtre de date. L’historique doit être conservé : une opération nettoyée ou supprimée ne peut plus être retrouvée.
+
+![Recherche dans l’historique](images/fr/16-recherche-historique.png)
+
+## Diagnostic des transferts {#transfer-diagnostics}
+
+Le bouton **Diagnostic des transferts…**, en bas de la fenêtre, ouvre une vue non modale des demandes actives et en attente. Elle affiche l’état, l’activité ou l’attente observée, les limites globales et propres à la demande, le débit et le temps restant. Les numéros des lots bloquants permettent de les retrouver dans la liste principale.
+
+Les causes distinguent : pause, analyse des sources, conflit attendant une décision, périphérique ou montage distant indisponible, vérification MD5, contrôle du préfixe avant reprise, renommage local, restauration exclusive, deux travailleurs occupés, priorité de lignes, disque partagé ou chemins qui se recouvrent, et sérialisation prudente lorsque les ressources sont inconnues.
+
+Une attente de budget de débit est indiquée seulement lorsque le limiteur l’a effectivement observée dans la dernière seconde. Une limite configurée seule n’est pas une preuve de ralentissement. Après cinq secondes sans progression des octets pendant une copie ou un MD5, hors attente du limiteur, Gad signale cette absence de progression : les entrées-sorties ou la finalisation peuvent attendre, mais cela ne permet pas d’accuser précisément le disque ou le réseau. Les diagnostics ne sont pas des tests de performance et ne sont pas enregistrés dans l’historique. Fermer cette fenêtre ne change aucun transfert.
+
+![Diagnostic des transferts](images/fr/17-diagnostic-transferts.png)
+
+Les limites de débit concernent les octets copiés ; les relectures MD5 et les renommages locaux constituent des phases distinctes.
+
+## Vérifier les déplacements rapides {#verify-fast-moves}
+
+Dans **Options**, cochez **Vérifier les déplacements rapides**. L’option, désactivée par défaut, est conservée dans les profils et capturée pour chaque nouvelle demande. Après un renommage local, Gad vérifie l’identité (périphérique/inode), le type, la taille, la date de modification, les permissions, le propriétaire et le groupe, les cibles des liens et l’arborescence exacte. Il contrôle aussi la disparition du chemin source. Les changements légitimes de ctime de la racine renommée sont acceptés ; les descendants doivent garder leur ctime.
+
+Le détail indique **Déplacement rapide vérifié** après succès. Pendant le contrôle, le diagnostic distingue cette phase du MD5. En cas de différence, d’élément ajouté ou manquant, de chemin source recréé ou d’erreur de lecture, le lot passe en erreur avec le chemin contrôlé ; Gad conserve le résultat déplacé et son journal. Aucune restauration automatique n’écrase un fichier modifié. Une pause ou annulation pendant le contrôle ne supprime pas le résultat déjà déplacé.
+
+Ce contrôle relit les métadonnées, pas le contenu : il conserve l’avantage du renommage mais ne remplace pas une comparaison cryptographique. Le MD5 existant reste distinct et impose le parcours copie/vérification/suppression. Les copies ordinaires ne reçoivent pas un faux résultat de vérification rapide. Les anciens profils migrent avec cette option désactivée. Commande : `gad --configure --verify-fast-move` ; désactivation : `--no-verify-fast-move`.
+
+![Déplacement rapide vérifié](images/fr/18-verification-deplacement-rapide.png)
+
+## Actions de fin de lot {#queue-completion}
+
+Dans **Options → Fin de lot**, choisissez une action : notification, fermeture de Gad, mise en veille ou extinction. Réglez le délai d’annulation entre **5 et 3600 secondes** (30 par défaut), puis cliquez sur **Activer pour ce lot**. Le statut indique clairement si l’action est active. Choisir une action, modifier un réglage ou charger un profil ne l’active pas ; un changement de réglage désactive une activation précédente.
+
+L’action attend la fin réussie de tous les transferts suivis, des préparations distantes et des sauvegardes finales. Le compte à rebours permet encore d’annuler. De nouveaux transferts reportent l’action et relancent ensuite un délai complet. Une erreur, une annulation, une restauration ou une demande retirée désactive l’action. Une pause empêche son déclenchement.
+
+**Désactiver l’action de fin de lot**, **Annuler l’action** ou fermer le compte à rebours n’annule aucun transfert. L’activation ne sert qu’une fois et n’est pas restaurée au redémarrage. Le menu **Fin de lot…** donne accès aux mêmes actions et ouvre directement l’onglet dédié. Le terme « lot » de ce menu désigne l’ensemble des transferts suivis ; il ne limite pas l’action à une seule ligne sélectionnée.
+
+La mise en veille et l’extinction utilisent logind et respectent ses autorisations et inhibiteurs. Une notification permet de rouvrir Gad lorsqu’il est masqué. `gad --configure --completion-action suspend --completion-delay 60` enregistre seulement les préférences ; activez ensuite l’action dans Gad.
+
+![Actions de fin de lot](images/fr/19-fin-de-file.png)
+
+![Actions de fin de lot](images/fr/20-options-fin-de-file.png)
+
+
+## Préparer les transferts dans la liste principale {#preparing-transfers}
+
+Quand aucun travail n’est en cours, les fichiers ajoutés par la fenêtre (**Ajouter des fichiers…**, **Ajouter un dossier…** ou glisser-déposer) sont analysés et affichés sans démarrer le transfert. Choisissez la destination et les options avant l’ajout, examinez l’arborescence puis cliquez sur **Démarrer**. Il n’y a plus de fenêtre de simulation séparée.
+
+Le même bouton devient **Tout mettre en pause**, puis **Reprendre la file**. Si des transferts sont déjà autorisés, les nouveaux ajouts rejoignent automatiquement la file. Le collage habituel et les commandes externes démarrent automatiquement, sans ouvrir la fenêtre principale ; une demande externe refusée ne démarre pas les préparations. Les doublons déjà en attente sont ignorés avec un message.
+
+Pendant une copie, le fichier partiel apparaît à destination sous le nom `fichier.ext.part`, puis prend son nom final après réussite. Un nom déjà occupé n’est jamais écrasé : Gad utilise un suffixe unique. Une interruption peut reprendre le même temporaire après vérification. Le nettoyage de l’historique supprime la possibilité de remettre les transferts terminés en état.
+
+Le bilan des erreurs et le diagnostic des transferts bloquent aussi les interactions avec la fenêtre principale. **Afficher dans la liste** ferme le bilan et désactive la recherche susceptible de masquer la ligne. Le filtre du bilan suit la langue choisie.
+
+![Préparer les transferts dans la liste principale](images/fr/22-preparation.png)

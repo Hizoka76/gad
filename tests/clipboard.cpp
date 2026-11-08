@@ -64,14 +64,15 @@ int main(int argc, char **argv) {
         QSet<QString> active{"/dolphin/Dolphin_1"};
         bool opened=true,changeTitle=false,loseFocus=false,failed=false;
         int titleReads=0,activeReads=0;
-        QDBusMessage call(const QString &service,const QString &path,const QString &,const QString &method,const QVariantList &) {
+        QString acceptedUrl;QStringList checkedUrls;
+        QDBusMessage call(const QString &service,const QString &path,const QString &,const QString &method,const QVariantList &arguments) {
             if(failed)return QDBusMessage::createError("org.kde.Test.Error","Indisponible");
             QVariant value;
             if(method=="ListNames")value=names;
             else if(method=="GetNameOwner")value=service.endsWith("-2")?QString(":1.2"):QString(":1.1");
             else if(method=="Introspect")value=QString("<node><node name='Dolphin_1'/><node name='Dolphin_2'/></node>");
             else if(method=="isActiveWindow") {++activeReads;value=active.contains(path) && !(loseFocus && activeReads>2);}
-            else if(method=="isUrlOpen")value=opened;
+            else if(method=="isUrlOpen"){checkedUrls.append(arguments.value(0).toString());value=opened && (acceptedUrl.isEmpty() || acceptedUrl==arguments.value(0).toString());}
             else if(method=="Get"){++titleReads;value=QVariant::fromValue(QDBusVariant(changeTitle && titleReads>1?title+"/autre":title));}
             return QDBusMessage::createMethodCall("org.kde.Test","/test","org.kde.Test","test").createReply({value});
         }
@@ -88,6 +89,20 @@ int main(int argc, char **argv) {
     check(dolphin.resolve().destination=="/tmp/destination avec #","La fenêtre active fournit la destination exacte, sans utiliser la sélection précédente");
     dolphin.active={"/dolphin/Dolphin_2"};dolphin.titleReads=0;
     check(dolphin.resolve().destination=="/tmp/destination avec #","Le bon onglet de la fenêtre active reste ciblé");
+    // Les deux sens sont observables dans de vraies fenêtres Dolphin ; les caractères encodés restent intacts.
+    dolphin.checkedUrls.clear();dolphin.acceptedUrl="file:///tmp/destination%20avec%20%23/";
+    check(dolphin.resolve().destination=="/tmp/destination avec #" && dolphin.checkedUrls.size()==2,"Un / final conservé dans l’onglet ne bloque pas le collage");
+    dolphin.title="/tmp/destination/";dolphin.acceptedUrl="file:///tmp/destination";dolphin.checkedUrls.clear();
+    check(dolphin.resolve().destination==dolphin.title && dolphin.checkedUrls.size()==2,"La variante sans / final est reconnue sans changer la destination");
+    dolphin.title="/tmp/été %2F #?";dolphin.acceptedUrl=QUrl::fromLocalFile(dolphin.title).toString(QUrl::FullyEncoded)+"/";
+    check(dolphin.resolve().destination==dolphin.title,"Les espaces, Unicode, pourcents, # et ? restent des caractères du chemin");
+    dolphin.title="sftp://alice@server/folder%2Fname%20with%23";dolphin.acceptedUrl=dolphin.title+"/";
+    check(dolphin.resolve().destination==dolphin.title,"La vérification du / final ne décode pas un séparateur encodé distant");
+    dolphin.title="/";dolphin.opened=false;dolphin.checkedUrls.clear();
+    check(!dolphin.resolve().error.isEmpty() && dolphin.checkedUrls==QStringList{"file:///"},"La racine locale n’est jamais remplacée par une URL sans chemin");
+    dolphin.title="sftp://alice@server";dolphin.opened=true;dolphin.acceptedUrl="sftp://alice@server/";dolphin.checkedUrls.clear();
+    check(!dolphin.resolve().error.isEmpty() && dolphin.checkedUrls==QStringList{"sftp://alice@server"},"Un chemin distant vide ne doit pas être confondu avec la racine du serveur");
+    dolphin.opened=true;dolphin.acceptedUrl.clear();dolphin.title="/tmp/destination avec #";
     dolphin.active={"/dolphin/Dolphin_1","/dolphin/Dolphin_2"};check(!dolphin.resolve().error.isEmpty(),"Deux fenêtres actives imposent un refus sans copie");
     dolphin.active={};check(!dolphin.resolve().error.isEmpty(),"Aucune fenêtre active ne choisit un dossier par défaut");
     dolphin.active={"/dolphin/Dolphin_1"};dolphin.title="Saison 01";check(!dolphin.resolve().error.isEmpty(),"Un simple nom de dossier ne devient jamais un chemin relatif");

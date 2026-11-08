@@ -104,6 +104,15 @@ impl Engine {
         id: u64,
         start: usize,
     ) -> Result<Option<EntryOutcome>, String> {
+        self.rename_tree_using(id, start, fast_move::rename_local)
+    }
+    /// Primitive injectable pour contrôler les modifications survenant juste après le renommage.
+    pub(super) fn rename_tree_using(
+        &self,
+        id: u64,
+        start: usize,
+        rename: impl FnOnce(&Path, &Path) -> std::io::Result<()>,
+    ) -> Result<Option<EntryOutcome>, String> {
         let (range, tree) = {
             let state = self.shared.state.lock().unwrap();
             let job = state
@@ -232,9 +241,20 @@ impl Engine {
             self.clear_tree_plan(id, range)?;
             return Ok(None);
         }
-        match fast_move::rename_local(&root.source, &root.destination) {
+        match rename(&root.source, &root.destination) {
             Ok(()) => {
                 fast_move::sync_names(&root.source, &root.destination)?;
+                let expected = tree
+                    .iter()
+                    .zip(&plan)
+                    .enumerate()
+                    .map(|(offset, (entry, (record, meta)))| fast_verify::Expected {
+                        entry,
+                        stamp: record.source_stamp.as_ref().unwrap(),
+                        ctime: (offset != 0).then_some((meta.ctime(), meta.ctime_nsec())),
+                    })
+                    .collect::<Vec<_>>();
+                self.verify_fast_result(id, start, &expected)?;
                 self.update(id, |job| {
                     for entry in &mut job.entries[range] {
                         entry.copied = entry.size;

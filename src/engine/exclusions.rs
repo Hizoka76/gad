@@ -53,7 +53,7 @@ impl Rules {
 }
 /// Glob Unicode borné par la validation : * = texte quelconque, ? = un caractère.
 /// La programmation dynamique évite tout retour arrière exponentiel sur les motifs malveillants.
-fn matches(pattern: &str, name: &str) -> bool {
+pub(super) fn matches(pattern: &str, name: &str) -> bool {
     let name: Vec<char> = name.chars().collect();
     let mut previous = vec![false; name.len() + 1];
     previous[0] = true;

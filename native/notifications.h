@@ -113,7 +113,7 @@ public:
     /// Retrouve seulement les lots encore actifs du suivi dans un état récent du moteur.
     QJsonArray activeIds(const QJsonObject &state) const {
         QJsonArray ids;
-        for(const auto &v:state["jobs"].toArray()){const auto j=v.toObject();if(tracked.contains(j["id"].toInteger())&&!terminal(j["state"].toString()))ids.append(j["id"]);}
+        for(const auto &v:state["jobs"].toArray()){const auto j=v.toObject();if(!j["start_required"].toBool()&&tracked.contains(j["id"].toInteger())&&!terminal(j["state"].toString()))ids.append(j["id"]);}
         return ids;
     }
     /// Agrège les lots, compte les fichiers et publie progression, pause et débit.
@@ -122,7 +122,7 @@ public:
         const bool starting=!announced;
         // Include jobs added to an existing session, even if Gad has since opened.
         if(hidden || !tracked.isEmpty())for(const auto &v:state["jobs"].toArray()) {
-            const auto j=v.toObject();if(!terminal(j["state"].toString()))tracked.insert(j["id"].toInteger());
+            const auto j=v.toObject();if(!j["start_required"].toBool()&&!terminal(j["state"].toString()))tracked.insert(j["id"].toInteger());
         }
         if(tracked.isEmpty())return;
         // Les octets de copie et le travail MD5 sont comptés séparément : leurs unités n’ont pas le même rôle.

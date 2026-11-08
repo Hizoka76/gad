@@ -1,10 +1,10 @@
 # Gad — Documentation
 
-Version 0.1.0 · English (US)
+Version 0.2.0 · English (US)
 
 ## Choose a guide
 
-Each language has a Quick Start, User Guide, and Developer Guide. User guides include fourteen screenshots of real widgets in the light theme, in their own language.
+Each language has a Quick Start, User Guide, and Developer Guide. User guides include twenty-two screenshots of real widgets in the light theme, in their own language.
 
 | Document | Source | HTML | PDF |
 | --- | --- | --- | --- |
@@ -32,4 +32,4 @@ make docs
 make docs-check
 ```
 
-84 captures · 18 HTML · 18 PDF
+132 captures · 18 HTML · 18 PDF

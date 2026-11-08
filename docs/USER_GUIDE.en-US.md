@@ -1,8 +1,10 @@
 # Gad — User Guide
 
-**Gestionnaire Avancé de Duplication · Version 0.1.0**  
-**Gad, il copie.**  
-US English edition, updated November 6, 2026.
+**Gestionnaire Avancé de Duplication · Version 0.2.0**
+
+**Gad, il copie.**
+
+US English edition, updated November 8, 2026.
 
 [Quick Start](QUICK_START.en-US.md) · [Français](GUIDE_UTILISATEUR.md) · [All editions](README.en-US.md)
 
@@ -52,11 +54,58 @@ Gad integrates with Dolphin through **Paste with Gad** and its optional Ctrl+V s
 
 ### Reading the screenshots {#reading-the-screenshots}
 
-The 14 screenshots show real Gad widgets, sample files, and simulated transfer states. They use the light theme and the interface language of this edition. Personal files and the real desktop are never photographed. External Plasma notifications are not reproduced by these offscreen captures.
+The 22 screenshots show real Gad widgets, sample files, and simulated transfer states. They use the light theme and the interface language of this edition. Personal files and the real desktop are never photographed. External Plasma notifications are not reproduced by these offscreen captures.
 
 Gad provides French, US English, Spanish, Portuguese, German, and Japanese. Choose a language in **Settings → Options…**: it applies immediately without restarting Gad or interrupting transfers. Open dialogs and active notifications update while selection and entered values are preserved. **System** chooses an available variant of the desktop language, falling back to French or English. Uncataloged technical diagnostics and external-service messages may retain their original language.
 
 ## Installation and startup
+
+### Ubuntu PPA
+
+The [Gad PPA](https://launchpad.net/~hizo/+archive/ubuntu/gad) installs Gad and provides updates through APT:
+
+```sh
+sudo add-apt-repository ppa:hizo/gad
+sudo apt update
+sudo apt install gad
+```
+
+Check the PPA page for a published package matching your Ubuntu release. If `add-apt-repository` is missing, install `software-properties-common`.
+
+### Precompiled downloads
+
+[GitHub releases](https://github.com/Hizoka76/gad/releases/latest) offer several formats. Replace the example filenames below with the names of the files you downloaded.
+
+#### Debian package `.deb`
+
+Download the package for your architecture, then install it with APT to resolve dependencies available in your repositories:
+
+```sh
+sudo apt install ./gad_VERSION_amd64.deb
+```
+
+#### `.tar.gz` archive: sources and compiled binary
+
+The `gad-VERSION-linux-amd64.tar.gz` archive contains source code, vendored Rust dependencies, documentation and the compiled program under `prebuilt/`. No compilation is needed to run it:
+
+```sh
+tar -xzf gad-VERSION-linux-amd64.tar.gz
+cd gad-VERSION
+./prebuilt/usr/bin/gad
+```
+
+#### Direct executable
+
+The `gad-linux-amd64` file is also a ready-compiled binary:
+
+```sh
+chmod +x gad-linux-amd64
+./gad-linux-amd64
+```
+
+Linux amd64 downloads target x86-64 processors. The direct binary does not install a launcher or Dolphin plugin; the `.deb` and archive contain the integration files shipped with that version. These binaries are not self-contained: Qt/KF6 are required at the versions listed in the release notes. A release matches its tag and may be older than the current repository code.
+
+### From source
 
 Install the Linux build dependencies described in the [developer guide](DEVELOPER_GUIDE.en-US.md#building) and [testing guide](../TESTING.en-US.md#requirements). From the project directory:
 
@@ -94,7 +143,11 @@ For an update, finish or cancel active work and quit Gad normally before reopeni
 
 *The settings dialog opens from the Settings block.*
 
-**Settings → Options…** opens a resizable dialog with **Settings** and **Shortcuts** tabs. Changes apply immediately; **Close** or Escape closes the dialog without undoing changes. It can remain open during transfers. Command-line parameter names appear in gray below the controls. Its minimum size is **800 × 740**; the main window and error report have a **1100 × 600** minimum. **Limit request speed…** is on the left of the main action bar, alongside pause/resume and cancellation. It is disabled without a selection and limits the selected requests separately from the global limit.
+**Settings → Options…** opens a modal window: the main window is blocked until it closes, while transfers continue. Settings apply immediately; **Close** or Escape does not undo them. Command-line options appear in gray below each control. Minimum size: **800 × 740**; main window, error report and diagnostics: **1100 × 600**.
+
+The four tabs are **Settings**, **Shortcuts**, **Speed limits** and **Batch completion**. **Speed limits** contains the global cap and the default cap for new requests. To change an existing request, select its rows and choose **right-click → Limit request speed…**. The limit appears in the **Detail** cell, including folders; unlimited transfers have no extra limit text.
+
+![Settings → Options… o](images/en-US/21-options-debits.png)
 
 ![The Shortcuts tab controls file manager integrations.](images/en-US/14-options-raccourcis.png)
 
@@ -175,7 +228,7 @@ Other managers that support KIO service menus may also offer **Paste with Gad**.
 
 ![Source and destination controls and verification options](images/en-US/02-sources-options.png)
 
-Choose the destination **before** adding or pasting files. Adding files submits the request immediately; there is no separate Start confirmation.
+Choose the destination and options, then add files in Gad. When idle, review the list and click **Start**. Normal paste starts automatically; additions during a transfer join the queue. **Ctrl+C** copies and **Ctrl+X** moves. Drag and drop into Gad always prepares a copy.
 
 ### From Dolphin
 
@@ -632,3 +685,88 @@ These protections run automatically, even without MD5. Gad compares identity, ty
 Before restoration, Gad checks the selected files, backups, parent paths and required volumes. Changed backups, file permissions or ownership, missing moved results, and previously restored sources edited afterwards can block restoration. Checks run again before deleting a result. Conflicting files are kept; inspect the error details before retrying.
 
 Timestamp checks depend on filesystem precision and information supplied by remote services. They do not provide a snapshot of a file another application is writing. Optional MD5 adds content comparison before publication; older journals use the information available in them.
+
+## Transfer profiles {#transfer-profiles}
+
+The **Profiles** button in **Settings** saves and applies **every option in the settings dialog**, but **never the destination**: MD5/properties/space checks, exclusions and hidden items, duplication, history, interrupted-transfer recovery, global and default request limits, language, startup and Dolphin/Konqueror shortcuts.
+
+1. Choose the desired options under **Options…**.
+2. Select **Profiles → Save current settings…** and enter a unique name.
+3. Click that name in **Profiles** to restore all options. The displayed destination stays unchanged, even when empty. No transfer starts.
+
+**Manage profiles…** lets you apply, rename, delete or **update from current settings**. The summary displays every saved value. Deletion removes the definition without undoing applied settings. Up to 64 profiles persist between sessions.
+
+Language, the global speed limit and other global settings take their usual immediate effect. Verification, exclusions and default limits remain captured for new requests; existing batches keep their own options. Dolphin shortcut application is asynchronous. If a step fails, Gad attempts to restore previous settings and explicitly reports any rollback failure.
+
+Older profiles migrate automatically: the destination is removed and previously missing options are initialized from current settings once. Use **Update from current settings** to adjust each profile afterwards. No source path, destination or password is saved.
+
+![Transfer profile management](images/en-US/15-profils.png)
+
+From the command line, `gad --profile "My profile"` applies settings without starting a transfer. Combine it with a copy: `gad --profile "My profile" --copy /path/source --to /path/destination`, or with `--move` / `--paste`. Gad waits for profile application before starting the transfer. The destination comes from the command; explicit options such as `--md5` override the profile. An unknown name returns an error without queuing files. `--configure --profile "My profile"` also accepts additional settings, applied after the profile.
+
+## Conflict policies in profiles
+
+In **Options → File conflicts**, choose **Ask**, **Skip existing files**, **Replace older files only**, or **Keep both files**. Save or update a profile to preserve this choice. Existing requests retain their captured policy.
+
+Replacement compares destination and source modification times: only strictly older destination files are replaced; equal or newer files are skipped. Unreadable dates and symbolic links cause an error without automatic replacement; choose another policy and retry. Timestamp reliability depends on the filesystem or remote service. Existing folders are merged; the policy applies to file and link conflicts inside them. Keeping both uses the usual numbered rename suffix. Skipped files remain at the source when moving, and replacements retain restoration support.
+
+Command: `gad --configure --conflict-policy newer`. Profiles in formats 1 and 2 migrate to **Ask** and never gain a destination.
+
+## Search retained history {#history-search}
+
+Click **Search history** or press **Ctrl+F**. Enter a file name or part of a source/destination path, including remote URLs. Words are combined with AND, case-insensitively, without regular expressions. Optionally choose a batch status and enable **Added between** to filter by the date the request was added, with inclusive local dates.
+
+**History only** shows completed, canceled, restored or failed batches; clear it to include active requests. Column filters combine with this search. Matching files retain their parent folders. **Reset search** clears its criteria without changing column filters; closing the bar or pressing **Escape** disables only history search. Queue order and priorities remain unchanged.
+
+The queue-order tooltip shows the date added. Older operations without a recorded date are marked unknown and remain searchable while the date filter is off. History must be retained: cleared or removed operations can no longer be found.
+
+![Search retained history](images/en-US/16-recherche-historique.png)
+
+## Transfer diagnostics {#transfer-diagnostics}
+
+The **Transfer diagnostics…** button at the bottom opens a nonmodal view of active and queued requests. It shows status, observed activity or waiting, global and request speed limits, speed, and remaining time. Blocking batch numbers refer to the main list.
+
+Causes distinguish pauses, source scanning, conflicts awaiting a decision, unavailable devices or remote mounts, MD5 verification, resume-prefix checks, local renames, exclusive restoration, both workers occupied, row priority, shared disks or overlapping paths, and conservative serialization when resources are unknown.
+
+A speed-budget wait is reported only when the limiter actually observed one within the last second. A configured limit alone is not proof of a slowdown. After five seconds without byte progress during copying or MD5, outside rate-limit waiting, Gad reports the lack of progress: file I/O or finalization may be waiting, but this cannot precisely identify a disk or network bottleneck. Diagnostics are not performance benchmarks and are not recorded in history. Closing this window changes no transfer.
+
+![Transfer diagnostics](images/en-US/17-diagnostic-transferts.png)
+
+Speed limits apply to copied bytes; MD5 rereads and local renames are separate phases.
+
+## Verify fast moves {#verify-fast-moves}
+
+In **Options**, select **Verify fast moves**. Disabled by default, this setting is stored in profiles and captured for each new request. After a local rename, Gad checks identity (device/inode), type, size, modification time, permissions, owner and group, link targets, and the exact tree. It also checks that the source path disappeared. Legitimate ctime changes on the renamed root are accepted; descendants must retain their ctime.
+
+Details show **Fast move verified** on success. Diagnostics distinguish this phase from MD5. A mismatch, added or missing item, recreated source path, or read error fails the batch and identifies the checked path; Gad preserves the moved result and its journal. No automatic rollback overwrites modified files. Pausing or canceling verification does not delete the result already moved.
+
+This checks metadata rather than file contents: it preserves rename speed but does not replace a cryptographic comparison. Existing MD5 remains separate and forces copy/verify/delete. Ordinary copies do not receive a false fast-move verification result. Older profiles migrate with the option off. Command: `gad --configure --verify-fast-move`; disable with `--no-verify-fast-move`.
+
+![Fast move verified](images/en-US/18-verification-deplacement-rapide.png)
+
+## Batch-completion actions {#queue-completion}
+
+In **Options → Batch completion**, choose notification, quitting Gad, suspend or power off. Set the cancellation delay from **5 to 3600 seconds** (default 30), then click **Activate for this batch**. The status explicitly shows whether the action is active. Choosing an action, changing a setting or loading a profile does not activate it; changing completion settings disables an earlier activation.
+
+The action waits until all tracked transfers succeed, remote preparation ends and final saves complete. The countdown still allows cancellation. New transfers postpone the action and restart a full countdown afterward. An error, cancellation, restoration or removed request disables the action. Pausing prevents execution.
+
+**Deactivate completion action**, **Cancel action** or closing the countdown does not cancel transfers. Activation is used once and is not restored after restarting Gad. **When batch finishes…** provides the same actions and opens the dedicated tab directly. Here “batch” means all tracked transfers, not only one selected row.
+
+Suspend and power off use logind and respect its authorization and inhibitors. A notification reopens hidden Gad. `gad --configure --completion-action suspend --completion-delay 60` only saves preferences; activate the action separately in Gad.
+
+![Batch-completion actions](images/en-US/19-fin-de-file.png)
+
+![Batch-completion actions](images/en-US/20-options-fin-de-file.png)
+
+
+## Prepare transfers in the main list {#preparing-transfers}
+
+When no work is running, files added through the window (**Add files…**, **Add folder…** or drag and drop) are scanned and displayed without starting the transfer. Choose the destination and options before adding, review the tree, then click **Start**. There is no separate simulation window.
+
+The same button becomes **Pause all**, then **Resume queue**. If transfers are already authorized, new additions automatically join the queue. Normal paste and external commands start automatically without opening the main window; a rejected external request does not start prepared work. Already queued duplicates are ignored with a message.
+
+During copying, the partial file is visible at the destination as `file.ext.part` and receives its final name after success. Existing names are never overwritten for staging: Gad chooses a unique suffix. Interrupted transfers can resume the same partial file after verification. Clearing history removes the ability to restore completed transfers.
+
+The error report and transfer diagnostics also block interaction with the main window. **Show in list** closes the report and disables searches that could hide the row. Report filtering follows the selected language.
+
+![Prepare transfers in the main list](images/en-US/22-preparation.png)

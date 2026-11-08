@@ -1,8 +1,22 @@
 # Gad — Démarrage rapide
 
-**Gad, il copie. · Gestionnaire Avancé de Duplication · Version 0.1.0**
+**Gad, il copie. · Gestionnaire Avancé de Duplication · Version 0.2.0**
 
 [Guide utilisateur](GUIDE_UTILISATEUR.md) · [Guide développeur](GUIDE_DEVELOPPEUR.md) · [Toutes les langues](README.md)
+
+## Installer Gad
+
+Utilisez le [PPA Gad](https://launchpad.net/~hizo/+archive/ubuntu/gad) pour une série Ubuntu prise en charge. Les [releases GitHub](https://github.com/Hizoka76/gad/releases/latest) proposent aussi un `.deb`, une archive `.tar.gz` contenant les sources et le programme déjà compilé, ainsi que le binaire direct `gad-linux-amd64`.
+
+```sh
+sudo add-apt-repository ppa:hizo/gad
+sudo apt update
+sudo apt install gad
+```
+
+Vérifiez sur la page du PPA qu’un paquet est publié pour votre version d’Ubuntu. Si `add-apt-repository` est absent, installez `software-properties-common`.
+
+Les commandes, dépendances et différences entre les formats sont expliquées dans le [guide utilisateur](GUIDE_UTILISATEUR.md#installer-et-demarrer).
 
 ## Ouvrir Gad
 
@@ -16,18 +30,9 @@ Si nécessaire, suivez les [instructions d’installation](GUIDE_UTILISATEUR.md#
 
 ## Faire une première copie
 
-![La fenêtre Gad en thème clair](images/fr/01-vue-ensemble.png)
+![Préparer les transferts dans la liste principale](images/fr/22-preparation.png)
 
-*Source, Destination et Paramètres sont regroupés au-dessus de la liste.*
-
-1. Sélectionnez les fichiers ou dossiers dans votre gestionnaire et faites **Ctrl+C**.
-2. Dans Gad, renseignez **Destination** avec le dossier existant qui doit les recevoir.
-3. Cliquez sur **Coller ici**, ou utilisez **Ctrl+V dans Gad**.
-4. Vérifiez la destination dans la liste. Le transfert démarre automatiquement, sauf si la file est en pause.
-
-Vous pouvez aussi utiliser **Ajouter des fichiers…**, **Ajouter un dossier…** ou glisser les fichiers dans Gad après avoir choisi la destination. **Le glisser-déposer effectue toujours une copie.** Pour déplacer des fichiers, utilisez **Ctrl+X**, puis collez-les si votre gestionnaire transmet un marqueur Couper reconnu. Vérifiez le type d’opération dans la liste ; les [instructions pour les autres gestionnaires](GUIDE_UTILISATEUR.md#utiliser-gad-avec-un-autre-gestionnaire-de-fichiers) précisent les alternatives.
-
-Un nouveau collage ajoute une demande. Gad organise la file et peut traiter deux transferts compatibles en parallèle. Les opérations identiques déjà en attente sont ignorées.
+Choisissez la destination et les options, puis ajoutez vos fichiers dans Gad. Lorsque rien n’est en cours, vérifiez la liste et cliquez sur **Démarrer**. Un collage habituel démarre automatiquement ; les ajouts pendant un transfert rejoignent sa file. **Ctrl+C** copie, **Ctrl+X** déplace. Le glisser-déposer dans Gad prépare toujours une copie.
 
 ## Suivre et piloter les opérations
 
@@ -83,3 +88,21 @@ gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR -
 Voir le guide utilisateur pour protéger le lanceur Dolphin habituel et charger la surveillance automatique de Ctrl+V.
 
 [Surveillance automatique de Ctrl+V](GUIDE_UTILISATEUR.md#dolphin-watchdog)
+
+
+## Profils de transfert
+
+Dans **Paramètres → Profils**, enregistrez toutes les options actuelles sous un nom, puis choisissez ce nom pour les appliquer en un clic. **La destination n’est jamais enregistrée ni modifiée.** Les options globales, notamment langue et débit global, prennent effet normalement. **Gérer les profils…** permet de mettre à jour, renommer ou supprimer les définitions. Voir les [profils de transfert](GUIDE_UTILISATEUR.md#transfer-profiles).
+
+En ligne de commande, `gad --profile "Mon profil"` applique le profil sans lancer de transfert. Combinez-le avec une copie : `gad --profile "Mon profil" --copy /chemin/source --to /chemin/destination`, ou avec `--move` / `--paste`. Gad attend la fin de l’application du profil avant de lancer le transfert. La destination vient de la commande ; les options explicites, telles que `--md5`, priment sur le profil. Un nom inconnu renvoie une erreur sans ajouter de fichiers. `--configure --profile "Mon profil"` accepte aussi des réglages supplémentaires, appliqués après le profil.
+
+
+## Préparer les transferts dans la liste principale
+
+Choisissez la destination et les options, puis ajoutez vos fichiers dans Gad. Lorsque rien n’est en cours, vérifiez la liste et cliquez sur **Démarrer**. Un collage habituel démarre automatiquement ; les ajouts pendant un transfert rejoignent sa file. **Ctrl+C** copie, **Ctrl+X** déplace. Le glisser-déposer dans Gad prépare toujours une copie.
+
+## Les options
+
+**Paramètres → Options…** ouvre une fenêtre modale : la fenêtre principale reste bloquée jusqu’à sa fermeture, tandis que les transferts continuent. Les réglages s’appliquent immédiatement ; **Fermer** ou Échap ne les annule pas. Les paramètres de commande apparaissent en gris sous les contrôles. Taille minimale : **800 × 740** ; fenêtre principale, bilan des erreurs et diagnostic : **1100 × 600**.
+
+Les quatre onglets sont **Paramètres**, **Raccourcis**, **Débits** et **Fin de lot**. **Débits** contient le plafond global et celui appliqué par défaut aux nouveaux lots. Pour modifier un lot existant, sélectionnez ses lignes puis utilisez **clic droit → Limiter le débit de la demande…**. La limite apparaît dans la cellule **Détail**, y compris sur les dossiers ; la valeur illimitée n’ajoute aucun texte.

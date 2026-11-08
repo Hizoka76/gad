@@ -19,6 +19,31 @@ void Window::refresh(){
     const auto delta=engine({{"command",Protocol::Command::Poll},{"since",queueSnapshot.revision()}});
     if(delta.contains("error")){summary->setText(I18n::message(delta["error"].toString()));return;}
     const auto changed=queueSnapshot.apply(delta);state=queueSnapshot.state();
+    // Un seul contrôle pilote la file, qu’elle soit préparée, active ou en pause.
+    bool ready=false,preparing=false,active=false;
+    for(const auto &value:state["jobs"].toArray()){const auto job=value.toObject();if(finished(job["state"].toString()) || job["cancel"].toBool())continue;if(job["start_required"].toBool()){preparing|=job["state"]==Protocol::State::Scanning;ready|=job["state"]==Protocol::State::Waiting;}else active=true;}
+    for(const auto &request:sourceQueue){if(request["prepare_only"].toBool())preparing=true;else active=true;}
+    paused=state["paused"].toBool();
+    // Une ancienne pause ne transforme pas une préparation en transfert déjà lancé.
+    pause->setText(active?(paused?GAD_TR("Resume queue"):GAD_TR("Pause all")):GAD_TR("Start"));
+    pause->setIcon(QIcon::fromTheme(active && !paused?"media-playback-pause":"media-playback-start"));
+    pause->setEnabled(!completionExecuting && (active || (ready && !preparing)));
+    // Les actions suivent les opérations réelles, même après un nettoyage ou un
+    // instantané inchangé. Un filtre visuel ne doit pas bloquer la file masquée.
+    bool cancellable=!sourceQueue.isEmpty(),restorable=!sourceQueue.isEmpty(),clearable=false,restoring=false;
+    for(const auto &value:state["jobs"].toArray()) {
+        const auto job=value.toObject();const auto status=job["state"].toString();
+        const bool undo=job["undo_requested"].toBool() || status==Protocol::State::Undoing || status==Protocol::State::UndoWaiting;
+        restoring|=undo;
+        cancellable|=(!finished(status) && !job["cancel"].toBool() && !undo) || (status==Protocol::State::Error && job["resume_pending"].toBool());
+        restorable|=job.value("journaled").toBool(true) && status!=Protocol::State::Undone && !undo;
+        clearable|=finished(status) && !undo;
+    }
+    findChild<QAction *>("cancelAllAction")->setEnabled(cancellable && !completionExecuting);
+    findChild<QAction *>("undoAllAction")->setEnabled(restorable && !restoring && !completionExecuting);
+    findChild<QPushButton *>("cancellationMenu")->setEnabled(!completionExecuting && (cancellable || (restorable && !restoring)));
+    findChild<QPushButton *>("clearHistoryButton")->setEnabled(clearable && !restoring && !completionExecuting);
+
     if(state.contains("rate_limit")) {
         const auto bytes=state["rate_limit"].toInteger();QSignalBlocker blocker(globalRate);
         globalRate->setValue(bytes/1048576.0);QSettings().setValue("rateLimit",bytes);
@@ -33,6 +58,10 @@ void Window::refresh(){
     // Même sans nouvelle révision, actualiser les mesures pour éviter un débit figé pendant une attente d’E/S.
     refreshReconnect();
     auto metricsLines=metricsTracker.sync(state,changed,metricsClock.elapsed(),delta["reset"].toBool());
+    diagnosticTracker.sync(state,metricsTracker,metricsClock.elapsed(),delta["reset"].toBool());
+    refreshDiagnostics();
+    refreshCompletion(state);
+    if(closing)return;
     for(auto it=reconnectWarnings.cbegin();it!=reconnectWarnings.cend();++it)if(!it.value().isEmpty())metricsLines.append(QString("#%1 · %2").arg(it.key()).arg(it.value()));
     const auto metricsText=metricsLines.join("\n");
     if(requestMetrics->text()!=metricsText)requestMetrics->setText(metricsText);
@@ -50,8 +79,6 @@ void Window::refresh(){
     renderedLanguage=QLocale().name();
     renderedBase=palette().color(QPalette::Base);
     renderedPause=state["paused"].toBool();
-    paused = state["paused"].toBool(); pause->setText(paused ? GAD_TR("Resume queue") : GAD_TR("Pause all"));
-    pause->setIcon(QIcon::fromTheme(paused ? "media-playback-start" : "media-playback-pause"));
     const auto jobs = state["jobs"].toArray();
     // Le numéro vient exclusivement de l’ordre du moteur, jamais du rang après tri ou filtrage.
     auto queueOrder=rawQueueOrder;
@@ -87,7 +114,9 @@ void Window::refresh(){
     };
     const auto orderText=[&](QTreeWidgetItem *row,qint64 id,int index){
         const auto position=positions.value(positionKey(id,index),0);
-        text(row,TableView::OrderColumn,position>0?QString::number(position):QString(),QString(GAD_TR("Batch #%1")).arg(id));
+        const auto date=row->data(0,HistorySearch::CreatedRole).toLongLong();
+        const auto added=date>0?QLocale().toString(QDateTime::fromSecsSinceEpoch(date),QLocale::ShortFormat):GAD_TR("Unknown date (older history)");
+        text(row,TableView::OrderColumn,position>0?QString::number(position):QString(),QString(GAD_TR("Batch #%1")).arg(id)+"\n"+GAD_TR("Added:")+" "+added);
         row->setTextAlignment(TableView::OrderColumn,Qt::AlignRight|Qt::AlignVCenter);
     };
     const auto operationIcon=[this](QTreeWidgetItem *row,const QString &mode){
@@ -95,6 +124,12 @@ void Window::refresh(){
         const bool move=mode=="move";
         row->setIcon(0,QIcon::fromTheme(move?"edit-cut":"edit-copy",style()->standardIcon(move?QStyle::SP_ArrowRight:QStyle::SP_FileIcon)));
         row->setData(0,RowTree::OperationRole,mode);
+    };
+    // Les dates appartiennent à la demande, y compris pour ses sous-fichiers et ses URL originales.
+    const auto searchData=[](QTreeWidgetItem *row,const QJsonObject &job,const QString &paths){
+        row->setData(0,HistorySearch::CreatedRole,job["created_at"].toInteger());
+        row->setData(0,HistorySearch::JobStateRole,job["state"].toString());
+        row->setData(0,HistorySearch::PathsRole,paths);
     };
     int waiting = 0, running = 0, done = 0, errors = 0;
     int activeJobs = 0, runningJobs = 0, queuedJobs = 0, scanningJobs = 0, deviceWaitingJobs=0;
@@ -113,6 +148,9 @@ void Window::refresh(){
         if(force || changed.contains(id) || !jobRows.contains(id)) {
             totals=JobTotals{};
             const auto entries = job["entries"].toArray();
+            const auto limit=job["rate_limit"].toInteger();
+            const QString rateDetail=limit>0?QString(GAD_TR("Limit: %1")).arg(TransferMetrics::speed(limit)):QString();
+            const bool jobChanged=std::any_of(entries.cbegin(),entries.cend(),[](const QJsonValue &entry){return hasTransferChanges(entry.toObject());});
             auto *parent = jobRows.value(id, nullptr);
             if (!parent) {
                 parent = new QTreeWidgetItem;
@@ -167,23 +205,28 @@ void Window::refresh(){
             if(entries.isEmpty())RowTree::attach(parent,nullptr,tree);
             else if(parent->treeWidget())tree->takeTopLevelItem(tree->indexOfTopLevelItem(parent));
             const bool dark=palette().color(QPalette::Base).lightness()<128;
-            const QColor accent=QColor::fromHsl(int((quint64(id)*137)%360),150,dark?160:105);
-            const QColor base=palette().color(QPalette::Base);const double alpha=dark?0.16:0.08;
+            // Palette fixe de 24 teintes. Le pas de 7 espace les couleurs des lots
+            // successifs et parcourt toute la palette avant de réutiliser une couleur.
+            const int colorIndex=int((quint64(id)%24)*7%24);
+            const QColor accent=QColor::fromHsl(colorIndex*15,170,dark?160:105);
+            const QColor base=palette().color(QPalette::Base);const double alpha=dark?0.24:0.14;
             const QColor tint=QColor::fromRgbF(base.redF()*(1-alpha)+accent.redF()*alpha,base.greenF()*(1-alpha)+accent.greenF()*alpha,base.blueF()*(1-alpha)+accent.blueF()*alpha);
             // Le mode est visible par l’icône Copier/Couper ; l’aide garde le chemin et les options utiles.
             QStringList sourceOptions;
             if(job["verify_md5"].toBool())sourceOptions.append(QStringLiteral("MD5"));
-            if(job["rate_limit"].toInteger()>0)sourceOptions.append(QString(GAD_TR("Limit: %1 MiB/s")).arg(job["rate_limit"].toInteger()/1048576.0,0,'f',2));
             operationIcon(parent,job["mode"].toString());
             parent->setData(0,RowTree::AccentRole,accent);for(int c=0;c<TableView::ColumnCount;++c)parent->setBackground(c,tint);
             if(placeholderSelected && !rows.isEmpty())for(auto *row:rows)if(!row->parent())row->setSelected(true);
             const auto sources = job["sources"].toArray();
             QStringList names; for (const auto &s : sources) names << QFileInfo(s.toString()).fileName();
+            parent->setData(0,HistorySearch::CreatedRole,job["created_at"].toInteger());
             orderText(parent,id,-1);
             text(parent, 0, names.join(", "));
-            text(parent, 1, destinationLabel(job,job["destination"].toString())); text(parent, 2, label(status, paused || job["paused"].toBool()));
+            text(parent, 1, destinationLabel(job,job["destination"].toString())); text(parent, 2, job["start_required"].toBool() && status==Protocol::State::Waiting?GAD_TR("Ready to start"):label(status, paused || job["paused"].toBool(),!jobChanged));
             parent->setData(0,Qt::UserRole+3,status);
             parent->setData(0,RowTree::ErrorRetryRole,finished(status) && status!=Protocol::State::Undone && job["journaled"].toBool() && !job["undo_requested"].toBool() && (status!=Protocol::State::UndoError || job["retry_entries"].isArray()));
+            QStringList searchPaths;for(const auto &source:job["sources"].toArray())searchPaths.append(source.toString());for(const auto &source:job["source_urls"].toArray())searchPaths.append(source.toString());searchPaths.append(job["destination"].toString());searchPaths.append(job["destination_url"].toString());
+            searchData(parent,job,searchPaths.join("\n"));
             RowPaths::store(parent,RowPaths::group(job));
             parent->setData(0,RowTree::CanQueueRole,(status==Protocol::State::Waiting || status==Protocol::State::Scanning) && !job["cancel"].toBool() && !job["undo_requested"].toBool());
             parent->setData(0,Qt::UserRole+6,job["recovery"].toBool() && job["resume_pending"].toBool() && finished(status) && !job["undo_requested"].toBool());
@@ -213,6 +256,11 @@ void Window::refresh(){
             if (parent->foreground(2)!=parentColor) parent->setForeground(2,parentColor);
             double jobSize = 0, jobCopied = 0; int propertyWarnings=0, propertyChecked=0;
             QVector<int> branchWarnings(entries.size(),0);
+            QVector<bool> branchChanges(entries.size(),false);
+            // Un dossier représente aussi les restaurations réellement effectuées dans ses enfants.
+            for(int i=0;i<entries.size();++i)if(hasTransferChanges(entries[i].toObject())) {
+                branchChanges[i]=true;for(auto *folder=rows[i]->parent();folder;folder=folder->parent())branchChanges[RowTree::index(folder)]=true;
+            }
             // Après suppression des en-têtes, chaque dossier ne résume que les avertissements de sa propre branche.
             for(int i=0;i<entries.size();++i) {
                 const auto report=entries[i].toObject()["properties"].toObject();
@@ -253,7 +301,7 @@ void Window::refresh(){
                 for(int c=0;c<TableView::ColumnCount;++c)if(item->background(c)!=QBrush(tint))item->setBackground(c,tint);
                 text(item,1,destinationLabel(job,e["destination"].toString()));
                 const auto displayedState=status==Protocol::State::DeviceWaiting && !finished(s) && s!=Protocol::State::Skipped?Protocol::State::DeviceWaiting:s;
-                text(item,2,label(displayedState,paused || job["paused"].toBool() || e["paused"].toBool()));
+                text(item,2,job["start_required"].toBool() && displayedState==Protocol::State::Waiting?GAD_TR("Ready to start"):label(displayedState,paused || job["paused"].toBool() || e["paused"].toBool(),!branchChanges[index]));
                 completed[index]=kind=="directory" && s==Protocol::State::Done && item->data(0,Qt::UserRole+2).toString()!=Protocol::State::Done;
                 item->setData(0,Qt::UserRole+2,s);
                 if(e["resume_checking"].toBool() && !(paused || job["paused"].toBool() || e["paused"].toBool()))text(item,2,GAD_TR("Checking resume data…"));
@@ -267,6 +315,11 @@ void Window::refresh(){
                 QString detail = I18n::message(e["error"].toString());
                 if (detail.isEmpty() && !e["md5_source"].toString().isEmpty() && e["md5_source"] == e["md5_destination"])
                     detail = GAD_TR("MD5 OK · ") + e["md5_source"].toString();
+                const auto fastCheck=e["fast_move_check"].toObject();
+                if(detail.isEmpty() && !finished(s) && fastCheck["status"]=="checking")detail=GAD_TR("Verifying fast move · metadata and paths");
+                if(detail.isEmpty() && s==Protocol::State::Done && fastCheck["status"]=="ok")detail=GAD_TR("Fast move verified · identity and metadata");
+                if(detail.isEmpty() && fastCheck["status"]=="error")detail=I18n::message("Fast-move verification failed; moved result kept.");
+                if(!fastCheck["path"].toString().isEmpty())detail+="\n"+GAD_TR("Checked path:")+" "+fastCheck["path"].toString();
                 if(detail.isEmpty() && s==Protocol::State::Done && e["undo"].toObject()["directory_move"].toBool())
                     detail=GAD_TR("Folder moved by renaming");
                 if(detail.isEmpty() && s==Protocol::State::Done && e["undo"].toObject()["rename_move"].toBool())
@@ -301,6 +354,13 @@ void Window::refresh(){
                     if(!detail.isEmpty())detail+=" · ";
                     detail+=extra;propertyTooltip=propertyTooltip.isEmpty()?Qt::convertFromPlainText(detail):propertyTooltip+"<br/>"+Qt::convertFromPlainText(extra);
                 }
+                if(propertyTooltip.isNull() && !fastCheck["path"].toString().isEmpty())propertyTooltip=Qt::convertFromPlainText(detail);
+                // La limite de la demande est visible sur chaque ligne concernée,
+                // sans remplacer les erreurs, vérifications ou avertissements existants.
+                if(!rateDetail.isEmpty()) {
+                    if(!detail.isEmpty()){detail+=" · ";}detail+=rateDetail;
+                    if(!propertyTooltip.isNull())propertyTooltip+="<br/>"+rateDetail.toHtmlEscaped();
+                }
                 text(item, 4, detail,propertyTooltip);
                 if(item->data(4,Qt::UserRole).toBool()!=(propertyWarning || branchWarning || !spaceWarning.isEmpty())) {
                     item->setIcon(4,(propertyWarning || branchWarning || !spaceWarning.isEmpty())?QIcon::fromTheme("dialog-warning",style()->standardIcon(QStyle::SP_MessageBoxWarning)):QIcon());item->setData(4,Qt::UserRole,propertyWarning || branchWarning || !spaceWarning.isEmpty());
@@ -315,7 +375,9 @@ void Window::refresh(){
                 if (e["hidden"].toBool() && item->isSelected()) item->setSelected(false);
                 const double fraction=size>0?(s==Protocol::State::Verifying?e["verified"].toDouble()/(size*2):copied/size):(s==Protocol::State::Done?1:0);
                 item->setData(3,TableView::ProgressRole,kind=="directory"?QVariant():QVariant(fraction));
+                item->setData(0,HistorySearch::CreatedRole,job["created_at"].toInteger());
                 orderText(item,id,index);
+                searchData(item,job,sourceLabel(job,e["source"].toString())+"\n"+destinationLabel(job,e["destination"].toString())+"\n"+e["source"].toString()+"\n"+e["destination"].toString());
                 shown[index]=match && view->matches(item);
                 ++index;
             }
@@ -325,6 +387,7 @@ void Window::refresh(){
             }
             for(int i=0;i<rows.size();++i) {
                 if(rows[i]->isHidden()==shown[i])rows[i]->setHidden(!shown[i]);
+                if(!shown[i] && rows[i]->isSelected())rows[i]->setSelected(false);
                 if(completed[i])RowTree::collapseCompleted(rows[i]);
             }
 
@@ -337,6 +400,7 @@ void Window::refresh(){
                 if(!jobDetail.isEmpty())jobDetail+=" · ";
                 jobDetail+=propertyText;
             }
+            if(!rateDetail.isEmpty()){if(!jobDetail.isEmpty())jobDetail+=" · ";jobDetail+=rateDetail;}
             text(parent,4,jobDetail);
             const bool groupWarning=propertyWarnings>0 || !spaceWarning.isEmpty();
             if(parent->data(4,Qt::UserRole).toBool()!=groupWarning) {
@@ -347,6 +411,7 @@ void Window::refresh(){
             const bool allRemoved=!entries.isEmpty() && std::all_of(entries.begin(),entries.end(),[](const QJsonValue &e){return e.toObject()["hidden"].toBool();});
             const bool hidden = (entries.isEmpty() && !view->matches(parent)) || (allRemoved && I18n::message(job["error"].toString()).isEmpty());
             if (parent->isHidden() != hidden) parent->setHidden(hidden);
+            if(hidden && parent->isSelected())parent->setSelected(false);
             jobTotals[id]=totals;
         }
         waiting+=totals.waiting;running+=totals.running;done+=totals.done;errors+=totals.errors;

@@ -1,5 +1,5 @@
 #include "i18n.h"
-// Bilan non modal : un instantané exportable, les commandes métier restent validées par Rust.
+// Bilan modal : un instantané exportable, les commandes métier restent validées par Rust.
 #include "window.h"
 #include "bridge.h"
 #include "error_report.h"
@@ -14,7 +14,7 @@ void Window::retryErrorSelection() {
 
 void Window::showErrorReport() {
     if(auto *existing=findChild<QDialog *>("errorReportDialog")){existing->show();existing->raise();existing->activateWindow();return;}
-    auto *dialog=new QDialog(this);dialog->setObjectName("errorReportDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);
+    auto *dialog=new QDialog(this);dialog->setObjectName("errorReportDialog");dialog->setWindowModality(Qt::WindowModal);dialog->setAttribute(Qt::WA_DeleteOnClose);
     I18n::bindProperty(dialog,"windowTitle",[=]{return GAD_TR("Gad — Error report");});dialog->setMinimumSize(1100,600);dialog->resize(1150,650);
     auto *layout=new QVBoxLayout(dialog);
     auto *summary=new QLabel;summary->setObjectName("errorReportSummary");summary->setTextFormat(Qt::PlainText);summary->setWordWrap(true);layout->addWidget(summary);
@@ -66,12 +66,16 @@ void Window::showErrorReport() {
         refresh();load();
     };
     connect(retryAll,&QPushButton::clicked,dialog,[retry]{retry(false);});connect(retrySelected,&QPushButton::clicked,dialog,[retry]{retry(true);});
-    connect(locate,&QPushButton::clicked,dialog,[this,rows,recordFor]{
+    connect(locate,&QPushButton::clicked,dialog,[this,dialog,rows,recordFor]{
         const auto selected=rows->selectedItems();if(selected.size()!=1)return;const auto record=recordFor(selected[0]);
+        // La recherche d’historique pourrait masquer la cible malgré les filtres de colonnes vidés.
+        findChild<QPushButton *>("historySearchButton")->setChecked(false);
         static_cast<TransferTree *>(tree)->clearHeaderFilters();refresh();auto *row=record["index"].isNull()?jobRows.value(record["job"].toInteger()):entryRow(record["job"].toInteger(),record["index"].toInt());
         if(!row || !row->treeWidget()) {return;}
         for(auto *p=row->parent();p;p=p->parent()) {p->setExpanded(true);}
-        tree->clearSelection();tree->setCurrentItem(row);tree->scrollToItem(row);showMainWindow();
+        tree->clearSelection();tree->setCurrentItem(row);tree->scrollToItem(row);
+        // Le bilan modal doit se fermer pour rendre la ligne sélectionnée accessible.
+        dialog->accept();showMainWindow();
     });
     connect(exportButton,&QPushButton::clicked,dialog,[this,dialog,report]{
         if(report->value("records").toArray().isEmpty())return;
@@ -83,14 +87,14 @@ void Window::showErrorReport() {
         QString message;if(!ErrorReport::save(path,*report,json,message))error(GAD_TR("Export failed: ")+message);
     });
     I18n::onChange(rows,"headers",[rows]{rows->setHeaderLabels({GAD_TR("Request"),GAD_TR("Operation"),GAD_TR("Source"),GAD_TR("Destination"),GAD_TR("Status"),GAD_TR("Error")});},false);
-    I18n::onChange(dialog,"reportLanguage",[rows,report,recordFor,detail]{
+    I18n::onChange(dialog,"reportLanguage",[rows,report,recordFor,detail,applyFilter]{
         QSignalBlocker blocker(rows);const bool sorting=rows->isSortingEnabled();rows->setSortingEnabled(false);
         for(int i=0;i<rows->topLevelItemCount();++i) {
             auto *row=rows->topLevelItem(i);const auto record=recordFor(row);
             const QList<QPair<int,QString>> values={{1,record["mode"]=="move"?GAD_TR("Move"):GAD_TR("Copy")},{4,label(record["state"].toString())},{5,I18n::message(record["error"].toString())}};
             for(const auto &value:values){auto text=value.second;text.replace('\n'," ↵ ");text.replace('\r'," ");text.replace('\t'," ");row->setText(value.first,text);row->setToolTip(value.first,value.second);}
         }
-        rows->setSortingEnabled(sorting);
+        rows->setSortingEnabled(sorting);applyFilter();
         const auto selected=rows->selectedItems();detail->setPlainText(selected.size()==1?ErrorReport::detail(*report,recordFor(selected[0])):QString());
     },false);
     load();dialog->show();

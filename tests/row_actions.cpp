@@ -1,9 +1,11 @@
 // Tests unitaires Qt des chemins et actions d’ouverture ; aucune application externe n’est lancée.
 #include "../native/window.h"
 #include "../native/cli_options.h"
+#include "../native/application.h"
 #include "../native/documentation.h"
 #include "../native/kio_sources.h"
 #include "../native/error_report.h"
+#include <atomic>
 #include <QtTest>
 #include <QDesktopServices>
 #include <QStatusBar>
@@ -15,14 +17,19 @@
 
 static QJsonObject status;
 static QJsonObject errorReport;
+static QJsonObject simulationPlan;
+static std::atomic_int simulationDelay{0},simulationCancels{0},simulationCompleted{0};
 static QList<QJsonObject> mutations;
-static bool rejectExclusions=false;
+static bool rejectExclusions=false,clearHistoryInMock=false;
 /// Remplace uniquement la frontière Rust ; les vrais widgets et connexions du menu sont conservés.
 extern "C" char *sc_request(const char *input) {
     const auto request=QJsonDocument::fromJson(input).object();QJsonObject result;
-    if(request["command"]=="error_report")result=errorReport;
+    if(request["command"]=="simulation_begin")result={{"id",1}};
+    else if(request["command"]=="simulation_cancel"){++simulationCancels;result={{"ok",true}};}
+    else if(request["command"]=="simulate"){QThread::msleep(simulationDelay.load());result=simulationPlan;++simulationCompleted;}
+    else if(request["command"]=="error_report")result=errorReport;
     else if(request["command"]=="status" || request["command"]=="poll")result=status;
-    else {mutations.append(request);result=rejectExclusions && request["command"]=="configure" && request.contains("exclusions")?QJsonObject{{"error","Invalid exclusion rules"}}:QJsonObject{{"ok",true},{"id",1}};}
+    else {mutations.append(request);if(clearHistoryInMock && request["command"]=="clear"){QJsonArray kept;for(const auto &value:status["jobs"].toArray()){const auto row=value.toObject();if(!Protocol::terminal(row["state"].toString()) || row["undo_requested"].toBool())kept.append(row);}status["jobs"]=kept;}result=rejectExclusions && request["command"]=="configure" && request.contains("exclusions")?QJsonObject{{"error","Invalid exclusion rules"}}:QJsonObject{{"ok",true},{"id",1}};}
     return strdup(QJsonDocument(result).toJson(QJsonDocument::Compact).constData());
 }
 extern "C" void sc_free(char *value){free(value);}
@@ -34,6 +41,43 @@ public:
     QList<QUrl> urls;
 public Q_SLOTS:
     void capture(const QUrl &url){urls.append(url);}
+};
+
+/// Chaque test de profils restaure les préférences du compte Qt isolé.
+struct ProfileSettingsGuard {
+    QMap<QString,QVariant> previous;
+    QByteArray startupBytes;bool startupExists=QFileInfo::exists(autostartPath());
+    ProfileSettingsGuard(){if(startupExists){QFile file(autostartPath());if(!file.open(QIODevice::ReadOnly))qFatal("Cannot snapshot test startup file");startupBytes=file.readAll();}for(const auto &key:QStringList{"completionAction","completionDelay","verifyFastMove","conflictPolicy","transferProfiles","requestRateLimit","rateLimit","verifyMd5","verifyProperties","verifySpace","allowDuplication","includeHidden","excludeDirectories","excludeFiles","keepHistory","resumeInterrupted","language","konquerorCtrlV"})previous[key]=QSettings().value(key);QSettings().remove("transferProfiles");QSettings().remove("requestRateLimit");}
+    ~ProfileSettingsGuard(){QSettings settings;for(auto it=previous.begin();it!=previous.end();++it){if(it.value().isValid())settings.setValue(it.key(),it.value());else settings.remove(it.key());}if(startupExists){QFile file(autostartPath());if(!file.open(QIODevice::WriteOnly))qFatal("Cannot restore test startup file");file.write(startupBytes);}else QFile::remove(autostartPath());I18n::initialize("fr_FR");}
+};
+static TransferProfiles::Profile sampleProfile(const QString &name="Backup") {
+    TransferProfiles::Profile p;p.id=QUuid::createUuid().toString(QUuid::WithoutBraces);p.name=name;p.rate=2621440;
+    p.options={{"verify_fast_move",false},{"conflict_policy","ask"},{"verify_md5",true},{"verify_properties",true},{"verify_space",true},{"allow_duplication",false},{"keep_history",false},{"resume_interrupted",false},{"rate_limit",1048576},{"exclusions",QJsonObject{{"include_hidden",false},{"directories",QJsonArray{"__*"}},{"files",QJsonArray{"*.tmp"}}}}};p.gui={{"completion_action","none"},{"completion_delay",30},{"language","fr_FR"},{"autostart",false},{"dolphin_ctrl_v",false},{"konqueror_ctrl_v",false}};return p;
+}
+
+/// Simuler uniquement l’action externe Dolphin ; conserver les vrais widgets et le moteur de configuration Qt.
+class ProfileWindow : public Window {
+public:
+    bool rejectShortcut=false;QList<bool> shortcutCalls;
+    void configureDolphin(bool enabled,std::function<void(QJsonObject)> reply) override {
+        shortcutCalls.append(enabled);QTimer::singleShot(0,this,[this,enabled,reply]{if(rejectShortcut){reply({{"error","Shortcut configuration rejected"}});return;}auto *check=findChild<QCheckBox *>("dolphinShortcut");QSignalBlocker blocker(check);check->setChecked(enabled);reply({{"ok",true}});});
+    }
+};
+
+/// Aucun test ne ferme Gad ni ne contacte logind : les effets de fin de file passent par ce double.
+class CompletionWindow : public Window {
+public:
+    QStringList actions,notices;
+    void executeCompletion(const QString &action,std::function<void(QJsonObject)> reply) override {actions.append(action);reply({{"ok",true}});}
+    void completionNotice(const QString &title,const QString &message) override {notices.append(title+"\n"+message);}
+};
+
+class DelayedCompletionWindow : public CompletionWindow {
+public:
+    std::function<void(QJsonObject)> pending;
+    int shortcutCalls=0;
+    void executeCompletion(const QString &action,std::function<void(QJsonObject)> reply) override {actions.append(action);pending=reply;}
+    void configureDolphin(bool,std::function<void(QJsonObject)> reply) override {++shortcutCalls;reply({{"ok",true}});}
 };
 
 class RowActionsTest : public QObject {
@@ -64,13 +108,293 @@ class RowActionsTest : public QObject {
         return entries;
     }
 private Q_SLOTS:
+    /// Les réglages survivent à une nouvelle lecture, et les noms Unicode équivalents ne se remplacent pas.
+    void profilesPersistAndRejectEquivalentNames() {
+        ProfileSettingsGuard guard;QString failure;auto profile=sampleProfile(QString::fromUtf8("Été"));QVERIFY(TransferProfiles::store({profile},failure));
+        const auto stored=QSettings().value("transferProfiles");const auto loaded=TransferProfiles::load(failure);QVERIFY(failure.isEmpty());QCOMPARE(loaded.size(),1);QCOMPARE(loaded[0].json(),profile.json());
+        auto duplicate=sampleProfile(QString::fromUtf8("été"));QVERIFY(!TransferProfiles::store({profile,duplicate},failure));QCOMPARE(QSettings().value("transferProfiles"),stored);
+        QVERIFY(!loaded[0].json().contains("destination"));QCOMPARE(loaded[0].options["keep_history"].toBool(),false);QCOMPARE(loaded[0].gui["language"].toString(),QString("fr_FR"));
+    }
+    /// Une donnée future ou abîmée n’est jamais écrasée depuis les actions de gestion.
+    void corruptProfilesStayUntouched() {
+        ProfileSettingsGuard guard;const QByteArray raw="{\"version\":99,\"profiles\":[]}";QSettings().setValue("transferProfiles",raw);QString failure;
+        QVERIFY(TransferProfiles::load(failure).isEmpty());QVERIFY(!failure.isEmpty());Window window;window.showProfiles();auto *dialog=window.findChild<QDialog *>("profilesDialog");QVERIFY(dialog);
+        QVERIFY(!dialog->findChild<QPushButton *>("saveNewProfile")->isEnabled());QCOMPARE(QSettings().value("transferProfiles").toByteArray(),raw);
+    }
+    /// Un clic applique tous les réglages, y compris le débit global, sans changer la destination ni les fichiers.
+    void profileMenuAppliesAllOptionsWithoutChangingDestination() {
+        ProfileSettingsGuard guard;QString failure;const auto profile=sampleProfile("Photos & videos");QVERIFY(TransferProfiles::store({profile},failure));
+        publish(job({file("running")},"running"));Window window;auto *global=window.findChild<QDoubleSpinBox *>("globalRateLimit");global->setValue(7.25);mutations.clear();
+        window.refreshProfilesMenu();auto *action=window.findChild<QAction *>("applyProfile_"+profile.id);QVERIFY(action);QCOMPARE(action->text(),QString("Photos && videos"));const auto destinationBefore=window.findChild<QLineEdit *>("destinationInput")->text();action->trigger();QCoreApplication::processEvents();
+        QCOMPARE(window.findChild<QLineEdit *>("destinationInput")->text(),destinationBefore);QCOMPARE(window.findChild<QDoubleSpinBox *>("defaultRequestRateLimit")->value(),2.5);QCOMPARE(global->value(),1.0);
+        QVERIFY(window.findChild<QCheckBox *>("verifyMd5")->isChecked());QVERIFY(!window.findChild<QCheckBox *>("includeHidden")->isChecked());
+        QCOMPARE(mutations.size(),1);QCOMPARE(mutations[0]["command"].toString(),QString("configure"));QCOMPARE(mutations[0]["rate_limit"].toInteger(),1048576);QVERIFY(!mutations[0]["keep_history"].toBool());QVERIFY(!window.findChild<QCheckBox *>("resumeInterrupted")->isChecked());QVERIFY(!window.findChild<QCheckBox *>("konquerorShortcut")->isChecked());
+        QCOMPARE(status["jobs"].toArray()[0].toObject()["state"].toString(),QString("running"));
+        mutations.clear();window.enqueue({"/tmp/a"});QCOMPARE(mutations.last()["rate_limit"].toInteger(),2621440);QCOMPARE(mutations.last()["exclusions"].toObject(),profile.options["exclusions"].toObject());
+        const auto queued=mutations.last();window.findChild<QDoubleSpinBox *>("defaultRequestRateLimit")->setValue(1);QCOMPARE(queued["rate_limit"].toInteger(),2621440);
+        window.handle({{"command","enqueue"},{"sources",QJsonArray{"/tmp/b"}},{"destination","/tmp/other"},{"rate_limit",0}});QCOMPARE(mutations.last()["rate_limit"].toInteger(),0);
+        window.findChild<QLineEdit *>("destinationInput")->clear();QVERIFY(window.applyTransferProfile(profile.id));QVERIFY(window.findChild<QLineEdit *>("destinationInput")->text().isEmpty());window.refreshProfilesMenu();QVERIFY(window.findChild<QAction *>("applyProfile_"+profile.id)->isChecked());
+    }
+    /// Un rejet moteur ne laisse ni destination ni limites ni cases appliquées partiellement.
+    void rejectedProfileLeavesCurrentSettingsIntact() {
+        ProfileSettingsGuard guard;QString failure;const auto profile=sampleProfile();QVERIFY(TransferProfiles::store({profile},failure));Window window;
+        auto *destination=window.findChild<QLineEdit *>("destinationInput");destination->setText("/tmp/before");auto *rate=window.findChild<QDoubleSpinBox *>("defaultRequestRateLimit");rate->setValue(1);
+        const auto checked=window.findChild<QCheckBox *>("verifyMd5")->isChecked();rejectExclusions=true;QVERIFY(!window.applyTransferProfile(profile.id));rejectExclusions=false;
+        QCOMPARE(destination->text(),QString("/tmp/before"));QCOMPARE(rate->value(),1.0);QCOMPARE(window.findChild<QCheckBox *>("verifyMd5")->isChecked(),checked);
+    }
+    /// Enregistrer conserve les options exactes et ne conserve jamais le chemin de destination.
+    void profileDialogSavesSnapshotAndManagerEditsDefinitionsOnly() {
+        ProfileSettingsGuard guard;Window window;auto *destination=window.findChild<QLineEdit *>("destinationInput");destination->setText("/tmp/saved target");auto *defaultRate=window.findChild<QDoubleSpinBox *>("defaultRequestRateLimit");defaultRate->setValue(4.5);
+        window.saveCurrentProfile();auto *save=window.findChild<QDialog *>("saveProfileDialog");QVERIFY(save);I18n::initialize("en_US");QVERIFY(save->findChild<QPlainTextEdit *>("profilePreview")->toPlainText().contains("Global speed limit:"));save->findChild<QLineEdit *>("profileName")->setText("Personal <backup>");save->findChild<QPushButton *>("confirmSaveProfile")->click();
+        QString failure;auto profiles=TransferProfiles::load(failure);QCOMPARE(profiles.size(),1);QCOMPARE(profiles[0].name,QString("Personal <backup>"));QCOMPARE(profiles[0].rate,4718592);QCOMPARE(defaultRate->value(),4.5);
+        QVERIFY(!profiles[0].json().contains("destination"));Window second;QVERIFY(second.applyTransferProfile(profiles[0].id));QCOMPARE(second.findChild<QDoubleSpinBox *>("defaultRequestRateLimit")->value(),4.5);
+        window.showProfiles();auto *dialog=window.findChild<QDialog *>("profilesDialog");auto *list=dialog->findChild<QListWidget *>("profilesList");QCOMPARE(list->count(),1);QCOMPARE(list->currentItem()->text(),QString("Personal <backup>"));
+        dialog->findChild<QPushButton *>("renameProfile")->click();auto *rename=dialog->findChild<QInputDialog *>("renameProfileDialog");QVERIFY(rename);rename->setTextValue("Renamed");rename->accept();QCOMPARE(TransferProfiles::load(failure)[0].name,QString("Renamed"));
+        destination->setText("/tmp/updated target");dialog->findChild<QPushButton *>("updateProfile")->click();QVERIFY(!TransferProfiles::load(failure)[0].json().contains("destination"));
+        mutations.clear();dialog->findChild<QPushButton *>("deleteProfile")->click();QVERIFY(TransferProfiles::load(failure).isEmpty());QVERIFY(mutations.isEmpty());QCOMPARE(destination->text(),QString("/tmp/updated target"));QCOMPARE(list->count(),0);
+    }
+    /// Une sélection reste un item stable ; le changement de langue conserve l’identifiant sélectionné.
+    void profileSelectionSurvivesLanguageChanges() {
+        ProfileSettingsGuard guard;QString failure;auto first=sampleProfile("First"),second=sampleProfile("Second");QVERIFY(TransferProfiles::store({first,second},failure));Window window;window.showProfiles();
+        auto *list=window.findChild<QListWidget *>("profilesList");auto *item=list->item(1);list->setCurrentRow(1);QCOMPARE(list->currentItem(),item);
+        const auto restore=qScopeGuard([]{I18n::initialize("fr_FR");});I18n::initialize("en_US");QCOMPARE(list->currentItem()->data(Qt::UserRole).toString(),second.id);QCOMPARE(window.findChild<QDialog *>("profilesDialog")->windowTitle(),QString("Transfer profiles"));
+    }
+    /// Les limites futures ont leur propre commande et les valeurs invalides ne touchent pas les réglages.
+    void requestRateConfigurationIsSeparateAndValidated() {
+        ProfileSettingsGuard guard;Window window;auto *global=window.findChild<QDoubleSpinBox *>("globalRateLimit");const auto previous=global->value();QString failure;
+        const auto request=CliOptions::configure({"gad","--configure","--request-rate-limit","3.5"},failure);QVERIFY(failure.isEmpty());mutations.clear();QVERIFY(!window.handle(request).contains("error"));QVERIFY(mutations.isEmpty());QCOMPARE(global->value(),previous);QCOMPARE(window.findChild<QDoubleSpinBox *>("defaultRequestRateLimit")->value(),3.5);QCOMPARE(SourceUrls::requiredProtocol(request),25);
+        QVERIFY(window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"request_rate_limit",-1}}}}).contains("error"));QCOMPARE(window.findChild<QDoubleSpinBox *>("defaultRequestRateLimit")->value(),3.5);
+        CliOptions::configure({"gad","--configure","--request-rate-limit","-1"},failure);QVERIFY(!failure.isEmpty());
+    }
+
+    /// La migration complète une seule fois les options manquantes, puis retire les anciennes destinations.
+    void legacyProfilesMigrateWithoutKeepingDestination() {
+        ProfileSettingsGuard guard;QSettings().setValue("keepHistory",false);QSettings().setValue("resumeInterrupted",true);QSettings().setValue("rateLimit",3145728);QSettings().setValue("language","en_US");
+        const auto sample=sampleProfile();auto old=sample.options;old.remove("verify_fast_move");old.remove("conflict_policy");old.remove("keep_history");old.remove("resume_interrupted");old.remove("rate_limit");old["id"]=sample.id;old["name"]=sample.name;old["destination"]="/private/old-target";old["rate_limit"]=sample.rate;
+        QSettings().setValue("transferProfiles",QJsonDocument(QJsonObject{{"version",1},{"profiles",QJsonArray{old}}}).toJson());QString failure;
+        const auto migrated=TransferProfiles::load(failure);QVERIFY(failure.isEmpty());QCOMPARE(migrated.size(),1);QCOMPARE(migrated[0].options["rate_limit"].toInteger(),3145728);QCOMPARE(migrated[0].gui["language"].toString(),QString("en_US"));QCOMPARE(migrated[0].rate,sample.rate);
+        const auto raw=QSettings().value("transferProfiles").toByteArray();QVERIFY(!raw.contains("destination"));QVERIFY(!raw.contains("/private/old-target"));QCOMPARE(QJsonDocument::fromJson(raw).object()["version"].toInt(),5);
+        QSettings().setValue("rateLimit",0);QCOMPARE(TransferProfiles::load(failure)[0].options["rate_limit"].toInteger(),3145728);
+    }
+    /// Les effets externes sont asynchrones ; la destination reste celle choisie par l’utilisateur, même pendant l’attente.
+    void fullProfileIncludesStartupLanguageAndBothShortcuts() {
+        ProfileSettingsGuard guard;QString failure;auto profile=sampleProfile();profile.gui={{"completion_action","none"},{"completion_delay",30},{"language","en_US"},{"autostart",true},{"dolphin_ctrl_v",true},{"konqueror_ctrl_v",true}};profile.options["keep_history"]=true;profile.options["resume_interrupted"]=true;QVERIFY(TransferProfiles::store({profile},failure));
+        ProfileWindow window;auto *destination=window.findChild<QLineEdit *>("destinationInput");destination->setText("/tmp/current target");QVERIFY(window.applyTransferProfile(profile.id));QVERIFY(!window.findChild<QToolButton *>("profilesButton")->isEnabled());destination->setText("/tmp/changed while waiting");
+        QTRY_VERIFY(window.findChild<QToolButton *>("profilesButton")->isEnabled());QCOMPARE(destination->text(),QString("/tmp/changed while waiting"));QVERIFY(autostartEnabled());QVERIFY(window.findChild<QCheckBox *>("dolphinShortcut")->isChecked());QVERIFY(window.findChild<QCheckBox *>("konquerorShortcut")->isChecked());QVERIFY(window.findChild<QCheckBox *>("keepHistory")->isChecked());QVERIFY(window.findChild<QCheckBox *>("resumeInterrupted")->isChecked());QCOMPARE(window.findChild<QComboBox *>("languageSelector")->currentData().toString(),QString("en_US"));QCOMPARE(window.shortcutCalls,QList<bool>{true});
+    }
+    /// Un échec du raccourci ne change ni la langue, ni le démarrage, ni les options internes.
+    void failedShortcutDoesNotApplyOtherProfileOptions() {
+        ProfileSettingsGuard guard;QString failure;auto profile=sampleProfile();profile.gui["dolphin_ctrl_v"]=true;profile.gui["autostart"]=true;profile.gui["language"]="en_US";QVERIFY(TransferProfiles::store({profile},failure));ProfileWindow window;window.rejectShortcut=true;
+        const auto before=window.currentTransferProfile();mutations.clear();QVERIFY(window.applyTransferProfile(profile.id));QTRY_VERIFY(window.findChild<QToolButton *>("profilesButton")->isEnabled());const auto after=window.currentTransferProfile();QCOMPARE(after.options,before.options);QCOMPARE(after.gui,before.gui);QCOMPARE(after.rate,before.rate);QVERIFY(mutations.isEmpty());QVERIFY(!autostartEnabled());
+    }
+    /// Un refus moteur restaure les changements externes déjà préparés.
+    void engineFailureRollsBackProfileStartupAndShortcut() {
+        ProfileSettingsGuard guard;QString failure;auto profile=sampleProfile();profile.gui["dolphin_ctrl_v"]=true;profile.gui["autostart"]=true;QVERIFY(TransferProfiles::store({profile},failure));ProfileWindow window;const auto before=window.currentTransferProfile();rejectExclusions=true;QVERIFY(window.applyTransferProfile(profile.id));QTRY_VERIFY(window.findChild<QToolButton *>("profilesButton")->isEnabled());rejectExclusions=false;
+        QVERIFY(!autostartEnabled());QVERIFY(!window.findChild<QCheckBox *>("dolphinShortcut")->isChecked());QCOMPARE(window.currentTransferProfile().options,before.options);QCOMPARE(window.shortcutCalls,(QList<bool>{true,false}));
+    }
+    /// Le retour arrière restitue exactement une entrée de démarrage personnalisée préexistante.
+    void profileFailureRestoresExactAutostartFile() {
+        ProfileSettingsGuard guard;QVERIFY(QDir().mkpath(QFileInfo(autostartPath()).absolutePath()));const QByteArray original="[Desktop Entry]\nType=Application\nHidden=true\nName=Custom Gad\nExec=custom-command\n";
+        {QFile file(autostartPath());QVERIFY(file.open(QIODevice::WriteOnly));QCOMPARE(file.write(original),original.size());QVERIFY(file.setPermissions(QFile::ReadOwner|QFile::WriteOwner));}
+        QString failure;auto profile=sampleProfile();profile.gui["autostart"]=true;QVERIFY(TransferProfiles::store({profile},failure));ProfileWindow window;rejectExclusions=true;QVERIFY(!window.applyTransferProfile(profile.id));rejectExclusions=false;
+        QFile file(autostartPath());QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),original);QVERIFY(!autostartEnabled());QVERIFY(!file.permissions().testFlag(QFile::ReadOther));
+    }
+    /// L’attente externe n’autorise ni une configuration concurrente, ni une fermeture qui couperait le retour arrière.
+    void profileApplicationBlocksConcurrentConfigurationAndQuit() {
+        ProfileSettingsGuard guard;QString failure;auto profile=sampleProfile();profile.gui["dolphin_ctrl_v"]=true;QVERIFY(TransferProfiles::store({profile},failure));ProfileWindow window;QVERIFY(window.applyTransferProfile(profile.id));
+        QVERIFY(window.handle({{"command","configure"},{"verify_md5",false}}).contains("error"));QVERIFY(window.handle({{"command","shutdown"}}).contains("error"));QCloseEvent close;QApplication::sendEvent(&window,&close);QVERIFY(!close.isAccepted());
+        QTRY_VERIFY(window.findChild<QToolButton *>("profilesButton")->isEnabled());QVERIFY(window.findChild<QCheckBox *>("verifyMd5")->isChecked());
+    }
+    /// Une langue retirée ne doit pas conduire à ignorer silencieusement une option sauvegardée.
+    void unavailableProfileLanguageIsRejectedBeforeChanges() {
+        ProfileSettingsGuard guard;QString failure;auto profile=sampleProfile();profile.gui["language"]="xx_XX";QVERIFY(TransferProfiles::store({profile},failure));ProfileWindow window;const auto before=window.currentTransferProfile();QVERIFY(!window.applyTransferProfile(profile.id));QCOMPARE(window.currentTransferProfile().options,before.options);QVERIFY(window.shortcutCalls.isEmpty());
+    }
+
+    /// Les commandes attendent le résultat asynchrone avant d’ajouter des fichiers, et les options explicites restent prioritaires.
+    void profileCommandWaitsBeforeQueueingAndKeepsDestination() {
+        ProfileSettingsGuard guard;QString failure;auto profile=sampleProfile("CLI profile");profile.gui["dolphin_ctrl_v"]=true;profile.options["verify_md5"]=false;QVERIFY(TransferProfiles::store({profile},failure));ProfileWindow window;
+        QJsonObject reply;mutations.clear();window.handleAsync({{"command","enqueue"},{"profile","cli PROFILE"},{"sources",QJsonArray{"/tmp/source.txt"}},{"destination","/tmp/explicit target"},{"verify_md5",true}},[&](QJsonObject value){reply=value;});
+        QVERIFY(reply.isEmpty());QVERIFY(mutations.isEmpty());QTRY_VERIFY(!reply.isEmpty());QVERIFY(!reply.contains("error"));QCOMPARE(mutations.last()["command"].toString(),QString("enqueue"));QCOMPARE(mutations.last()["destination"].toString(),QString("/tmp/explicit target"));QCOMPARE(mutations.last()["rate_limit"].toInteger(),profile.rate);QVERIFY(mutations.last()["verify_md5"].toBool());QVERIFY(!window.findChild<QCheckBox *>("verifyMd5")->isChecked());
+    }
+    /// Aucun transfert n’est ajouté si le nom est inconnu ou si l’application du profil échoue.
+    void profileCommandFailuresNeverQueueTransfer() {
+        ProfileSettingsGuard guard;QString failure;auto profile=sampleProfile("CLI profile");profile.gui["dolphin_ctrl_v"]=true;QVERIFY(TransferProfiles::store({profile},failure));ProfileWindow window;QJsonObject reply;mutations.clear();
+        const QJsonObject request{{"command","enqueue"},{"profile","unknown"},{"sources",QJsonArray{"/tmp/source.txt"}},{"destination","/tmp/target"}};
+        window.handleAsync(request,[&](QJsonObject result){reply=result;});QVERIFY(reply.contains("error"));QVERIFY(mutations.isEmpty());
+        auto valid=request;valid["profile"]="CLI profile";window.rejectShortcut=true;reply={};window.handleAsync(valid,[&](QJsonObject result){reply=result;});QTRY_VERIFY(reply.contains("error"));QVERIFY(mutations.isEmpty());
+    }
+    /// Appliquer seul ne change pas la destination et ne nécessite aucun paramètre moteur supplémentaire.
+    void standaloneProfileCommandDoesNotQueueOrChangeDestination() {
+        ProfileSettingsGuard guard;QString failure;auto profile=sampleProfile("Standalone");QVERIFY(TransferProfiles::store({profile},failure));Window window;window.findChild<QLineEdit *>("destinationInput")->setText("sftp://host/untouched");QJsonObject reply;mutations.clear();
+        window.handleAsync({{"command","configure"},{"profile","Standalone"}},[&](QJsonObject result){reply=result;});QVERIFY(reply["ok"].toBool());QCOMPARE(window.findChild<QLineEdit *>("destinationInput")->text(),QString("sftp://host/untouched"));QCOMPARE(mutations.size(),1);QCOMPARE(mutations[0]["command"].toString(),QString("configure"));QCOMPARE(SourceUrls::requiredProtocol({{"profile","Standalone"}}),26);
+    }
+    /// Le nom est extrait avant les drapeaux, y compris avec espaces, Unicode et forme --profile=.
+    void profileCommandParsingValidatesNamesAndCombinations() {
+        QString failure;auto request=parse({"gad","--profile","Mon profil"},failure);QVERIFY(failure.isEmpty());QCOMPARE(request["profile"].toString(),QString("Mon profil"));QCOMPARE(request["command"].toString(),QString("configure"));
+        request=parse({"gad","--copy","/tmp/a","--to","/tmp/b","--profile=--md5"},failure);QVERIFY(failure.isEmpty());QCOMPARE(request["profile"].toString(),QString("--md5"));QCOMPARE(request["destination"].toString(),QString("/tmp/b"));
+        request=CliOptions::configure({"gad","--configure","--profile","Backup"},failure);QVERIFY(failure.isEmpty());QCOMPARE(request["profile"].toString(),QString("Backup"));
+        for(const auto &args:QList<QStringList>{{"gad","--profile"},{"gad","--profile="},{"gad","--profile","A","--profile","B"},{"gad","--status","--profile","A"}}){parse(args,failure);QVERIFY(!failure.isEmpty());}
+    }
+
+    /// Le profil enregistre la politique et la requête en capture la valeur avant la résolution des URL.
+    void profileCapturesConflictPolicyAndMigratesOlderProfiles() {
+        ProfileSettingsGuard guard;Window window;auto *policy=window.findChild<QComboBox *>("conflictPolicy");QVERIFY(policy);policy->setCurrentIndex(policy->findData("rename"));
+        auto profile=window.currentTransferProfile();profile.name="Keep both";QString failure;QVERIFY(TransferProfiles::store({profile},failure));QCOMPARE(TransferProfiles::load(failure)[0].options["conflict_policy"].toString(),QString("rename"));
+        policy->setCurrentIndex(policy->findData("skip"));QVERIFY(window.applyTransferProfile(profile.id));QCOMPARE(policy->currentData().toString(),QString("rename"));window.findChild<QLineEdit *>("destinationInput")->setText("/tmp/target");mutations.clear();window.enqueue({"/tmp/source.txt"});QCOMPARE(mutations.last()["conflict_policy"].toString(),QString("rename"));
+        auto old=profile.json();auto options=old["options"].toObject();options.remove("conflict_policy");old["options"]=options;QSettings().setValue("transferProfiles",QJsonDocument(QJsonObject{{"version",2},{"profiles",QJsonArray{old}}}).toJson());
+        const auto migrated=TransferProfiles::load(failure);QVERIFY(failure.isEmpty());QCOMPARE(migrated[0].options["conflict_policy"].toString(),QString("ask"));QCOMPARE(QJsonDocument::fromJson(QSettings().value("transferProfiles").toByteArray()).object()["version"].toInt(),5);
+        auto invalid=CliOptions::configure({"gad","--configure","--conflict-policy","replace"},failure);QVERIFY(!failure.isEmpty());QVERIFY(invalid.isEmpty());
+        const auto request=CliOptions::configure({"gad","--configure","--conflict-policy","newer"},failure);QVERIFY(failure.isEmpty());QCOMPARE(request["conflict_policy"].toString(),QString("newer"));QCOMPARE(SourceUrls::requiredProtocol(request),27);
+        QVERIFY(window.handle({{"command","configure"},{"conflict_policy","invalid"},{"verify_md5",false}}).contains("error"));QCOMPARE(policy->currentData().toString(),QString("rename"));
+    }
+
+    /// Dates locales inclusives, Unicode et mots littéraux combinés ; les anciens journaux ne sont pas datés artificiellement.
+    void historyQueryMatchesDatesStatesAndOriginalPaths() {
+        QTreeWidgetItem row;const auto today=QDate::currentDate();row.setData(0,HistorySearch::CreatedRole,QDateTime(today,QTime(0,0)).toSecsSinceEpoch());row.setData(0,HistorySearch::JobStateRole,"error");row.setData(0,Qt::UserRole+3,"done");row.setData(0,HistorySearch::PathsRole,QString::fromUtf8("sftp://host/Photos/Été.jpg\n/home/user/Images/Été.jpg"));
+        HistorySearch::Query query;query.enabled=true;query.text=QString::fromUtf8("été HOST");query.state="error";query.dates=true;query.from=today;query.to=today;QVERIFY(query.matches(&row));
+        query.text="other";QVERIFY(!query.matches(&row));query.text.clear();query.state="done";QVERIFY(!query.matches(&row));query.state.clear();query.from=today.addDays(1);QVERIFY(!query.matches(&row));query.from=today;
+        row.setData(0,HistorySearch::CreatedRole,0);QVERIFY(!query.matches(&row));query.dates=false;QVERIFY(query.matches(&row));row.setData(0,HistorySearch::JobStateRole,"running");QVERIFY(!query.matches(&row));query.historyOnly=false;QVERIFY(query.matches(&row));query.enabled=false;query.text="never";QVERIFY(query.matches(&row));
+    }
+    /// La barre conserve les parents des résultats et les mêmes items ; fermer la recherche restaure la vue.
+    void historySearchCombinesFiltersWithoutChangingQueue() {
+        auto entries=nestedEntries();for(int i=0;i<entries.size();++i){auto entry=entries[i].toObject();entry["state"]="done";entries[i]=entry;}
+        auto value=job(entries);value["created_at"]=QDateTime(QDate::currentDate(),QTime(12,0)).toSecsSinceEpoch();publish(value);Window window;window.show();window.refresh();
+        auto *button=window.findChild<QPushButton *>("historySearchButton");auto *text=window.findChild<QLineEdit *>("historySearchText");auto *view=static_cast<TransferTree *>(window.findChild<QTreeWidget *>());auto *row=window.entryRow(1,2);auto *outside=window.entryRow(1,4);mutations.clear();button->click();text->setText("sub/a.txt");
+        QTRY_VERIFY(outside->isHidden());QVERIFY(!row->isHidden());QVERIFY(!row->parent()->isHidden());QVERIFY(row->parent()->isExpanded());QCOMPARE(window.entryRow(1,2),row);QVERIFY(mutations.isEmpty());
+        view->setColumnFilter(1,"no-match");QVERIFY(row->isHidden());view->clearHeaderFilters();QVERIFY(!row->isHidden());
+        row->setSelected(true);text->setText("outside.txt");QTRY_VERIFY(row->isHidden());QVERIFY(!row->isSelected());
+        window.findChild<QToolButton *>("historySearchClose")->click();QVERIFY(!row->isHidden());QVERIFY(!outside->isHidden());QVERIFY(mutations.isEmpty());
+    }
+    /// Une plage valide est maintenue dans les deux sens ; les entrées sans date sont exclues uniquement avec ce filtre.
+    void historySearchDateControlsAndLiveLanguage() {
+        publish(job({file("done")}));Window window;window.show();window.refresh();window.findChild<QPushButton *>("historySearchButton")->click();
+        auto *row=window.entryRow(1,0);auto *dates=window.findChild<QCheckBox *>("historySearchDates");auto *from=window.findChild<QDateEdit *>("historySearchFrom");auto *to=window.findChild<QDateEdit *>("historySearchTo");QVERIFY(!row->isHidden());dates->setChecked(true);QVERIFY(row->isHidden());
+        from->setDate(QDate::currentDate().addDays(2));QCOMPARE(to->date(),from->date());to->setDate(QDate::currentDate().addDays(-2));QCOMPARE(from->date(),to->date());
+        window.findChild<QPushButton *>("historySearchReset")->click();QVERIFY(!row->isHidden());QVERIFY(!dates->isChecked());
+        const auto restore=qScopeGuard([]{I18n::initialize("fr_FR");});I18n::initialize("en_US");QCOMPARE(window.findChild<QPushButton *>("historySearchButton")->text(),QString("Search history"));QVERIFY(row->toolTip(TableView::OrderColumn).contains("Unknown date"));
+    }
+
+    /// Une limite configurée ne suffit pas ; les observations réelles priment, et MD5/conflit/pause restent distincts.
+    void diagnosticsDistinguishObservedLimitsFromIdleProgress() {
+        TransferMetrics::Tracker meters;TransferDiagnostics::Tracker diagnostics;
+        auto entry=file("running");entry["size"]=10000;entry["copied"]=0;auto request=job({entry},"running");request["rate_limit"]=2000;
+        QJsonObject telemetry{{"queue_reason","active"},{"global_throttled",false},{"request_throttled",false}};
+        QJsonObject state{{"jobs",QJsonArray{request}},{"rate_limit",1000},{"diagnostics",QJsonObject{{"1",telemetry}}}};
+        meters.sync(state,{1},1000);diagnostics.sync(state,meters,1000);QVERIFY(diagnostics.items()[0].reason.contains("Aucune attente"));
+        meters.sync(state,{},7000);diagnostics.sync(state,meters,7000);QVERIFY(diagnostics.items()[0].reason.contains("Aucune progression"));
+        telemetry["global_throttled"]=true;state["diagnostics"]=QJsonObject{{"1",telemetry}};diagnostics.sync(state,meters,7100);QVERIFY(diagnostics.items()[0].reason.contains("budget de débit global"));QVERIFY(!diagnostics.items()[0].reason.contains("Aucune progression"));
+        entry["state"]="verifying";request["entries"]=QJsonArray{entry};state["jobs"]=QJsonArray{request};meters.sync(state,{1},7200);diagnostics.sync(state,meters,7200);QVERIFY(diagnostics.items()[0].reason.contains("MD5"));
+        entry["state"]="conflict";request["entries"]=QJsonArray{entry};state["jobs"]=QJsonArray{request};meters.sync(state,{1},7300);diagnostics.sync(state,meters,7300);QVERIFY(diagnostics.items()[0].reason.contains("décision"));
+        state["paused"]=true;diagnostics.sync(state,meters,7400);QVERIFY(diagnostics.items()[0].reason.contains("pause"));
+    }
+    /// Une réponse « inchangée » doit néanmoins rafraîchir la télémétrie, sans perdre les lots ni l’ordre.
+    void unchangedSnapshotsStillRefreshWaitDiagnostics() {
+        QueueSnapshot snapshot;const auto request=job({file("running")},"running");
+        snapshot.apply({{"revision",10},{"reset",true},{"jobs",QJsonArray{request}},{"job_ids",QJsonArray{1}},{"row_order",QJsonArray{1}},{"diagnostics",QJsonObject{{"1",QJsonObject{{"global_throttled",false}}}}}});
+        const auto changed=snapshot.apply({{"revision",10},{"unchanged",true},{"diagnostics",QJsonObject{{"1",QJsonObject{{"global_throttled",true}}}}}});QVERIFY(changed.isEmpty());QCOMPARE(snapshot.revision(),10);QCOMPARE(snapshot.state()["jobs"].toArray().size(),1);QVERIFY(snapshot.state()["diagnostics"].toObject()["1"].toObject()["global_throttled"].toBool());QCOMPARE(snapshot.state()["row_order"].toArray(),QJsonArray{1});
+    }
+    /// Les lignes du diagnostic sont stables, traduites à la volée et retirées après la fin d’un transfert.
+    void diagnosticsDialogUpdatesWithoutMutatingTransfers() {
+        publish(job({file("running")},"running"));status["diagnostics"]=QJsonObject{{"1",QJsonObject{{"queue_reason","active"},{"global_throttled",false}}}};Window window;mutations.clear();window.showDiagnostics();
+        auto *dialog=window.findChild<QDialog *>("diagnosticsDialog");QVERIFY(dialog);QCOMPARE(dialog->windowModality(),Qt::WindowModal);auto *rows=dialog->findChild<QTreeWidget *>("diagnosticsTree");QCOMPARE(rows->topLevelItemCount(),1);auto *row=rows->topLevelItem(0);row->setSelected(true);
+        status["diagnostics"]=QJsonObject{{"1",QJsonObject{{"queue_reason","active"},{"global_throttled",true}}}};window.refresh();QCOMPARE(rows->topLevelItem(0),row);QVERIFY(row->isSelected());QVERIFY(row->text(2).contains("budget de débit global"));QVERIFY(row->sizeHint(0).height()>24);QVERIFY(mutations.isEmpty());
+        const auto restore=qScopeGuard([]{I18n::initialize("fr_FR");});I18n::initialize("en_US");QCOMPARE(dialog->windowTitle(),QString("Transfer diagnostics"));QVERIFY(row->text(2).contains("global speed budget"));
+        auto request=job({file("done")});publish(request);window.refresh();QCOMPARE(rows->topLevelItemCount(),0);QVERIFY(dialog->findChild<QLabel *>("diagnosticsEmpty")->isVisible());QVERIFY(mutations.isEmpty());
+    }
+
+    /// Un renommage rapide en file ne doit pas être présenté comme un déplacement déjà en cours.
+    void diagnosticsQueuedRenameReportsItsRealBlocker() {
+        TransferMetrics::Tracker meters;TransferDiagnostics::Tracker diagnostics;auto request=job({file("waiting")},"waiting");request["fast_move"]=true;
+        QJsonObject state{{"jobs",QJsonArray{request}},{"diagnostics",QJsonObject{{"1",QJsonObject{{"queue_reason","shared_resources"},{"blockers",QJsonArray{2}}}}}}};
+        meters.sync(state,{1},1000);diagnostics.sync(state,meters,1000);QVERIFY(diagnostics.items()[0].reason.contains("même disque"));QVERIFY(diagnostics.items()[0].reason.contains("#2"));QVERIFY(!diagnostics.items()[0].reason.contains("renommage"));
+    }
+
+    /// L’option est persistante, capturée dans les demandes et conservée par les profils ; les anciens profils gardent le défaut désactivé.
+    void fastMoveVerificationOptionProfilesAndCommandLine() {
+        ProfileSettingsGuard guard;Window window;auto *check=window.findChild<QCheckBox *>("verifyFastMove");QVERIFY(check);check->setChecked(true);QVERIFY(QSettings().value("verifyFastMove").toBool());auto profile=window.currentTransferProfile();profile.name="Checked renames";QString failure;QVERIFY(TransferProfiles::store({profile},failure));QVERIFY(TransferProfiles::load(failure)[0].options["verify_fast_move"].toBool());
+        check->setChecked(false);QVERIFY(window.applyTransferProfile(profile.id));QVERIFY(check->isChecked());window.findChild<QLineEdit *>("destinationInput")->setText("/tmp/target");mutations.clear();window.enqueue({"/tmp/source.txt"});QVERIFY(mutations.last()["verify_fast_move"].toBool());QCOMPARE(SourceUrls::requiredProtocol(mutations.last()),33);
+        mutations.clear();QVERIFY(window.handle({{"command","configure"},{"verify_fast_move","yes"},{"verify_md5",false}}).contains("error"));QVERIFY(mutations.isEmpty());QVERIFY(check->isChecked());
+        const auto request=CliOptions::configure({"gad","--configure","--no-verify-fast-move"},failure);QVERIFY(failure.isEmpty());QVERIFY(request["verify_fast_move"].isBool());QVERIFY(!request["verify_fast_move"].toBool());QVERIFY(!window.handle(request).contains("error"));QVERIFY(!check->isChecked());
+        auto old=profile.json();auto options=old["options"].toObject();options.remove("verify_fast_move");old["options"]=options;QSettings().setValue("transferProfiles",QJsonDocument(QJsonObject{{"version",3},{"profiles",QJsonArray{old}}}).toJson());const auto migrated=TransferProfiles::load(failure);QVERIFY(failure.isEmpty());QVERIFY(!migrated[0].options["verify_fast_move"].toBool());QCOMPARE(QJsonDocument::fromJson(QSettings().value("transferProfiles").toByteArray()).object()["version"].toInt(),5);
+    }
+    /// La vérification des métadonnées après renommage ne doit pas être présentée comme une relecture MD5.
+    void fastMoveVerificationHasDistinctRowsMetricsAndDiagnostics() {
+        auto entry=file("running");entry["fast_move_check"]=QJsonObject{{"status","checking"}};entry["undo"]=QJsonObject{{"rename_move",true}};auto request=job({entry},"running");request["fast_move"]=true;publish(request);Window window;window.refresh();QVERIFY(window.entryRow(1,0)->text(4).contains("Vérification du déplacement rapide"));
+        const auto probe=TransferMetrics::Probe::from(request);QCOMPARE(probe.phase,QString("fast_verify"));TransferMetrics::Tracker meters;TransferDiagnostics::Tracker diagnostics;QJsonObject state{{"jobs",QJsonArray{request}}};meters.sync(state,{1},1000);diagnostics.sync(state,meters,1000);QVERIFY(diagnostics.items()[0].reason.contains("pas relu"));QVERIFY(!diagnostics.items()[0].metrics.contains("MD5"));
+        entry["state"]="done";entry["fast_move_check"]=QJsonObject{{"status","ok"}};publish(job({entry}));window.refresh();QVERIFY(window.entryRow(1,0)->text(4).contains("Déplacement rapide vérifié"));
+        entry["state"]="error";entry["error"]="Fast-move verification failed; moved result kept.";entry["fast_move_check"]=QJsonObject{{"status","error"},{"path","/tmp/<result>"}};publish(job({entry},"error"));window.refresh();QVERIFY(window.entryRow(1,0)->text(4).contains("conservé"));QVERIFY(window.entryRow(1,0)->text(4).contains("/tmp/<result>"));QTextDocument tooltip;tooltip.setHtml(window.entryRow(1,0)->toolTip(4));QVERIFY(tooltip.toPlainText().contains("/tmp/<result>"));
+    }
+
+    /// Une file vide ou un ancien historique ne déclenche rien ; une nouvelle opération très rapide est néanmoins prise en compte.
+    void completionPlanWaitsForActualWorkAndFiresOnce() {
+        Completion::Plan plan;auto previous=job({file("done")});QJsonObject state{{"jobs",QJsonArray{previous}},{"queue_guard",QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}}}};
+        plan.arm("poweroff",5,state);QCOMPARE(plan.observe(state,false,10000),Completion::Plan::None);auto next=previous;next["id"]=2;state["jobs"]=QJsonArray{previous,next};state["queue_guard"]=QJsonObject{{"idle",true},{"epoch",2},{"next_id",2},{"last_command","enqueue"}};
+        QCOMPARE(plan.observe(state,false,11000),Completion::Plan::Begin);QCOMPARE(plan.remaining(11000),5);QCOMPARE(plan.observe(state,false,15999),Completion::Plan::None);QCOMPARE(plan.observe(state,false,16000),Completion::Plan::Ready);QCOMPARE(plan.observe(state,false,20000),Completion::Plan::None);
+    }
+    /// Une demande ajoutée pendant le compte à rebours, même déjà terminée au prochain tick, redonne le délai entier.
+    void completionPlanRestartsForNewWorkAndWaitsForPreparation() {
+        Completion::Plan plan;auto first=job({file("running")},"running");QJsonObject state{{"jobs",QJsonArray{first}},{"queue_guard",QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}}}};plan.arm("suspend",5,state);
+        first["state"]="done";state["jobs"]=QJsonArray{first};state["queue_guard"]=QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};QCOMPARE(plan.observe(state,false,1000),Completion::Plan::Begin);
+        auto next=job({file("done")});next["id"]=2;state["jobs"]=QJsonArray{first,next};state["queue_guard"]=QJsonObject{{"idle",true},{"epoch",2},{"next_id",2},{"last_command","enqueue"}};QCOMPARE(plan.observe(state,false,5999),Completion::Plan::Begin);QCOMPARE(plan.remaining(5999),5);
+        QCOMPARE(plan.observe(state,true,7000),Completion::Plan::None);QVERIFY(!plan.counting);QCOMPARE(plan.observe(state,false,8000),Completion::Plan::Begin);QCOMPARE(plan.observe(state,false,13000),Completion::Plan::Ready);
+    }
+    /// Erreurs, annulations, suppressions et moteur ancien rendent l’action inéligible, sans appel système.
+    void completionPlanRejectsErrorsCanceledAndMissingRequests() {
+        for(const auto &result:QStringList{"error","cancelled","undone","missing"}) {
+            Completion::Plan plan;auto request=job({file("running")},"running");QJsonObject state{{"jobs",QJsonArray{request}},{"queue_guard",QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}}}};plan.arm("poweroff",5,state);
+            request["state"]=result;state["jobs"]=result=="missing"?QJsonArray{}:QJsonArray{request};state["queue_guard"]=QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};QCOMPARE(plan.observe(state,false,10000),Completion::Plan::Abort);QVERIFY(!plan.armed);
+        }
+        Completion::Plan unsupported;unsupported.arm("quit",5,{});QCOMPARE(unsupported.observe({},false,10000),Completion::Plan::Abort);
+    }
+    /// Tous les effets sont injectés : la sortie, la veille et l’extinction ne sont jamais réellement exécutées en test.
+    void completionWindowDispatchesOnlyAfterCountdownAndOnlyOnce() {
+        for(const auto &action:QStringList{"notify","quit","suspend","poweroff"}) {
+            ProfileSettingsGuard guard;auto request=job({file("running")},"running");publish(request);status["queue_guard"]=QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};CompletionWindow window;
+            window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"completion_action",action},{"completion_delay",5}}}});window.armCompletion();QVERIFY(window.actions.isEmpty());request["state"]="done";publish(request);status["queue_guard"]=QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};
+            window.refreshCompletion(status,1000);QVERIFY(window.findChild<QDialog *>("completionCountdown"));QVERIFY(window.actions.isEmpty());window.refreshCompletion(status,5999);QVERIFY(window.actions.isEmpty());mutations.clear();window.refreshCompletion(status,6000);QCOMPARE(window.actions,QStringList{action});QCOMPARE(mutations.first()["command"].toString(),QString("completion_claim"));QCOMPARE(mutations.last()["command"].toString(),QString("completion_release"));window.refreshCompletion(status,10000);QCOMPARE(window.actions.size(),1);
+        }
+    }
+    /// Le bouton Annuler désarme sans annuler les transferts ; recharger un profil ne peut jamais réarmer.
+    void completionCancelAndProfilesNeverArmPowerActions() {
+        ProfileSettingsGuard guard;auto request=job({file("running")},"running");publish(request);status["queue_guard"]=QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};CompletionWindow window;
+        window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"completion_action","poweroff"},{"completion_delay",5}}}});auto profile=window.currentTransferProfile();profile.name="Power preset";QString failure;QVERIFY(TransferProfiles::store({profile},failure));window.armCompletion();QVERIFY(window.applyTransferProfile(profile.id));
+        request["state"]="done";publish(request);status["queue_guard"]=QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};window.refreshCompletion(status,10000);QVERIFY(window.actions.isEmpty());QVERIFY(!window.findChild<QDialog *>("completionCountdown"));
+        request["state"]="running";publish(request);status["queue_guard"]=QJsonObject{{"idle",false},{"epoch",2},{"next_id",1},{"last_command","retry_errors"}};window.armCompletion();request["state"]="done";publish(request);status["queue_guard"]=QJsonObject{{"idle",true},{"epoch",2},{"next_id",1},{"last_command","retry_errors"}};window.refreshCompletion(status,1000);auto *dialog=window.findChild<QDialog *>("completionCountdown");QVERIFY(dialog);dialog->findChild<QPushButton *>("completionCountdownCancel")->click();window.refreshCompletion(status,20000);QVERIFY(window.actions.isEmpty());
+        auto old=profile.json();auto gui=old["gui"].toObject();gui.remove("completion_action");gui.remove("completion_delay");old["gui"]=gui;QSettings().setValue("transferProfiles",QJsonDocument(QJsonObject{{"version",4},{"profiles",QJsonArray{old}}}).toJson());const auto migrated=TransferProfiles::load(failure);QVERIFY(failure.isEmpty());QCOMPARE(migrated[0].gui["completion_action"].toString(),QString("none"));QCOMPARE(migrated[0].gui["completion_delay"].toInt(),30);
+    }
+    /// L’activation explicite dans les options reste distincte des préférences sauvegardées.
+    void completionOptionsShowAndToggleActivation() {
+        ProfileSettingsGuard guard;publish(job({file("running")},"running"));status["queue_guard"]=QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};CompletionWindow window;
+        auto *button=window.findChild<QPushButton *>("completionActivate");auto *label=window.findChild<QLabel *>("completionStatus");QVERIFY(button);QVERIFY(label);
+        window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"completion_action","none"}}}});QVERIFY(!button->isEnabled());QVERIFY(label->text().contains("Inactif"));
+        window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"completion_action","suspend"},{"completion_delay",45}}}});QVERIFY(button->isEnabled());QVERIFY(label->text().contains("Inactif"));
+        button->click();QVERIFY(label->text().contains("Actif"));QVERIFY(label->text().contains("45"));QVERIFY(window.actions.isEmpty());
+        button->click();QVERIFY(label->text().contains("Inactif"));QCOMPARE(window.findChild<QComboBox *>("completionAction")->currentData().toString(),QString("suspend"));
+        button->click();window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"completion_delay",60}}}});QVERIFY(label->text().contains("Inactif"));QVERIFY(window.actions.isEmpty());
+    }
+
+    /// Les paramètres CLI changent uniquement les préférences ; valeurs invalides et fractions sont refusées.
+    void completionSettingsValidateAndRemainUnarmed() {
+        ProfileSettingsGuard guard;CompletionWindow window;QString failure;auto request=CliOptions::configure({"gad","--configure","--completion-action","suspend","--completion-delay","45"},failure);QVERIFY(failure.isEmpty());QVERIFY(!window.handle(request).contains("error"));QCOMPARE(window.findChild<QComboBox *>("completionAction")->currentData().toString(),QString("suspend"));QCOMPARE(window.findChild<QSpinBox *>("completionDelay")->value(),45);QCOMPARE(SourceUrls::requiredProtocol(request),31);QVERIFY(window.actions.isEmpty());
+        for(const auto &args:QList<QStringList>{{"gad","--configure","--completion-action","invalid"},{"gad","--configure","--completion-delay","0"},{"gad","--configure","--completion-delay","2.5"}}){CliOptions::configure(args,failure);QVERIFY(!failure.isEmpty());}
+        mutations.clear();QVERIFY(window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"completion_delay",4},{"autostart",true}}}}).contains("error"));QVERIFY(mutations.isEmpty());QCOMPARE(window.findChild<QSpinBox *>("completionDelay")->value(),45);
+    }
+
+    /// Pendant l’envoi, les chemins asynchrones et les profils ne peuvent pas démarrer de préparation ni modifier les raccourcis.
+    void completionDispatchBlocksAsyncRequestsAndProfiles() {
+        ProfileSettingsGuard guard;auto request=job({file("running")},"running");publish(request);status["queue_guard"]=QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};DelayedCompletionWindow window;window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"completion_action","suspend"},{"completion_delay",5}}}});window.armCompletion();
+        request["state"]="done";request["entries"]=QJsonArray{file("done")};publish(request);status["queue_guard"]=QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};window.refreshCompletion(status,1000);window.refreshCompletion(status,6000);QVERIFY(window.pending);QVERIFY(!window.findChild<QWidget *>("settingsPanel")->isEnabled());QVERIFY(!window.findChild<QWidget *>("ratesPanel")->isEnabled());QVERIFY(!window.findChild<QWidget *>("completionPanel")->isEnabled());
+        QJsonObject reply;window.handleAsync({{"command","configure"},{"gui_settings",QJsonObject{{"dolphin_ctrl_v",true}}}},[&](QJsonObject result){reply=result;});QVERIFY(reply.contains("error"));QCOMPARE(window.shortcutCalls,0);QVERIFY(window.handle({{"command","enqueue"},{"sources",QJsonArray{"sftp://host/a"}},{"destination","/tmp"}}).contains("error"));
+        QJsonObject profileReply;QVERIFY(!window.applyTransferProfile("unknown",[&](QJsonObject result){profileReply=result;}));QVERIFY(profileReply.contains("error"));window.pending({{"ok",true}});QVERIFY(window.findChild<QWidget *>("settingsPanel")->isEnabled());QVERIFY(window.findChild<QWidget *>("ratesPanel")->isEnabled());QVERIFY(window.findChild<QWidget *>("completionPanel")->isEnabled());
+    }
+
     void initTestCase() {
         qApp->setOrganizationName("GadTests");qApp->setApplicationName("RowActions");
         applicationIcon();I18n::initialize("fr_FR");
         QDesktopServices::setUrlHandler("file",&desktop,"capture");
     }
     void cleanupTestCase(){QDesktopServices::unsetUrlHandler("file");}
-    void init(){rejectExclusions=false;errorReport={{"records",QJsonArray{}},{"jobs",QJsonArray{}},{"generated_unix",0}};status={{"jobs",QJsonArray{}},{"paused",false}};mutations.clear();desktop.urls.clear();}
+    void init(){clearHistoryInMock=false;rejectExclusions=false;errorReport={{"records",QJsonArray{}},{"jobs",QJsonArray{}},{"generated_unix",0}};status={{"jobs",QJsonArray{}},{"paused",false}};mutations.clear();desktop.urls.clear();}
 
     /// Les éditions installées suivent la langue à chaud et les liens ouvrent de vrais fichiers locaux.
     void aboutDocumentationLinksFollowLanguageAndOpenFiles() {
@@ -127,8 +451,8 @@ private Q_SLOTS:
         for(auto it=flags.begin();it!=flags.end();++it)for(bool enabled:{false,true}) {
             const auto request=CliOptions::configure({"gad","--configure","--"+QString(enabled?"":"no-")+it.key()},error);QVERIFY(error.isEmpty());QCOMPARE(request[it.value()].toBool(),enabled);
         }
-        const auto request=CliOptions::configure({"gad","--configure","--rate-limit","2.5","--exclude-folder","__*","--exclude-folder","node_modules","--no-include-hidden","--autostart","--no-konqueror-ctrl-v","--language","en_US"},error);
-        QVERIFY(error.isEmpty());QCOMPARE(request["rate_limit"].toInteger(),2621440);QCOMPARE(request["exclusion_patch"].toObject()["directories"].toArray().size(),2);QVERIFY(!request["exclusion_patch"].toObject()["include_hidden"].toBool());QVERIFY(request["gui_settings"].toObject()["autostart"].toBool());
+        const auto request=CliOptions::configure({"gad","--configure","--rate-limit","2.5","--exclude-folder","__*","--exclude-folder","node_modules","--no-include-hidden","--autostart","--no-konqueror-ctrl-v","--krusader-ctrl-v","--language","en_US"},error);
+        QVERIFY(error.isEmpty());QCOMPARE(request["rate_limit"].toInteger(),2621440);QCOMPARE(request["exclusion_patch"].toObject()["directories"].toArray().size(),2);QVERIFY(!request["exclusion_patch"].toObject()["include_hidden"].toBool());QVERIFY(request["gui_settings"].toObject()["autostart"].toBool());QVERIFY(request["gui_settings"].toObject()["krusader_ctrl_v"].toBool());
         const QList<QStringList> invalid{{},{"--md5","--no-md5"},{"--language"},{"--rate-limit","nan"},{"--rate-limit","-1"},{"--rate-limit","9999999"},{"--unknown"},{"--no-language","fr_FR"}};
         for(const auto &arguments:invalid){QStringList cli{"gad","--configure"};cli.append(arguments);error.clear();CliOptions::configure(cli,error);QVERIFY(!error.isEmpty());}
     }
@@ -155,20 +479,21 @@ private Q_SLOTS:
         QCOMPARE(window.minimumSize(),QSize(1100,600));
         auto *button=window.findChild<QToolButton *>("settingsButton");QVERIFY(button);QVERIFY(!button->menu());
         auto *dialog=window.findChild<QDialog *>("settingsDialog");QVERIFY(dialog);QVERIFY(!dialog->isVisible());QCOMPARE(dialog->minimumSize(),QSize(800,740));
-        auto *panel=dialog->findChild<QWidget *>("settingsPanel");QVERIFY(panel);QCOMPARE(dialog->findChildren<QCheckBox *>().size(),10);
+        auto *panel=dialog->findChild<QWidget *>("settingsPanel");QVERIFY(panel);QCOMPARE(dialog->findChildren<QCheckBox *>().size(),12);
         for(auto *check:dialog->findChildren<QCheckBox *>())QVERIFY(dialog->findChild<QLabel *>(check->objectName()+"CommandOption"));
         QCOMPARE(panel->findChild<QLabel *>("verifyMd5CommandOption")->text(),QString("--md5 / --no-md5"));
         QCOMPARE(panel->findChild<QLabel *>("verifyPropertiesCommandOption")->text(),QString("--properties / --no-properties"));
-        auto *tabs=dialog->findChild<QTabWidget *>("settingsTabs");QVERIFY(tabs);QCOMPARE(tabs->count(),2);
-        QTest::mouseClick(button,Qt::LeftButton);QVERIFY(dialog->isVisible());QVERIFY(!dialog->isModal());
+        auto *tabs=dialog->findChild<QTabWidget *>("settingsTabs");QVERIFY(tabs);QCOMPARE(tabs->count(),4);QCOMPARE(tabs->tabText(2),QString("Débits"));QCOMPARE(tabs->tabText(3),QString("Fin de lot"));
+        auto *rates=dialog->findChild<QWidget *>("ratesPanel");auto *completion=dialog->findChild<QWidget *>("completionPanel");QVERIFY(rates);QVERIFY(completion);QVERIFY(rates->findChild<QDoubleSpinBox *>("globalRateLimit"));QVERIFY(rates->findChild<QDoubleSpinBox *>("defaultRequestRateLimit"));QVERIFY(completion->findChild<QComboBox *>("completionAction"));QVERIFY(!panel->findChild<QDoubleSpinBox *>("globalRateLimit"));QVERIFY(!panel->findChild<QComboBox *>("completionAction"));
+        QTest::mouseClick(button,Qt::LeftButton);QVERIFY(dialog->isVisible());QVERIFY(dialog->isModal());QCOMPARE(dialog->windowModality(),Qt::WindowModal);
         auto *md5=panel->findChild<QCheckBox *>("verifyMd5");const auto checked=md5->isChecked();mutations.clear();
         QTest::mouseClick(md5,Qt::LeftButton,Qt::NoModifier,QPoint(md5->style()->pixelMetric(QStyle::PM_IndicatorWidth)/2,md5->height()/2));QCOMPARE(md5->isChecked(),!checked);QVERIFY(dialog->isVisible());QCOMPARE(mutations.size(),1);
-        auto *requestRate=window.findChild<QPushButton *>("settingsRequestRate");QVERIFY(requestRate);QVERIFY(!requestRate->isEnabled());
-        QVERIFY(!dialog->isAncestorOf(requestRate));auto *cancel=window.findChild<QPushButton *>("cancellationMenu");QVERIFY(cancel);
-        QCOMPARE(requestRate->y(),cancel->y());QVERIFY(requestRate->x()<cancel->x());
-        for(const auto &name:QStringList{"exclusionsCommandOption","globalRateCommandOption","languageCommandOption"})QVERIFY(panel->findChild<QLabel *>(name));
+        QVERIFY(!window.findChild<QPushButton *>("settingsRequestRate"));auto *requestRate=window.findChild<QAction *>("rowRateLimit");QVERIFY(requestRate);QVERIFY(!requestRate->isEnabled());
+        QVERIFY(window.findChild<QMenu *>("rowContextMenu")->actions().contains(requestRate));
+        for(const auto &name:QStringList{"exclusionsCommandOption","languageCommandOption"})QVERIFY(panel->findChild<QLabel *>(name));
         window.findChild<QTreeWidget *>()->setCurrentItem(window.entryRow(1,0));QVERIFY(requestRate->isEnabled());
-        auto *language=panel->findChild<QComboBox *>("languageSelector");language->setCurrentIndex(language->findData("en_US"));QCOMPARE(dialog->windowTitle(),QString("Settings"));QCOMPARE(tabs->tabText(1),QString("Shortcuts"));
+        auto *language=panel->findChild<QComboBox *>("languageSelector");language->setCurrentIndex(language->findData("en_US"));QCOMPARE(dialog->windowTitle(),QString("Settings"));QCOMPARE(tabs->tabText(1),QString("Shortcuts"));QCOMPARE(tabs->tabText(2),QString("Speed limits"));QCOMPARE(tabs->tabText(3),QString("Batch completion"));
+        auto *completionMenu=window.findChild<QToolButton *>("completionButton")->menu();QVERIFY(QMetaObject::invokeMethod(completionMenu,"aboutToShow",Qt::DirectConnection));completionMenu->actions().last()->trigger();QCOMPARE(tabs->currentWidget(),dialog->findChild<QScrollArea *>("completionScroll"));tabs->setCurrentIndex(0);
         auto *close=dialog->findChild<QPushButton *>("settingsCloseButton");QCOMPARE(close->text(),QString("Close"));
         QTest::mouseClick(panel->findChild<QPushButton *>("exclusionsButton"),Qt::LeftButton);
         auto *exclusions=dialog->findChild<QDialog *>("exclusionsDialog");QVERIFY(exclusions);QVERIFY(exclusions->isVisible());exclusions->reject();QCoreApplication::sendPostedEvents(nullptr,QEvent::DeferredDelete);
@@ -190,6 +515,94 @@ private Q_SLOTS:
         QTRY_VERIFY(completed);QVERIFY(reply.contains("error"));QVERIFY(dolphin->isChecked());
         completed=false;window.handleAsync({{"command","configure"},{"gui_settings",QJsonObject{{"dolphin_ctrl_v",true}}}},[&](QJsonObject result){reply=result;completed=true;});QTRY_VERIFY(completed);QVERIFY(!reply.contains("error"));QVERIFY(dolphin->isChecked());
         auto *konqueror=window.findChild<QCheckBox *>("konquerorShortcut");const auto before=konqueror->isChecked();konqueror->setChecked(!before);QCOMPARE(QSettings().value("konquerorCtrlV").toBool(),!before);
+    }
+
+    /// L’option Krusader utilise le même chemin asynchrone en CLI et dans la boîte d’options.
+    void krusaderShortcutHandlesFailureAndProfileStorage() {
+        QTemporaryDir directory;QVERIFY(directory.isValid());const auto oldPath=qgetenv("XDG_DATA_DIRS");
+        const auto restore=qScopeGuard([=]{qputenv("XDG_DATA_DIRS",oldPath);});
+        QVERIFY(QDir().mkpath(directory.path()+"/gad/integration"));QFile helper(directory.path()+"/gad/integration/krusader_shortcut.py");
+        QVERIFY(helper.open(QIODevice::WriteOnly));helper.write("import sys\nif '--disable-ctrl-v' in sys.argv:\n print('refused test change',file=sys.stderr)\n sys.exit(1)\n");helper.close();
+        qputenv("XDG_DATA_DIRS",QFile::encodeName(directory.path())+":"+oldPath);
+        Window window;auto *check=window.findChild<QCheckBox *>("krusaderShortcut");QVERIFY(check);QVERIFY(!check->isChecked());
+        bool completed=false;QJsonObject reply;mutations.clear();
+        window.handleAsync({{"command","configure"},{"gui_settings",QJsonObject{{"krusader_ctrl_v",true}}}},[&](QJsonObject result){reply=result;completed=true;});
+        QTRY_VERIFY(completed);QVERIFY(!reply.contains("error"));QVERIFY(check->isChecked());
+        QCOMPARE(window.currentTransferProfile().gui["krusader_ctrl_v"].toBool(),true);
+        QString failure;auto profile=window.currentTransferProfile();profile.name="Krusader test";QVERIFY(TransferProfiles::validate(profile,failure));
+        completed=false;window.handleAsync({{"command","configure"},{"gui_settings",QJsonObject{{"krusader_ctrl_v",false}}}},[&](QJsonObject result){reply=result;completed=true;});
+        QTRY_VERIFY(completed);QVERIFY(reply.contains("error"));QVERIFY(check->isChecked());QVERIFY(mutations.isEmpty());
+    }
+
+    /// Le plan demandé par IPC ne doit pas bloquer le thread d’interface.
+    void simulationIpcRepliesAsynchronously() {
+        Window window;simulationDelay=50;simulationPlan={{"ok",true},{"rows",QJsonArray{}}};mutations.clear();bool finished=false;QJsonObject response;
+        window.handleAsync({{"command","simulate"},{"id",1}},[&](QJsonObject result){response=result;finished=true;});QVERIFY(!finished);QTRY_VERIFY(finished);QVERIFY(response["ok"].toBool());QVERIFY(mutations.isEmpty());simulationDelay=0;
+    }
+
+    /// Les ajouts manuels sont retenus ; le collage Copier/Couper reste immédiat.
+    void manualPreparationAndClipboardUseDifferentStartRules() {
+        Window window;window.findChild<QLineEdit *>("destinationInput")->setText("/tmp");mutations.clear();window.enqueue({"/tmp/manual-file"});QVERIFY(!mutations.isEmpty());QVERIFY(mutations.last()["prepare_only"].toBool());
+        for(bool cut:{false,true}) {auto *mime=new QMimeData;mime->setUrls({QUrl::fromLocalFile("/tmp/pasted-file")});if(cut)mime->setData("application/x-kde-cutselection","1");QApplication::clipboard()->setMimeData(mime);mutations.clear();window.pasteInto("/tmp",true);QVERIFY(!mutations.isEmpty());QVERIFY(!mutations.last()["prepare_only"].toBool());QCOMPARE(mutations.last()["mode"].toString(),cut?QString("move"):QString("copy"));}
+        QVERIFY(!window.findChild<QPushButton *>("simulateButton"));QVERIFY(!window.findChild<QDialog *>("simulationDialog"));
+    }
+    /// Un seul bouton démarre, suspend ou reprend toute la file selon son état.
+    void singleQueueButtonStartsPausesAndResumes() {
+        auto prepared=job(QJsonArray{file("waiting")});prepared["start_required"]=true;prepared["state"]="waiting";status["jobs"]=QJsonArray{prepared};Window window;window.refresh();
+        auto *button=window.findChild<QPushButton *>("queueControlButton");QVERIFY(button);QVERIFY(!window.findChild<QPushButton *>("startPreparedButton"));QVERIFY(button->isEnabled());QCOMPARE(button->text(),QString(GAD_TR("Start")));QCOMPARE(window.entryRow(1,0)->text(2),QString(GAD_TR("Ready to start")));
+        mutations.clear();button->click();QCOMPARE(mutations.last()["command"].toString(),QString("pause"));QVERIFY(!mutations.last()["paused"].toBool());
+        prepared["start_required"]=false;prepared["state"]="running";status["jobs"]=QJsonArray{prepared};window.refresh();QCOMPARE(button->text(),QString(GAD_TR("Pause all")));mutations.clear();button->click();QVERIFY(mutations.last()["paused"].toBool());
+        status["paused"]=true;window.refresh();QCOMPARE(button->text(),QString(GAD_TR("Resume queue")));mutations.clear();button->click();QVERIFY(!mutations.last()["paused"].toBool());
+        status["paused"]=false;prepared["start_required"]=true;prepared["state"]="scanning";status["jobs"]=QJsonArray{prepared};window.refresh();QVERIFY(!button->isEnabled());
+    }
+    /// Un ajout depuis la fenêtre rejoint automatiquement une file déjà active.
+    void manualAdditionDuringWorkJoinsTheQueue() {
+        publish(job({file("running")},"running"));Window window;window.findChild<QLineEdit *>("destinationInput")->setText("/tmp");mutations.clear();window.enqueue({"/tmp/next-manual-file"});QVERIFY(!mutations.last()["prepare_only"].toBool());
+    }
+
+    /// Une pause mémorisée ne rend aucune action disponible sur une file vide.
+    void emptyQueueDisablesTransferAndHistoryActions() {
+        status["paused"]=true;Window window;window.refresh();
+        for(const auto &name:QStringList{"queueControlButton","cancellationMenu","clearHistoryButton"})QVERIFY2(!window.findChild<QPushButton *>(name)->isEnabled(),qPrintable(name));
+        QVERIFY(!window.findChild<QAction *>("cancelAllAction")->isEnabled());QVERIFY(!window.findChild<QAction *>("undoAllAction")->isEnabled());QCOMPARE(window.findChild<QPushButton *>("queueControlButton")->text(),QString(GAD_TR("Start")));
+        window.refresh();QVERIFY(!window.findChild<QPushButton *>("queueControlButton")->isEnabled());
+    }
+    /// Une nouvelle préparation affiche Démarrer même si une pause précédente est mémorisée.
+    void preparedQueueUsesStartDespiteRememberedPause() {
+        auto prepared=job({file("waiting")},"waiting");prepared["start_required"]=true;status["jobs"]=QJsonArray{prepared};status["paused"]=true;Window window;window.refresh();
+        auto *button=window.findChild<QPushButton *>("queueControlButton");QVERIFY(button->isEnabled());QCOMPARE(button->text(),QString(GAD_TR("Start")));mutations.clear();button->click();QCOMPARE(mutations.last()["command"].toString(),QString("pause"));QVERIFY(!mutations.last()["paused"].toBool());
+    }
+
+    /// Après nettoyage au démarrage, les trois boutons sont recalculés immédiatement.
+    void clearingStartupHistoryDisablesAllThreeButtons() {
+        status["paused"]=true;publish(job({file("done")}));clearHistoryInMock=true;Window window;window.refresh();
+        auto *clear=window.findChild<QPushButton *>("clearHistoryButton");QVERIFY(clear->isEnabled());QVERIFY(window.findChild<QPushButton *>("cancellationMenu")->isEnabled());QVERIFY(!window.findChild<QAction *>("cancelAllAction")->isEnabled());
+        clear->click();QVERIFY(status["jobs"].toArray().isEmpty());QVERIFY(!clear->isEnabled());QVERIFY(!window.findChild<QPushButton *>("queueControlButton")->isEnabled());QVERIFY(!window.findChild<QPushButton *>("cancellationMenu")->isEnabled());
+    }
+    /// La suppression par instantané différentiel ne conserve pas les boutons de l’ancien historique.
+    void emptyIncrementalSnapshotDisablesButtonsDespiteSavedPause() {
+        status={{"revision",1},{"reset",true},{"job_ids",QJsonArray{1}},{"jobs",QJsonArray{job({file("done")})}},{"paused",true}};Window window;window.refresh();QVERIFY(window.findChild<QPushButton *>("clearHistoryButton")->isEnabled());
+        status={{"revision",2},{"reset",false},{"job_ids",QJsonArray{}},{"jobs",QJsonArray{}},{"paused",true}};window.refresh();
+        for(const auto &name:QStringList{"queueControlButton","cancellationMenu","clearHistoryButton"})QVERIFY(!window.findChild<QPushButton *>(name)->isEnabled());
+        status={{"revision",2},{"unchanged",true}};window.refresh();QVERIFY(!window.findChild<QPushButton *>("queueControlButton")->isEnabled());
+    }
+
+    /// Nettoyer les résultats ne désactive pas la pause d’un transfert restant.
+    void historyCleanupKeepsActiveQueueControlsAvailable() {
+        auto running=job({file("running")},"running");running["id"]=2;status["jobs"]=QJsonArray{job({file("done")}),running};clearHistoryInMock=true;Window window;window.refresh();
+        window.findChild<QPushButton *>("clearHistoryButton")->click();QCOMPARE(status["jobs"].toArray().size(),1);QVERIFY(window.findChild<QPushButton *>("queueControlButton")->isEnabled());QVERIFY(window.findChild<QPushButton *>("cancellationMenu")->isEnabled());QVERIFY(!window.findChild<QPushButton *>("clearHistoryButton")->isEnabled());QVERIFY(window.findChild<QAction *>("cancelAllAction")->isEnabled());
+    }
+
+    /// Une restauration sans écriture antérieure ne doit pas prétendre avoir restauré un fichier.
+    void untouchedRestorationUsesCanceled() {
+        auto untouched=file("undone");untouched["copied"]=0;publish(job({untouched},"undone"));Window window;window.refresh();QCOMPARE(window.entryRow(1,0)->text(2),QString(GAD_TR("Canceled")));QCOMPARE(RowTree::owner(window.entryRow(1,0))->text(2),QString(GAD_TR("Canceled")));
+        auto restored=untouched;restored["undo"]=QJsonObject{{"result",QJsonObject{{"dev",1}}},{"reverted",true}};publish(job({restored},"undone"));window.refresh();QCOMPARE(window.entryRow(1,0)->text(2),QString(GAD_TR("Restored")));
+        restored=untouched;restored["copied"]=4;publish(job({restored},"undone"));window.refresh();QCOMPARE(window.entryRow(1,0)->text(2),QString(GAD_TR("Restored")));
+    }
+    /// Le dossier reste remis en état si un enfant a été restauré, sans attribuer cet effet à ses frères.
+    void restorationLabelsFollowEachFolderBranch() {
+        auto entries=nestedEntries();for(int i=0;i<entries.size();++i){auto e=entries[i].toObject();e["state"]="undone";e["copied"]=0;entries[i]=e;}auto changed=entries[2].toObject();changed["copied"]=4;entries[2]=changed;publish(job(entries,"undone"));Window window;window.refresh();
+        QCOMPARE(window.entryRow(1,0)->text(2),QString(GAD_TR("Restored")));QCOMPARE(window.entryRow(1,1)->text(2),QString(GAD_TR("Restored")));QCOMPARE(window.entryRow(1,2)->text(2),QString(GAD_TR("Restored")));QCOMPARE(window.entryRow(1,3)->text(2),QString(GAD_TR("Canceled")));QCOMPARE(window.entryRow(1,4)->text(2),QString(GAD_TR("Canceled")));
     }
 
     /// Une réponse sans lignes modifiées signale les doublons une seule fois, sans boîte modale.
@@ -220,6 +633,19 @@ private Q_SLOTS:
         QCOMPARE(mutations.size(),1);QCOMPARE(mutations[0]["command"].toString(),QString("set_rate_limit"));
         QCOMPARE(mutations[0]["ids"].toArray(),QJsonArray{1});QCOMPARE(mutations[0]["bytes_per_second"].toInteger(),qint64(1310720));
         QSettings().remove("rateLimit");
+    }
+
+    /// La limite accompagne les détails sans masquer une erreur et disparaît si elle est retirée.
+    void requestRateLimitAppearsInDetailsAndUpdatesInPlace() {
+        auto entry=file("running");entry["error"]="Test error";auto value=job({entry},"running");value["rate_limit"]=1310720;publish(value);Window window;window.refresh();auto *row=window.entryRow(1,0);const auto cap=QString(GAD_TR("Limit: %1")).arg(TransferMetrics::speed(1310720));
+        QVERIFY(row->text(4).contains("Test error"));QVERIFY(row->text(4).contains(cap));QVERIFY(row->toolTip(4).contains(cap));QVERIFY(RowTree::owner(row)->text(4).contains(cap));QVERIFY(!window.findChild<QPushButton *>("settingsRequestRate"));
+        value["rate_limit"]=1;publish(value);window.refresh();QCOMPARE(window.entryRow(1,0),row);QVERIFY(row->text(4).contains(TransferMetrics::speed(1)));QVERIFY(!row->text(4).contains(cap));
+        value["rate_limit"]=0;publish(value);window.refresh();QCOMPARE(row->text(4),QString("Test error"));QVERIFY(RowTree::owner(row)->text(4).isEmpty());
+    }
+    /// Les dossiers et leurs enfants affichent la limite reçue de leur demande.
+    void requestRateDetailsIncludeFolderBranchesAndPropertyTooltips() {
+        auto entries=nestedEntries();auto entry=entries[2].toObject();entry["properties"]=QJsonObject{{"status","different"},{"differences",QJsonArray{"mode"}}};entries[2]=entry;auto value=job(entries,"running");value["rate_limit"]=1048576;publish(value);Window window;window.refresh();const auto cap=QString(GAD_TR("Limit: %1")).arg(TransferMetrics::speed(1048576));
+        for(int i=0;i<entries.size();++i){QVERIFY(window.entryRow(1,i)->text(4).contains(cap));}QTextDocument tip;tip.setHtml(window.entryRow(1,2)->toolTip(4));QVERIFY(tip.toPlainText().contains(cap));QVERIFY(tip.toPlainText().contains("mode"));
     }
 
     /// Les deux demandes ont des compteurs indépendants et une estimation de leur travail restant.
@@ -305,7 +731,7 @@ private Q_SLOTS:
         for(int i=0;i<3;++i)records.append(QJsonObject{{"job",i+1},{"index",0},{"scope","entry"},{"mode","copy"},{"state",i==1?"done":"error"},{"kind","file"},{"source",i==2?"/tmp/second":"/tmp/first"},{"destination","/tmp/dest"},{"error","détail\n<texte>"},{"retryable",i!=1},{"retry_reason",i==1?"finalisation":""}});
         errorReport={{"records",records},{"jobs",QJsonArray{}},{"generated_unix",0}};
         Window window;window.findChild<QPushButton *>("errorReportButton")->click();
-        auto *dialog=window.findChild<QDialog *>("errorReportDialog");QVERIFY(dialog);QCOMPARE(dialog->minimumSize(),QSize(1100,600));
+        auto *dialog=window.findChild<QDialog *>("errorReportDialog");QVERIFY(dialog);QCOMPARE(dialog->windowModality(),Qt::WindowModal);QCOMPARE(dialog->minimumSize(),QSize(1100,600));
         auto *rows=dialog->findChild<QTreeWidget *>("errorReportRows");QCOMPARE(rows->topLevelItemCount(),3);
         dialog->findChild<QLineEdit *>("errorReportSearch")->setText("second");mutations.clear();
         dialog->findChild<QPushButton *>("retryAllErrors")->click();QCOMPARE(mutations.size(),1);
@@ -315,6 +741,25 @@ private Q_SLOTS:
         QVERIFY(!dialog->findChild<QPushButton *>("retrySelectedErrors")->isEnabled());
         QVERIFY(dialog->findChild<QPlainTextEdit *>("errorReportDetail")->toPlainText().contains("détail\n<texte>"));
         QVERIFY(dialog->findChild<QPushButton *>("exportErrorReport")->isEnabled());
+    }
+
+    /// Afficher une erreur dans la liste libère la fenêtre principale bloquée par le bilan.
+    void errorReportLocateClosesModalBeforeReturningToList() {
+        publish(job({file("error")},"error"));errorReport["records"]=QJsonArray{QJsonObject{{"job",1},{"index",0},{"scope","entry"},{"mode","copy"},{"state","error"},{"error","failure"}}};
+        Window window;auto *history=window.findChild<QPushButton *>("historySearchButton");history->setChecked(true);window.findChild<QLineEdit *>("historySearchText")->setText("no-matching-error-file");QTest::qWait(200);QVERIFY(window.entryRow(1,0)->isHidden());
+        window.showErrorReport();auto *dialog=window.findChild<QDialog *>("errorReportDialog");QVERIFY(dialog);QVERIFY(dialog->isVisible());
+        auto *rows=dialog->findChild<QTreeWidget *>("errorReportRows");rows->setCurrentItem(rows->topLevelItem(0));auto *locate=dialog->findChild<QPushButton *>("locateReportError");QVERIFY(locate->isEnabled());locate->click();
+        QVERIFY(!history->isChecked());QVERIFY(!window.entryRow(1,0)->isHidden());QVERIFY(!dialog->isVisible());QVERIFY(window.isVisible());QVERIFY(window.entryRow(1,0)->isSelected());QCOMPARE(window.findChild<QTreeWidget *>()->currentItem(),window.entryRow(1,0));
+    }
+
+    /// Un filtre portant sur un message traduit doit suivre la langue et vider le détail masqué.
+    void errorReportLanguageChangeReappliesFilter() {
+        I18n::initialize("fr_FR");const auto restore=qScopeGuard([]{I18n::initialize("fr_FR");});
+        errorReport["records"]=QJsonArray{QJsonObject{{"job",1},{"index",0},{"scope","entry"},{"mode","copy"},{"state","error"},{"source","/tmp/a"},{"error","No files to copy"}}};
+        Window window;window.showErrorReport();auto *dialog=window.findChild<QDialog *>("errorReportDialog");auto *rows=dialog->findChild<QTreeWidget *>("errorReportRows");auto *row=rows->topLevelItem(0);auto *detail=dialog->findChild<QPlainTextEdit *>("errorReportDetail");
+        dialog->findChild<QLineEdit *>("errorReportSearch")->setText("Aucun fichier");QVERIFY(!row->isHidden());rows->setCurrentItem(row);QVERIFY(!detail->toPlainText().isEmpty());
+        I18n::initialize("en_US");QVERIFY(row->isHidden());QVERIFY(!row->isSelected());QVERIFY(detail->toPlainText().isEmpty());QVERIFY(!dialog->findChild<QPushButton *>("locateReportError")->isEnabled());
+        I18n::initialize("fr_FR");QVERIFY(!row->isHidden());QVERIFY(!row->isSelected());
     }
 
     /// Le menu distingue les erreurs réessayables des fichiers OK et des opérations actives.
@@ -639,7 +1084,7 @@ private Q_SLOTS:
         Window window;auto *view=static_cast<TransferTree *>(window.findChild<QTreeWidget *>());const int column=TableView::OrderColumn;
         QCOMPARE(view->columnCount(),6);QCOMPARE(view->header()->visualIndex(column),0);QCOMPARE(view->treePosition(),0);QCOMPARE(view->headerItem()->text(column),QString("Ordre"));
         auto *aRow=window.entryRow(7,0),*mRow=window.entryRow(7,1),*zRow=window.entryRow(11,0);
-        QCOMPARE(zRow->text(column),QString("1"));QCOMPARE(mRow->text(column),QString("2"));QCOMPARE(aRow->text(column),QString("3"));QCOMPARE(aRow->toolTip(column),QString("Lot #7"));
+        QCOMPARE(zRow->text(column),QString("1"));QCOMPARE(mRow->text(column),QString("2"));QCOMPARE(aRow->text(column),QString("3"));QCOMPARE(aRow->toolTip(column).section('\n',0,0),QString("Lot #7"));
         view->setCurrentItem(aRow);aRow->setSelected(true);mutations.clear();view->setViewSort(0);
         QCOMPARE(view->topLevelItem(0),aRow);QCOMPARE(aRow->text(column),QString("3"));QVERIFY(aRow->isSelected());
         view->setColumnFilter(0,"a.txt");QVERIFY(!aRow->isHidden());QVERIFY(zRow->isHidden());QCOMPARE(aRow->text(column),QString("3"));
@@ -649,7 +1094,7 @@ private Q_SLOTS:
         status={{"jobs",QJsonArray{}},{"job_ids",QJsonArray{7,11}},{"row_order",QJsonArray{aKey,zKey,mKey}},{"revision",2},{"paused",false}};window.refresh();
         QCOMPARE(aRow->text(column),QString("1"));QCOMPARE(zRow->text(column),QString("2"));QCOMPARE(mRow->text(column),QString("3"));QCOMPARE(view->topLevelItem(0),aRow);QVERIFY(aRow->isSelected());
         view->setColumnFilter(column,"2");QVERIFY(!zRow->isHidden());QVERIFY(aRow->isHidden());I18n::initialize("en_US");
-        QCOMPARE(view->headerItem()->text(column),QString("Order"));QCOMPARE(zRow->toolTip(column),QString("Batch #11"));QCOMPARE(zRow->text(column),QString("2"));QVERIFY(mutations.isEmpty());
+        QCOMPARE(view->headerItem()->text(column),QString("Order"));QCOMPARE(zRow->toolTip(column).section('\n',0,0),QString("Batch #11"));QCOMPARE(zRow->text(column),QString("2"));QVERIFY(mutations.isEmpty());
     }
 
     /// Les dossiers et les demandes en analyse ont aussi une position ; un filtre garde les ancêtres.
@@ -658,7 +1103,7 @@ private Q_SLOTS:
         status["jobs"]=QJsonArray{nested,scanning};Window window;auto *view=static_cast<TransferTree *>(window.findChild<QTreeWidget *>());
         QCOMPARE(window.entryRow(1,0)->text(TableView::OrderColumn),QString("1"));QCOMPARE(window.entryRow(1,1)->text(TableView::OrderColumn),QString("2"));QCOMPARE(window.entryRow(1,2)->text(TableView::OrderColumn),QString("3"));
         QTreeWidgetItem *pending=nullptr;for(int i=0;i<view->topLevelItemCount();++i)if(view->topLevelItem(i)->data(0,Qt::UserRole).toLongLong()==2)pending=view->topLevelItem(i);
-        QVERIFY(pending);QCOMPARE(pending->text(TableView::OrderColumn),QString("6"));QCOMPARE(pending->toolTip(TableView::OrderColumn),QString("Lot #2"));
+        QVERIFY(pending);QCOMPARE(pending->text(TableView::OrderColumn),QString("6"));QCOMPARE(pending->toolTip(TableView::OrderColumn).section('\n',0,0),QString("Lot #2"));
         view->setColumnFilter(TableView::OrderColumn,"3");QVERIFY(!window.entryRow(1,0)->isHidden());QVERIFY(!window.entryRow(1,1)->isHidden());QVERIFY(!window.entryRow(1,2)->isHidden());QVERIFY(pending->isHidden());
         QCOMPARE(window.entryRow(1,2)->parent(),window.entryRow(1,1));
     }
@@ -668,12 +1113,12 @@ private Q_SLOTS:
         I18n::initialize("fr_FR");const auto restore=qScopeGuard([]{I18n::initialize("fr_FR");});
         auto entry=file("running");const QString path="/tmp/source/version. Finale <b>.txt";entry["source"]=path;publish(job({entry},"running"));Window window;
         auto *row=window.entryRow(1,0);QTextDocument source;source.setHtml(row->toolTip(0));
-        QCOMPARE(source.toPlainText(),path);QCOMPARE(row->toolTip(TableView::OrderColumn),QString("Lot #1"));
+        QCOMPARE(source.toPlainText(),path);QCOMPARE(row->toolTip(TableView::OrderColumn).section('\n',0,0),QString("Lot #1"));
         auto *md5=window.findChild<QCheckBox *>("verifyMd5");QVERIFY(md5->toolTip().contains(".\n"));
         QVERIFY(!md5->toolTip().contains(". S’applique"));
         auto *space=window.findChild<QCheckBox *>("verifySpace");QCOMPARE(space->toolTip().count('\n'),4);
         I18n::initialize("en_US");source.setHtml(row->toolTip(0));QCOMPARE(source.toPlainText(),path);
-        QCOMPARE(row->toolTip(TableView::OrderColumn),QString("Batch #1"));QVERIFY(md5->toolTip().contains(".\nApplies"));QCOMPARE(space->toolTip().count('\n'),4);
+        QCOMPARE(row->toolTip(TableView::OrderColumn).section('\n',0,0),QString("Batch #1"));QVERIFY(md5->toolTip().contains(".\nApplies"));QCOMPARE(space->toolTip().count('\n'),4);
     }
 
     /// Le mode reste visible sur tous les niveaux, sans remplacer les métadonnées dossier/fichier.
@@ -687,7 +1132,7 @@ private Q_SLOTS:
         QCOMPARE(window.entryRow(1,2),leaf);QCOMPARE(leaf->data(0,RowTree::OperationRole).toString(),QString("move"));QCOMPARE(folder->data(0,RowTree::OperationRole).toString(),QString("move"));
         tip.setHtml(leaf->toolTip(0));QCOMPARE(tip.toPlainText(),QString("/tmp/source/root/sub/a.txt"));
         moved["verify_md5"]=true;moved["rate_limit"]=1048576;publish(moved);window.refresh();
-        tip.setHtml(leaf->toolTip(0));QVERIFY(tip.toPlainText().contains("\nMD5\n"));QVERIFY(tip.toPlainText().contains("Limite :"));QVERIFY(!tip.toPlainText().contains("Déplacement"));
+        tip.setHtml(leaf->toolTip(0));QVERIFY(tip.toPlainText().endsWith("\nMD5"));QVERIFY(!tip.toPlainText().contains("Limite :"));QVERIFY(leaf->text(4).contains("Limite :"));QVERIFY(!tip.toPlainText().contains("Déplacement"));
         QCOMPARE(view->header()->sectionResizeMode(TableView::OrderColumn),QHeaderView::ResizeToContents);
         window.show();QCoreApplication::processEvents();QVERIFY(view->columnWidth(TableView::OrderColumn)<85);
         auto preparation=job({},"scanning");preparation["mode"]="move";publish(preparation);window.refresh();
@@ -704,7 +1149,7 @@ private Q_SLOTS:
         mutations.clear();window.handle({{"command","enqueue"},{"sources",QJsonArray{"/tmp/source"}},{"destination","/tmp/destination"},{"background",true}});
         QCOMPARE(mutations.size(),1);const auto submitted=mutations[0];QCOMPARE(submitted["exclusions"].toObject()["include_hidden"].toBool(),false);
         hidden->setChecked(true);QCOMPARE(submitted["exclusions"].toObject()["include_hidden"].toBool(),false);QVERIFY(QSettings().value("includeHidden").toBool());
-        QCOMPARE(SourceUrls::requiredProtocol(submitted),22);
+        QCOMPARE(SourceUrls::requiredProtocol(submitted),30);
     }
 
     /// L’option est mémorisée et figée dans chaque nouvelle demande, même en arrière-plan.
@@ -715,7 +1160,7 @@ private Q_SLOTS:
         mutations.clear();check->setChecked(true);QCOMPARE(mutations.size(),1);QVERIFY(mutations[0]["allow_duplication"].toBool());
         QVERIFY(QSettings().value("allowDuplication").toBool());
         mutations.clear();window.handle({{"command","enqueue"},{"sources",QJsonArray{"/tmp/source"}},{"destination","/tmp"},{"background",true}});
-        QCOMPARE(mutations.size(),1);const auto submitted=mutations[0];QVERIFY(submitted["allow_duplication"].toBool());QCOMPARE(SourceUrls::requiredProtocol(submitted),22);
+        QCOMPARE(mutations.size(),1);const auto submitted=mutations[0];QVERIFY(submitted["allow_duplication"].toBool());QCOMPARE(SourceUrls::requiredProtocol(submitted),30);
         check->setChecked(false);QVERIFY(submitted["allow_duplication"].toBool());QVERIFY(!QSettings().value("allowDuplication").toBool());
     }
 
@@ -923,7 +1368,7 @@ private Q_SLOTS:
         QCOMPARE(window.entryRow(1,2)->parent(),window.entryRow(1,1));QCOMPARE(window.entryRow(1,3)->parent(),window.entryRow(1,0));
         QVERIFY(!window.entryRow(1,4)->parent());QCOMPARE(window.entryRow(1,0)->text(0),QString("root"));
         QCOMPARE(window.entryRow(1,2)->text(0),QString("a.txt"));
-        QTextDocument tip;tip.setHtml(window.entryRow(1,2)->toolTip(0));QVERIFY(tip.toPlainText().startsWith("/tmp/source/root/sub/a.txt"));QVERIFY(!tip.toPlainText().contains("Demande #1"));QVERIFY(!tip.toPlainText().contains("\nCopie"));QCOMPARE(window.entryRow(1,2)->toolTip(TableView::OrderColumn),QString("Lot #1"));
+        QTextDocument tip;tip.setHtml(window.entryRow(1,2)->toolTip(0));QVERIFY(tip.toPlainText().startsWith("/tmp/source/root/sub/a.txt"));QVERIFY(!tip.toPlainText().contains("Demande #1"));QVERIFY(!tip.toPlainText().contains("\nCopie"));QCOMPARE(window.entryRow(1,2)->toolTip(TableView::OrderColumn).section('\n',0,0),QString("Lot #1"));
         QVERIFY(window.entryRow(1,0)->isExpanded());QVERIFY(window.entryRow(1,1)->isExpanded());
     }
     /// La progression ne reconstruit pas les branches et ne rouvre pas un dossier replié manuellement.

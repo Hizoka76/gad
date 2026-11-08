@@ -1,6 +1,7 @@
 #pragma once
 // Présentation seulement : aucune commande moteur, aucun identifiant métier modifié.
 #include "presentation.h"
+#include "history_search.h"
 #include "row_tree.h"
 #include <array>
 #include <algorithm>
@@ -13,13 +14,15 @@ constexpr int QueueRankRole=Qt::UserRole+16;
 /// Retient des filtres littéraux, un état indépendant de sa traduction et une plage numérique.
 struct SortKey {int column;Qt::SortOrder order;};
 struct Settings {
+    HistorySearch::Query history;
     std::array<QString,ColumnCount> contains;
     QString state;
     int minimum=0,maximum=100;
     QList<SortKey> sorts;
     bool filtered(int c) const {if(c<0 || c>=ColumnCount)return false;return !contains[c].isEmpty() || (c==2 && !state.isEmpty()) || (c==3 && (minimum>0 || maximum<100));}
-    bool filtered() const {for(int c=0;c<ColumnCount;++c)if(filtered(c))return true;return false;}
+    bool filtered() const {if(history.enabled)return true;for(int c=0;c<ColumnCount;++c)if(filtered(c))return true;return false;}
     bool matches(const QTreeWidgetItem *row) const {
+        if(!history.matches(row))return false;
         for(int c=0;c<ColumnCount;++c)if(!contains[c].isEmpty() && !row->text(c).contains(contains[c],Qt::CaseInsensitive)
             && !(c==0 && row->toolTip(c).contains(contains[c],Qt::CaseInsensitive)))return false;
         if(!state.isEmpty() && row->data(0,Qt::UserRole+3).toString()!=state)return false;

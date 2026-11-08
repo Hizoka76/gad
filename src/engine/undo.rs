@@ -89,6 +89,20 @@ impl Stamp {
                         && self.link == m.link))
         })
     }
+    /// Un renommage conserve aussi les métadonnées des dossiers ; ctime est contrôlé séparément quand il doit rester stable.
+    pub(super) fn matches_fast_move(&self, path: &Path) -> bool {
+        Self::read(path).is_ok_and(|now| {
+            self.dev == now.dev
+                && self.ino == now.ino
+                && self.kind == now.kind
+                && self.len == now.len
+                && self.mode == now.mode
+                && self.owner == now.owner
+                && self.seconds == now.seconds
+                && self.nanos == now.nanos
+                && self.link == now.link
+        })
+    }
     /// Vérifie le périphérique d’un parent existant pour ne pas restaurer dans
     /// le point de montage vide d’un volume qui aurait disparu.
     fn volume(&self, path: &Path) -> Result<(), String> {

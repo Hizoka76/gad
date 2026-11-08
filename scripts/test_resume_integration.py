@@ -13,7 +13,7 @@ import time
 def main():
     """Le SIGKILL ne cible que notre enfant ; aucun fichier de la session utilisateur n’est utilisé."""
     root = Path(__file__).resolve().parent.parent
-    binary = root / "target/debug/gad"
+    binary = Path(os.environ.get("GAD_TEST_BINARY", str(root / "target/debug/gad")))
     # Éviter /dev/shm, souvent limité à 64 Mio en CI : ce scénario écrit réellement 256 Mio.
     with tempfile.TemporaryDirectory(prefix="resume-", dir=root / "target") as tmp:
         base = Path(tmp)
@@ -83,6 +83,8 @@ def main():
                 state = wait(saved_prefix)
                 entry = state["jobs"][0]["entries"][0]
                 partial = Path(entry["undo"]["staging"])
+                assert partial.parent==destination and not partial.name.startswith("."),partial
+                assert partial.name.endswith(".part"),partial
                 inode = partial.stat().st_ino
                 process.kill()
                 process.wait(timeout=10)

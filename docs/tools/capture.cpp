@@ -6,6 +6,12 @@
 #include <cstdlib>
 #include <cstring>
 
+// Les effets de fin de file sont toujours simulés dans l’outil de capture, même si le délai expire.
+class CaptureWindow:public Window {
+public:
+    void executeCompletion(const QString &,std::function<void(QJsonObject)> reply) override {reply({{"ok",true}});}
+    void completionNotice(const QString &,const QString &) override {}
+};
 static QJsonObject demoReport;
 static QJsonObject demoState{{"jobs",QJsonArray{}},{"paused",false},{"keep_history",true},{"verify_md5",false}};
 /// Le double fournit des états figés ; il n’exécute aucune opération sur les chemins affichés.
@@ -30,7 +36,7 @@ static QJsonObject entry(const QString &source,const QString &destination,const 
     return {{"source",source},{"destination",destination},{"kind",kind},{"state",state},{"size",size},{"copied",copied},{"verified",0},{"error",""}};
 }
 static QJsonObject job(qint64 id,const QString &source,const QString &destination,const QString &state,const QJsonArray &entries,const QString &mode="copy",bool md5=false) {
-    return {{"id",id},{"sources",QJsonArray{source}},{"destination",destination},{"state",state},{"entries",entries},{"mode",mode},
+    return {{"created_at",QDateTime(QDate(2026,11,7),QTime(12,0)).toSecsSinceEpoch()},{"id",id},{"sources",QJsonArray{source}},{"destination",destination},{"state",state},{"entries",entries},{"mode",mode},
             {"verify_md5",md5},{"journaled",true},{"paused",false},{"error",""}};
 }
 /// Enregistre directement les pixels de Qt et les informations utiles à leur vérification.
@@ -69,7 +75,7 @@ int main(int argc,char **argv) {
         entry(source+"/Archives",destination+"/Archives","directory","done"),
         entry(source+"/Archives/notes.txt",destination+"/Archives/notes.txt","file","done",4096,4096)});
     demoState["jobs"]=QJsonArray{first,queued,completed};
-    Window window;window.resize(1240,620);window.findChild<QLineEdit *>("destinationInput")->setText(destination);window.show();app.processEvents();
+    CaptureWindow window;window.resize(1240,620);window.findChild<QLineEdit *>("destinationInput")->setText(destination);window.show();app.processEvents();
     auto *tree=window.findChild<QTreeWidget *>();tree->setColumnWidth(0,305);tree->setColumnWidth(1,320);tree->setColumnWidth(2,140);tree->setColumnWidth(3,160);
     tree->topLevelItem(0)->setExpanded(true);tree->setCurrentItem(window.entryRow(1,2));
     QJsonArray manifest;
@@ -134,6 +140,45 @@ int main(int argc,char **argv) {
     window.showErrorReport();app.processEvents();auto *report=window.findChild<QDialog *>("errorReportDialog");report->resize(1320,650);
     auto *reportRows=report->findChild<QTreeWidget *>("errorReportRows");reportRows->setCurrentItem(reportRows->topLevelItem(0));
     save(report,output+"/13-bilan-erreurs.png",manifest);report->close();
+    // Profils de démonstration dans le compte de capture uniquement ; aucun secret ni transfert lancé.
+    auto photoProfile=window.currentTransferProfile();photoProfile.name="Photos";photoProfile.rate=2621440;
+    photoProfile.options["exclusions"]=QJsonObject{{"include_hidden",false},{"directories",QJsonArray{"__*"}},{"files",QJsonArray{"*.tmp"}}};
+    auto documentProfile=photoProfile;documentProfile.id=QUuid::createUuid().toString(QUuid::WithoutBraces);documentProfile.name="Documents";documentProfile.rate=0;
+    QString profileError;if(!TransferProfiles::store({photoProfile,documentProfile},profileError))qFatal("Cannot create demonstration profiles");
+    window.showProfiles();app.processEvents();auto *profiles=window.findChild<QDialog *>("profilesDialog");profiles->resize(1000,750);profiles->findChild<QListWidget *>("profilesList")->setCurrentRow(0);
+    save(profiles,output+"/15-profils.png",manifest);profiles->close();
+    // Recherche réelle sur un historique de démonstration, avec une plage de dates déterministe.
+    demoState["jobs"]=QJsonArray{first,queued,completed};window.refresh();window.resize(1240,700);
+    window.findChild<QPushButton *>("historySearchButton")->click();window.findChild<QLineEdit *>("historySearchText")->setText("notes");
+    window.findChild<QDateEdit *>("historySearchFrom")->setDate(QDate(2026,11,1));window.findChild<QDateEdit *>("historySearchTo")->setDate(QDate(2026,11,30));window.findChild<QCheckBox *>("historySearchDates")->setChecked(true);
+    save(&window,output+"/16-recherche-historique.png",manifest);
+    // Plusieurs causes simulées, sans réserver de vrais disques ni démarrer de transfert.
+    auto limited=first;limited["rate_limit"]=2621440;auto checking=verified;checking["id"]=8;
+    demoState["jobs"]=QJsonArray{limited,queued,checking,disconnected};demoState["rate_limit"]=10485760;
+    demoState["diagnostics"]=QJsonObject{{"1",QJsonObject{{"queue_reason","active"},{"request_throttled",true}}},{"2",QJsonObject{{"queue_reason","parallel_limit"},{"blockers",QJsonArray{1,8}}}},{"8",QJsonObject{{"queue_reason","active"}}},{"6",QJsonObject{{"queue_reason","device"}}}};
+    window.refresh();window.showDiagnostics();app.processEvents();auto *diagnostics=window.findChild<QDialog *>("diagnosticsDialog");diagnostics->resize(1450,750);
+    save(diagnostics,output+"/17-diagnostic-transferts.png",manifest);diagnostics->close();
+    // Rapport de vérification rapide dans la vraie liste, sur un déplacement de démonstration.
+    auto fastChecked=completed;fastChecked["verify_fast_move"]=true;fastChecked["fast_move"]=true;fastChecked["mode"]="move";
+    auto fastEntries=fastChecked["entries"].toArray();for(int i=0;i<fastEntries.size();++i){auto item=fastEntries[i].toObject();item["fast_move_check"]=QJsonObject{{"status","ok"},{"path",QJsonValue::Null}};item["undo"]=QJsonObject{{i==0?"directory_move":"rename_move",true}};fastEntries[i]=item;}fastChecked["entries"]=fastEntries;
+    window.findChild<QPushButton *>("historySearchButton")->setChecked(false);demoState["jobs"]=QJsonArray{fastChecked};demoState["diagnostics"]=QJsonObject{};window.refresh();if(auto *root=window.entryRow(3,0))root->setExpanded(true);
+    save(&window,output+"/18-verification-deplacement-rapide.png",manifest);
+    // Horloge injectée et effets simulés : aucun accès à la veille ou à l’extinction réelles.
+    for(auto *timer:window.findChildren<QTimer *>())timer->stop();
+    window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"completion_action","notify"},{"completion_delay",30}}}});
+    demoState["jobs"]=QJsonArray{first};demoState["queue_guard"]=QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};window.refresh();window.armCompletion();
+    auto finished=first;finished["state"]="done";auto finishedEntries=finished["entries"].toArray();for(int i=0;i<finishedEntries.size();++i){auto item=finishedEntries[i].toObject();item["state"]="done";item["copied"]=item["size"];finishedEntries[i]=item;}finished["entries"]=finishedEntries;
+    demoState["jobs"]=QJsonArray{finished};demoState["queue_guard"]=QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};window.refreshCompletion(demoState,1000);window.refreshCompletion(demoState,6000);
+    save(window.findChild<QDialog *>("completionCountdown"),output+"/19-fin-de-file.png",manifest);window.cancelCompletion();
+    settingsTabs->setCurrentWidget(settings->findChild<QScrollArea *>("completionScroll"));settings->show();app.processEvents();
+    save(settings,output+"/20-options-fin-de-file.png",manifest);settings->hide();
+    settingsTabs->setCurrentIndex(2);settings->show();app.processEvents();
+    save(settings,output+"/21-options-debits.png",manifest);settings->hide();
+    // Préparation dans la liste principale : aucun transfert réel ni lancement automatique.
+    auto prepared=first;prepared["state"]="waiting";prepared["start_required"]=true;
+    auto preparedEntries=prepared["entries"].toArray();for(int i=0;i<preparedEntries.size();++i){auto item=preparedEntries[i].toObject();item["state"]="waiting";item["copied"]=0;preparedEntries[i]=item;}prepared["entries"]=preparedEntries;
+    demoState["jobs"]=QJsonArray{prepared};demoState["paused"]=false;window.refresh();if(auto *root=window.entryRow(1,0))root->setExpanded(true);
+    save(&window,output+"/22-preparation.png",manifest);
     QJsonObject metadata{{"demo",true},{"qt_version",qVersion()},{"style",app.style()->objectName()},{"font",app.font().family()},{"icon_theme",QIcon::themeName()},{"window_color",app.palette().color(QPalette::Window).name()},{"device_pixel_ratio",app.devicePixelRatio()},{"locale",QLocale().name()},{"theme","light"},
                          {"description","Vrais widgets Gad ; états simulés, fichiers temporaires, aucun bureau réel capturé."},{"captures",manifest}};
     QFile manifestFile(output+"/captures.json");if(!manifestFile.open(QIODevice::WriteOnly))return 2;

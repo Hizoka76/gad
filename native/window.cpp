@@ -63,12 +63,17 @@ Window::Window(){
     auto *settingsRow=new QHBoxLayout(settingsBox);
     auto *settingsButton=I18n::localized(new QToolButton,"text",[]{return GAD_TR("Options…");});settingsButton->setObjectName("settingsButton");
     settingsButton->setIcon(QIcon::fromTheme("configure",style()->standardIcon(QStyle::SP_FileDialogDetailedView)));settingsButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    auto *settingsDialog=I18n::localized(new QDialog(this),"windowTitle",[]{return GAD_TR("Settings");});settingsDialog->setObjectName("settingsDialog");
+    auto *settingsDialog=I18n::localized(new QDialog(this),"windowTitle",[]{return GAD_TR("Settings");});settingsDialog->setObjectName("settingsDialog");settingsDialog->setWindowModality(Qt::WindowModal);
     auto *dialogLayout=new QVBoxLayout(settingsDialog);dialogLayout->setContentsMargins(16,16,16,16);dialogLayout->setSpacing(12);
     auto *settingsPanel=new QWidget;settingsPanel->setObjectName("settingsPanel");auto *settingsLayout=new QVBoxLayout(settingsPanel);settingsLayout->setSpacing(12);
     auto *settingsScroll=new QScrollArea;settingsScroll->setWidgetResizable(true);settingsScroll->setFrameShape(QFrame::NoFrame);settingsScroll->setWidget(settingsPanel);
     auto *settingsTabs=new QTabWidget;settingsTabs->setObjectName("settingsTabs");settingsTabs->addTab(settingsScroll,QString());
-    I18n::onChange(settingsTabs,"tabs",[settingsTabs]{settingsTabs->setTabText(0,GAD_TR("Settings"));if(settingsTabs->count()>1)settingsTabs->setTabText(1,GAD_TR("Shortcuts"));});
+    I18n::onChange(settingsTabs,"tabs",[settingsTabs]{settingsTabs->setTabText(0,GAD_TR("Settings"));if(settingsTabs->count()>1)settingsTabs->setTabText(1,GAD_TR("Shortcuts"));if(settingsTabs->count()>2)settingsTabs->setTabText(2,GAD_TR("Speed limits"));if(settingsTabs->count()>3)settingsTabs->setTabText(3,GAD_TR("Batch completion"));});
+    // Les réglages de débit et de fin de lot disposent chacun d’une page défilante.
+    auto *ratesPanel=new QWidget;ratesPanel->setObjectName("ratesPanel");auto *ratesLayout=new QVBoxLayout(ratesPanel);ratesLayout->setSpacing(12);
+    auto *ratesScroll=new QScrollArea;ratesScroll->setWidgetResizable(true);ratesScroll->setFrameShape(QFrame::NoFrame);ratesScroll->setWidget(ratesPanel);
+    auto *completionPanel=new QWidget;completionPanel->setObjectName("completionPanel");auto *completionLayout=new QVBoxLayout(completionPanel);completionLayout->setSpacing(12);
+    auto *completionScroll=new QScrollArea;completionScroll->setObjectName("completionScroll");completionScroll->setWidgetResizable(true);completionScroll->setFrameShape(QFrame::NoFrame);completionScroll->setWidget(completionPanel);
     auto *commandUsage=new QLabel("gad --configure [options]");commandUsage->setTextInteractionFlags(Qt::TextSelectableByMouse);dialogLayout->addWidget(commandUsage);
     dialogLayout->addWidget(settingsTabs);
     auto *settingsButtons=new QDialogButtonBox;auto *settingsClose=I18n::localized(new QPushButton(QIcon::fromTheme("window-close",style()->standardIcon(QStyle::SP_DialogCloseButton)),QString()),"text",[]{return GAD_TR("Close");});settingsClose->setObjectName("settingsCloseButton");
@@ -148,6 +153,11 @@ Window::Window(){
         column->addWidget(hint);return container;
     };
     auto *checks=new QGridLayout;checks->addWidget(commandOption(verifyMd5,"--md5 / --no-md5"),0,0);checks->addWidget(commandOption(verifyProperties,"--properties / --no-properties"),0,1);checks->addWidget(commandOption(verifySpace,"--verify-space / --no-verify-space"),1,0);checks->addWidget(commandOption(keepHistory,"--keep-history / --no-keep-history"),1,1);checks->addWidget(commandOption(startup,"--autostart / --no-autostart"),2,0);checks->addWidget(commandOption(resumeInterrupted,"--resume-interrupted / --no-resume-interrupted"),4,0,1,2);settingsLayout->addLayout(checks);
+    verifyFastMove=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Verify fast moves");});verifyFastMove->setObjectName("verifyFastMove");
+    I18n::bindProperty(verifyFastMove,"toolTip",[]{return GAD_TR("After a local rename, checks identity, type, size, modification time, permissions, owner/group, symbolic links, the complete tree and removal of the original path.\nDoes not read file contents; MD5 remains a separate option that uses the copy path.\nA failed check keeps the moved result and its restoration journal.\nApplies to new requests and is saved in profiles.");});
+    verifyFastMove->setChecked(QSettings().value("verifyFastMove",false).toBool());checks->addWidget(commandOption(verifyFastMove,"--verify-fast-move / --no-verify-fast-move"),5,0,1,2);
+    engine({{"command",Protocol::Command::Configure},{"verify_fast_move",verifyFastMove->isChecked()}});
+    connect(verifyFastMove,&QCheckBox::toggled,this,[this](bool enabled){const auto result=handle({{"command",Protocol::Command::Configure},{"verify_fast_move",enabled}});if(result.contains("error")){QSignalBlocker blocker(verifyFastMove);verifyFastMove->setChecked(!enabled);error(result["error"].toString());}});
     // Les préférences de sélection sont figées dans chaque requête, avant une éventuelle résolution KIO.
     exclusionRules={{"include_hidden",QSettings().value("includeHidden",true).toBool()},
         {"directories",QJsonArray::fromStringList(QSettings().value("excludeDirectories").toStringList())},
@@ -164,6 +174,16 @@ Window::Window(){
         const auto result=handle({{"command",Protocol::Command::Configure},{"allow_duplication",enabled}});
         if(result.contains("error")){QSignalBlocker blocker(allowDuplication);allowDuplication->setChecked(!enabled);error(result["error"].toString());}
     });
+    // Capturer cette politique pour les nouvelles demandes uniquement ; les lots en attente gardent leur choix.
+    conflictPolicy=new QComboBox;conflictPolicy->setObjectName("conflictPolicy");
+    for(const auto &value:QStringList{"ask","skip","newer","rename"})conflictPolicy->addItem(value,value);
+    I18n::onChange(conflictPolicy,"labels",[this]{QSignalBlocker blocker(conflictPolicy);conflictPolicy->setItemText(0,GAD_TR("Ask"));conflictPolicy->setItemText(1,GAD_TR("Skip existing files"));conflictPolicy->setItemText(2,GAD_TR("Replace older files only"));conflictPolicy->setItemText(3,GAD_TR("Keep both files"));});
+    auto *conflictLabel=I18n::localized(new QLabel,"text",[]{return GAD_TR("File conflicts:");});selectionOptions->addWidget(conflictLabel);selectionOptions->addWidget(conflictPolicy);
+    selectionOptions->addWidget(commandHint("conflictPolicy","--conflict-policy ask|skip|newer|rename"));
+    I18n::bindProperty(conflictPolicy,"toolTip",[]{return GAD_TR("Applies to new requests and is saved in profiles.\nExisting folders are merged.\nOlder means a strictly earlier modification time; equal or newer files are kept.\nUnreadable dates or symbolic links stop the file instead of replacing it automatically.");});
+    conflictPolicy->setCurrentIndex(qMax(0,conflictPolicy->findData(QSettings().value("conflictPolicy","ask"))));
+    engine({{"command",Protocol::Command::Configure},{"conflict_policy",conflictPolicy->currentData().toString()}});
+    connect(conflictPolicy,qOverload<int>(&QComboBox::currentIndexChanged),this,[this]{const auto result=handle({{"command",Protocol::Command::Configure},{"conflict_policy",conflictPolicy->currentData().toString()}});if(result.contains("error")){QSignalBlocker blocker(conflictPolicy);conflictPolicy->setCurrentIndex(qMax(0,conflictPolicy->findData(QSettings().value("conflictPolicy","ask"))));error(result["error"].toString());}});
     auto *exclusionsButton=I18n::localized(new QPushButton(QIcon::fromTheme("view-filter",style()->standardIcon(QStyle::SP_FileDialogContentsView)),QString()),"text",[]{return GAD_TR("Exclusions…");});exclusionsButton->setObjectName("exclusionsButton");
     I18n::bindProperty(exclusionsButton,"toolTip",[]{return GAD_TR("Choose folder and file name patterns to exclude.\nExcluded folders are not explored.\nExcluded items stay at the source during moves.");});
     connect(exclusionsButton,&QPushButton::clicked,this,[this]{showExclusions();});selectionOptions->addWidget(exclusionsButton);
@@ -194,8 +214,16 @@ Window::Window(){
     });
     auto *rateLabel=I18n::localized(new QLabel(QString()),"text",[=]{return GAD_TR("Global speed limit:");});rateLabel->setBuddy(globalRate);
     options->addWidget(rateLabel);options->addWidget(globalRate);
-    settingsLayout->addLayout(options);
-    settingsLayout->addWidget(commandHint("globalRate","--rate-limit MiB/s"));
+    ratesLayout->addLayout(options);
+    ratesLayout->addWidget(commandHint("globalRate","--rate-limit MiB/s"));
+    // Le plafond par défaut est capturé à la soumission, distinct de la limite globale active.
+    requestRate=new QDoubleSpinBox;requestRate->setObjectName("defaultRequestRateLimit");requestRate->setRange(0,1048576);requestRate->setDecimals(2);requestRate->setKeyboardTracking(false);
+    I18n::bindProperty(requestRate,"suffix",[]{return GAD_TR(" MiB/s");});I18n::bindProperty(requestRate,"specialValueText",[]{return GAD_TR("Unlimited");});
+    I18n::bindProperty(requestRate,"toolTip",[]{return GAD_TR("Applies to new requests only.\nExisting requests and the global speed limit stay unchanged.");});
+    requestRate->setValue(QSettings().value("requestRateLimit",0).toLongLong()/1048576.0);
+    connect(requestRate,&QDoubleSpinBox::valueChanged,this,[](double value){QSettings().setValue("requestRateLimit",qRound64(value*1048576));});
+    auto *requestRateRow=new QHBoxLayout;auto *requestRateLabel=I18n::localized(new QLabel,"text",[]{return GAD_TR("Default limit for new requests:");});requestRateLabel->setBuddy(requestRate);requestRateRow->addWidget(requestRateLabel);requestRateRow->addWidget(requestRate);ratesLayout->addLayout(requestRateRow);
+    ratesLayout->addWidget(commandHint("requestRate","--request-rate-limit MiB/s"));
     // Les demandes actives ont leur propre débit et estimation, sans ajouter de niveaux à l’arbre.
     requestMetrics=new QLabel;requestMetrics->setObjectName("requestMetrics");requestMetrics->setTextFormat(Qt::PlainText);
     requestMetrics->setWordWrap(true);requestMetrics->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -209,7 +237,13 @@ Window::Window(){
     auto *controls = new QHBoxLayout;
     controls->addStretch();
     pause = I18n::localized(new QPushButton(QIcon::fromTheme("media-playback-pause"),QString()),"text",[=]{return GAD_TR("Pause all");});
-    connect(pause, &QPushButton::clicked, this, [this] { engine({{"command", Protocol::Command::Pause}, {"paused", !paused}}); refresh(); });
+    pause->setObjectName("queueControlButton");
+    I18n::bindProperty(pause,"toolTip",[]{return GAD_TR("Starts the prepared queue, pauses active transfers, or resumes the paused queue.");});
+    connect(pause, &QPushButton::clicked, this, [this] {
+        const bool isPaused=state["paused"].toBool();bool active=false;
+        for(const auto &value:state["jobs"].toArray()){const auto job=value.toObject();active|=!job["start_required"].toBool() && !finished(job["state"].toString()) && !job["cancel"].toBool();}
+        handle({{"command",Protocol::Command::Pause},{"paused",active && !isPaused}});
+    });
     controls->addWidget(pause);
     // Le menu sépare les commandes globales des actions limitées aux lignes sélectionnées.
     auto *cancel = I18n::localized(new QPushButton(QIcon::fromTheme("process-stop"),QString()),"text",[=]{return GAD_TR("Cancellation");});
@@ -241,6 +275,7 @@ Window::Window(){
     connect(cancelSelected, &QAction::triggered, this, [this] { cancelSelection(false); });
     connect(undoSelected, &QAction::triggered, this, [this] { cancelSelection(true); });
     auto *clear = I18n::localized(new QPushButton(QIcon::fromTheme("edit-clear-history", QIcon::fromTheme("edit-clear", style()->standardIcon(QStyle::SP_DialogResetButton))),QString()),"text",[=]{return GAD_TR("Clear completed operations");});
+    clear->setObjectName("clearHistoryButton");
     I18n::bindProperty(clear,"toolTip",[=]{return GAD_TR("Clears completed operations and the backups needed to restore them.");}); controls->addWidget(clear);
     connect(clear, &QPushButton::clicked, this, [this] { auto result=engine({{"command", Protocol::Command::Clear}}); if(result.contains("error")) error(result["error"].toString()); refresh(); });
     layout->addLayout(controls);
@@ -349,6 +384,7 @@ Window::Window(){
     tree->header()->setSectionResizeMode(TableView::OrderColumn,QHeaderView::ResizeToContents);
     tree->setColumnWidth(0, 285); tree->setColumnWidth(1, 295); tree->setColumnWidth(2, 100); tree->setColumnWidth(3, 150);
     tree->header()->setStretchLastSection(true);
+    setupHistorySearch(layout,controls);
     layout->addWidget(tree, 1);
     layout->addWidget(requestMetrics);
     // Les confirmations de conflit restent sous les fichiers, avant le récapitulatif et le pied de fenêtre.
@@ -421,13 +457,9 @@ Window::Window(){
     auto *languageLabel=I18n::localized(new QLabel,"text",[]{return GAD_TR("Language");});languageLabel->setBuddy(language);
     auto *languageRow=new QHBoxLayout;languageRow->addWidget(languageLabel);languageRow->addWidget(language,1);settingsLayout->addLayout(languageRow);
     settingsLayout->addWidget(commandHint("language","--language LOCALE (system / fr_FR / en_US / …)"));
-    auto *requestRate=I18n::localized(new QPushButton(QIcon::fromTheme("speedometer"),QString()),"text",[]{return GAD_TR("Limit request speed…");});requestRate->setObjectName("settingsRequestRate");
-    controls->insertWidget(0,requestRate);connect(requestRate,&QPushButton::clicked,this,[this]{showRateLimit();});
-    // La sélection peut évoluer pendant que les paramètres restent ouverts.
-    connect(settingsButton,&QToolButton::clicked,this,[this,settingsDialog,requestRate]{requestRate->setEnabled(!tree->selectedItems().isEmpty());settingsDialog->show();settingsDialog->raise();settingsDialog->activateWindow();});
-    connect(tree,&QTreeWidget::itemSelectionChanged,requestRate,[this,requestRate]{requestRate->setEnabled(!tree->selectedItems().isEmpty());});
-    requestRate->setEnabled(!tree->selectedItems().isEmpty());
-    auto *shortcuts=new QWidget;auto *shortcutOptions=new QVBoxLayout(shortcuts);shortcutOptions->setContentsMargins(16,16,16,16);shortcutOptions->setSpacing(12);settingsTabs->addTab(shortcuts,GAD_TR("Shortcuts"));
+    setupCompletion(completionLayout,controls,settingsDialog);
+    connect(settingsButton,&QToolButton::clicked,this,[settingsDialog]{settingsDialog->show();settingsDialog->raise();settingsDialog->activateWindow();});
+    auto *shortcuts=new QWidget;shortcuts->setObjectName("shortcutsPanel");auto *shortcutOptions=new QVBoxLayout(shortcuts);shortcutOptions->setContentsMargins(16,16,16,16);shortcutOptions->setSpacing(12);settingsTabs->addTab(shortcuts,GAD_TR("Shortcuts"));
     auto *dolphinShortcut=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Ctrl+V with Gad in Dolphin");});dolphinShortcut->setObjectName("dolphinShortcut");shortcutOptions->addWidget(commandOption(dolphinShortcut,"--dolphin-ctrl-v / --no-dolphin-ctrl-v"));
     const auto helper=dolphinIntegration();dolphinShortcut->setEnabled(!helper.isEmpty());
     QFile receipt(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)+"/gad/dolphin-paste.json");
@@ -444,8 +476,19 @@ Window::Window(){
     auto *openKonqueror=I18n::localized(new QPushButton(QIcon::fromTheme("konqueror",style()->standardIcon(QStyle::SP_DirIcon)),QString()),"text",[]{return GAD_TR("Open Konqueror with Gad");});openKonqueror->setObjectName("openKonqueror");shortcutOptions->addWidget(openKonqueror);
     const auto konquerorLauncher=QStandardPaths::findExecutable("gad-konqueror");openKonqueror->setEnabled(!konquerorLauncher.isEmpty() && !QStandardPaths::findExecutable("konqueror").isEmpty());
     connect(openKonqueror,&QPushButton::clicked,this,[this,konquerorLauncher]{if(!QProcess::startDetached(konquerorLauncher,{}))error(GAD_TR("Unable to start Konqueror."));});
-    shortcutOptions->addStretch();settingsLayout->addStretch();
-    footer->addWidget(about);footer->addWidget(errorReport);footer->addStretch();footer->addWidget(summary,1);
+    auto *krusaderShortcut=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Ctrl+V with Gad in Krusader");});krusaderShortcut->setObjectName("krusaderShortcut");shortcutOptions->addWidget(commandOption(krusaderShortcut,"--krusader-ctrl-v / --no-krusader-ctrl-v"));
+    krusaderShortcut->setEnabled(!QStandardPaths::findExecutable("krusader").isEmpty());
+    QFile krusaderReceipt(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)+"/gad/krusader-paste.json");
+    if(krusaderReceipt.open(QIODevice::ReadOnly))krusaderShortcut->setChecked(QJsonDocument::fromJson(krusaderReceipt.readAll()).object()["enabled"].toBool());
+    auto *krusaderNotice=I18n::localized(new QLabel,"text",[]{return GAD_TR("Restart Krusader after changing its shortcut. Gad pastes files into the active panel. F5 and F6 remain unchanged.");});krusaderNotice->setWordWrap(true);shortcutOptions->addWidget(krusaderNotice);
+    connect(krusaderShortcut,&QCheckBox::toggled,this,[this,krusaderShortcut](bool enabled){
+        {QSignalBlocker blocker(krusaderShortcut);krusaderShortcut->setChecked(!enabled);}
+        configureKrusader(enabled,[this](const QJsonObject &result){if(result.contains("error"))error(result["error"].toString());});
+    });
+    shortcutOptions->addStretch();settingsLayout->addStretch();ratesLayout->addStretch();completionLayout->addStretch();
+    settingsTabs->addTab(ratesScroll,GAD_TR("Speed limits"));settingsTabs->addTab(completionScroll,GAD_TR("Batch completion"));
+    auto *diagnosticButton=I18n::localized(new QPushButton(QIcon::fromTheme("dialog-information",style()->standardIcon(QStyle::SP_MessageBoxInformation)),QString()),"text",[]{return GAD_TR("Transfer diagnostics…");});diagnosticButton->setObjectName("diagnosticsButton");connect(diagnosticButton,&QPushButton::clicked,this,&Window::showDiagnostics);
+    footer->addWidget(about);footer->addWidget(errorReport);footer->addWidget(diagnosticButton);footer->addStretch();footer->addWidget(summary,1);
     layout->addLayout(footer);
     setCentralWidget(body);
     setAcceptDrops(true);
@@ -474,9 +517,11 @@ Window::Window(){
         controlDesktopTransfers(action);
     },this,QGuiApplication::platformName()!="offscreen" && QGuiApplication::platformName()!="minimal");
     auto *timer = new QTimer(this); timer->setInterval(400); connect(timer, &QTimer::timeout, this, [this] { refresh(); }); timer->start();
+    connect(tray,&QSystemTrayIcon::messageClicked,this,[this]{showMainWindow();if(auto *dialog=findChild<QDialog *>("completionCountdown")){dialog->show();dialog->raise();dialog->activateWindow();}});
     qApp->installEventFilter(this);
     I18n::onChange(language,"systemLabel",[language]{QSignalBlocker blocker(language);language->setItemText(0,GAD_TR("System"));},false);
     I18n::onChange(tree,"headers",[transferTree]{transferTree->updateHeaderIndicators();},false);
+    setupProfiles(settingsRow);
     I18n::onChange(this,"refreshLanguage",[this]{
         setLocale(QLocale());for(auto *widget:findChildren<QWidget *>())widget->setLocale(QLocale());
         refresh();
@@ -575,11 +620,12 @@ void Window::closeEvent(QCloseEvent *event){
         hide(); event->ignore(); return;
     }
     bool active = resolvingSources || !sourceQueue.isEmpty();
-    for (const auto &j : engine({{"command", Protocol::Command::Status}})["jobs"].toArray()) if (!finished(j.toObject()["state"].toString())) active = true;
+    for (const auto &j : engine({{"command", Protocol::Command::Status}})["jobs"].toArray()) if (!finished(j.toObject()["state"].toString()) && (!j.toObject()["start_required"].toBool() || j.toObject()["state"]==Protocol::State::Scanning)) active = true;
     if (active) {
         QMessageBox::information(this, "Gad", GAD_TR("Transfers are still queued or running. Let them finish or cancel the operations before quitting."));
         event->ignore(); return;
     }
+    if(profileApplying){error(GAD_TR("A transfer profile is already being applied."));event->ignore();return;}
     const auto shutdown=engine({{"command", Protocol::Command::Shutdown}});
     if (shutdown.contains("error")) { error(shutdown["error"].toString()); event->ignore(); return; }
     closing = true; event->accept();

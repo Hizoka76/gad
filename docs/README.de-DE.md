@@ -1,10 +1,10 @@
 # Gad — Dokumentation
 
-Version 0.1.0 · Deutsch
+Version 0.2.0 · Deutsch
 
 ## Ein Handbuch auswählen
 
-Für jede Sprache gibt es einen Schnellstart, ein Benutzerhandbuch und ein Entwicklerhandbuch. Die Benutzerhandbücher enthalten vierzehn Aufnahmen der echten Oberfläche im hellen Design und in ihrer jeweiligen Sprache.
+Für jede Sprache gibt es einen Schnellstart, ein Benutzerhandbuch und ein Entwicklerhandbuch. Die Benutzerhandbücher enthalten zweiundzwanzig Aufnahmen der echten Oberfläche im hellen Design und in ihrer jeweiligen Sprache.
 
 | Dokument | Quelle | HTML | PDF |
 | --- | --- | --- | --- |
@@ -32,4 +32,4 @@ make docs
 make docs-check
 ```
 
-84 captures · 18 HTML · 18 PDF
+132 captures · 18 HTML · 18 PDF

@@ -1,8 +1,22 @@
 # Gad — Schnellstart {#gad-quick-start}
 
-**Gad, il copie. · Erweiterter Duplizierungsmanager · Version 0.1.0**
+**Gad, il copie. · Erweiterter Duplizierungsmanager · Version 0.2.0**
 
 [Benutzerhandbuch](USER_GUIDE.de-DE.md) · [Entwicklerhandbuch](DEVELOPER_GUIDE.de-DE.md) · [Alle Sprachen](README.de-DE.md)
+
+## Gad installieren
+
+Verwenden Sie das [Gad-PPA](https://launchpad.net/~hizo/+archive/ubuntu/gad) für eine unterstützte Ubuntu-Version. Die [GitHub-Releases](https://github.com/Hizoka76/gad/releases/latest) bieten außerdem ein `.deb`, ein `.tar.gz`-Archiv mit Quellen und kompiliertem Programm sowie die direkte Programmdatei `gad-linux-amd64`.
+
+```sh
+sudo add-apt-repository ppa:hizo/gad
+sudo apt update
+sudo apt install gad
+```
+
+Prüfen Sie auf der PPA-Seite, ob für Ihre Ubuntu-Version ein Paket veröffentlicht wurde. Falls `add-apt-repository` fehlt, installieren Sie `software-properties-common`.
+
+Befehle, Abhängigkeiten und Unterschiede zwischen den Formaten stehen im [Benutzerhandbuch](USER_GUIDE.de-DE.md#installation-and-startup).
 
 ## Gad starten {#start-gad}
 
@@ -16,18 +30,9 @@ Wenn es noch nicht installiert ist, befolgen Sie die Anweisungen [Installationsa
 
 ## Die erste Kopie erstellen {#make-your-first-copy}
 
-![Das Gad Fenster im Lichtthema](images/de-DE/01-vue-ensemble.png)
+![Übertragungen in der Hauptliste vorbereiten](images/de-DE/22-preparation.png)
 
-*Quelle, Ziel und Einstellungen sind oberhalb der Übertragungsliste gruppiert.*
-
-1. Wählen Sie in Ihrem Dateimanager die Dateien oder Ordner aus und drücken Sie **Strg+C**.
-2. Legen Sie in Gad **Ziel** auf den vorhandenen Ordner fest, der sie empfangen soll.
-3. Klicken Sie auf **Hier einfügen** oder drücken Sie **Ctrl+V in Gad**.
-4. Überprüfen Sie das Ziel in der Liste. Die Übertragungsarbeit beginnt automatisch, es sei denn, die Warteschlange wird angehalten.
-
-Sie können auch **Dateien hinzufügen…**, **Ordner hinzufügen…** verwenden oder Dateien nach dem Festlegen des Ziels in Gad ziehen. **Drag-and-Drop kopiert immer.** Zum Verschieben von Dateien verwenden Sie **Strg+X** und fügen anschließend ein, sofern der Dateimanager eine erkannte Schnittmarkierung veröffentlicht. Überprüfen Sie den in der Liste angezeigten Vorgang. Sehen Sie sich bei Bedarf [Anweisungen anderer Manager](USER_GUIDE.de-DE.md#using-gad-with-other-file-managers) an.
-
-Erneut einfügen, um eine weitere Anfrage hinzuzufügen. Gad stellt die Arbeit in die Warteschlange und führt möglicherweise zwei kompatible Übertragungen gleichzeitig aus. Doppelte ausstehende Vorgänge werden ignoriert.
+Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts läuft, prüfen Sie die Liste und klicken Sie auf **Starten**. Normales Einfügen startet automatisch; während einer Übertragung werden neue Aufträge eingereiht. **Strg+C** kopiert, **Strg+X** verschiebt. Ziehen und Ablegen bereitet immer eine Kopie vor.
 
 ## Übertragungen verfolgen und steuern {#read-and-control-transfers}
 
@@ -83,3 +88,21 @@ gad --configure --exclude-folder "__*" --exclude-file "*.tmp" --language fr_FR -
 Das Benutzerhandbuch beschreibt den Schutz des normalen Dolphin-Starters und das Laden der automatischen Ctrl+V-Überwachung.
 
 [Automatische Ctrl+V-Überwachung](USER_GUIDE.de-DE.md#dolphin-watchdog)
+
+
+## Übertragungsprofile
+
+Speichern Sie unter **Einstellungen → Profile** alle Optionen unter einem Namen und wenden Sie sie später mit einem Klick an. **Das Ziel wird niemals gespeichert oder geändert.** Sprache und globales Limit wirken wie üblich. **Profile verwalten…** bietet Aktualisieren, Umbenennen und Löschen. Siehe [Übertragungsprofile](USER_GUIDE.de-DE.md#transfer-profiles).
+
+In der Befehlszeile übernimmt `gad --profile "Mein Profil"` die Einstellungen ohne Transfer. Zum Kopieren: `gad --profile "Mein Profil" --copy /pfad/quelle --to /pfad/ziel`; auch mit `--move` / `--paste` verwendbar. Gad wartet auf die vollständige Anwendung des Profils. Das Ziel stammt aus dem Befehl; explizite Optionen wie `--md5` haben Vorrang. Bei unbekanntem Namen werden keine Dateien eingereiht. `--configure --profile "Mein Profil"` erlaubt zusätzliche Einstellungen, die anschließend angewendet werden.
+
+
+## Übertragungen in der Hauptliste vorbereiten
+
+Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts läuft, prüfen Sie die Liste und klicken Sie auf **Starten**. Normales Einfügen startet automatisch; während einer Übertragung werden neue Aufträge eingereiht. **Strg+C** kopiert, **Strg+X** verschiebt. Ziehen und Ablegen bereitet immer eine Kopie vor.
+
+## Optionen
+
+**Einstellungen → Optionen…** öffnet ein modales Fenster: Das Hauptfenster bleibt bis zum Schließen gesperrt, Übertragungen laufen weiter. Änderungen gelten sofort; **Schließen** oder Escape macht sie nicht rückgängig. Befehlszeilenoptionen stehen grau unter den Bedienelementen. Mindestgröße: **800 × 740**; Hauptfenster, Fehlerbericht und Diagnose: **1100 × 600**.
+
+Die vier Reiter heißen **Einstellungen**, **Tastenkürzel**, **Geschwindigkeitslimits** und **Stapelabschluss**. Die Limits umfassen die globale Grenze und den Standard für neue Aufträge. Bestehende Aufträge ändern Sie über die ausgewählten Zeilen und **Rechtsklick → Geschwindigkeit des Auftrags begrenzen…**. Das Limit steht in **Details**, auch bei Ordnern; bei unbegrenzter Geschwindigkeit entfällt der Zusatz.

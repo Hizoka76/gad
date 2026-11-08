@@ -1,8 +1,10 @@
 # Gad — Guía de usuario {#gad-user-guide}
 
-**Gestionnaire Avancé de Duplication · Versión 0.1.0**  
-**Gad, il copie.**  
-Edición en español, actualizada el 6 de noviembre de 2026.
+**Gestionnaire Avancé de Duplication · Versión 0.2.0**
+
+**Gad, il copie.**
+
+Edición en español, actualizada el 8 de noviembre de 2026.
 
 [Inicio rápido](QUICK_START.es-ES.md) · [francés](GUIDE_UTILISATEUR.md) · [Todas las ediciones](README.es-ES.md)
 
@@ -52,11 +54,58 @@ Gad se integra con Dolphin mediante **Pegar con Gad** y su opción de Ctrl+V. La
 
 ### Interpretar las capturas {#reading-the-screenshots}
 
-Las 14 capturas muestran los widgets reales de Gad, archivos de ejemplo y estados de transferencia simulados. Utilizan el tema claro y el idioma de esta edición. No se fotografían archivos personales ni el escritorio real. Las notificaciones externas de Plasma no se reproducen en estas capturas.
+Las 22 capturas muestran los widgets reales de Gad, archivos de ejemplo y estados de transferencia simulados. Utilizan el tema claro y el idioma de esta edición. No se fotografían archivos personales ni el escritorio real. Las notificaciones externas de Plasma no se reproducen en estas capturas.
 
 Gad ofrece francés, inglés estadounidense, español, portugués, alemán y japonés. Elija un idioma en **Configuración → Opciones…**: se aplica inmediatamente sin reiniciar Gad ni interrumpir las transferencias. Los diálogos y las notificaciones activas se actualizan conservando la selección y los valores introducidos. **Sistema** elige una variante disponible del idioma del escritorio y, si no existe, utiliza francés o inglés. Los diagnósticos técnicos no catalogados y los mensajes de servicios externos pueden conservar su idioma original.
 
 ## Instalación y arranque {#installation-and-startup}
+
+### PPA de Ubuntu
+
+El [PPA de Gad](https://launchpad.net/~hizo/+archive/ubuntu/gad) permite instalar Gad y recibir actualizaciones mediante APT:
+
+```sh
+sudo add-apt-repository ppa:hizo/gad
+sudo apt update
+sudo apt install gad
+```
+
+Compruebe en la página del PPA que existe un paquete publicado para su versión de Ubuntu. Si falta `add-apt-repository`, instale `software-properties-common`.
+
+### Descargas precompiladas
+
+Las [versiones de GitHub](https://github.com/Hizoka76/gad/releases/latest) ofrecen varios formatos. Sustituya los nombres de ejemplo por los de los archivos descargados.
+
+#### Paquete Debian `.deb`
+
+Descargue el paquete de su arquitectura e instálelo con APT para resolver las dependencias disponibles en sus repositorios:
+
+```sh
+sudo apt install ./gad_VERSION_amd64.deb
+```
+
+#### Archivo `.tar.gz`: fuentes y binario compilado
+
+El archivo `gad-VERSION-linux-amd64.tar.gz` contiene el código fuente, las dependencias Rust incluidas, la documentación y el programa compilado en `prebuilt/`. No necesita compilarlo para ejecutarlo:
+
+```sh
+tar -xzf gad-VERSION-linux-amd64.tar.gz
+cd gad-VERSION
+./prebuilt/usr/bin/gad
+```
+
+#### Ejecutable directo
+
+El archivo `gad-linux-amd64` también es un binario ya compilado:
+
+```sh
+chmod +x gad-linux-amd64
+./gad-linux-amd64
+```
+
+Las descargas Linux amd64 están destinadas a procesadores x86-64. El binario directo no instala un lanzador ni el complemento de Dolphin; el `.deb` y el archivo incluyen los archivos de integración de esa versión. Estos binarios requieren Qt/KF6 con las versiones indicadas en las notas de publicación. Una versión publicada corresponde a su etiqueta y puede ser anterior al código actual del repositorio.
+
+### Desde el código fuente
 
 Instale las dependencias de compilación de Linux descritas en [guía para desarrolladores](DEVELOPER_GUIDE.es-ES.md#building) y [guía de prueba](../TESTING.es-ES.md#requirements). Desde el directorio del proyecto:
 
@@ -94,7 +143,11 @@ Para realizar una actualización, finalice o cancele el trabajo activo y salga d
 
 *El diálogo de opciones se abre desde el bloque Configuración.*
 
-**Configuración → Opciones…** abre un diálogo redimensionable con las pestañas **Configuración** y **Atajos**. Los cambios se aplican inmediatamente; **Cerrar** o Esc cierra el diálogo sin deshacerlos. Puede permanecer abierto durante los traslados. Los parámetros de comando aparecen en gris debajo de los controles. Su tamaño mínimo es **800 × 740**; la ventana principal y el informe de errores tienen un mínimo de **1100 × 600**. **Limitar la tasa de la solicitud…** está a la izquierda de la barra de acciones principal, junto a pausa/reanudación y cancelación. Se desactiva sin selección y limita los lotes seleccionados independientemente del límite global.
+**Ajustes → Opciones…** abre una ventana modal que bloquea la ventana principal mientras las transferencias continúan. Los cambios se aplican inmediatamente; **Cerrar** o Esc no los deshace. Los parámetros de línea de órdenes aparecen en gris. Tamaño mínimo: **800 × 740**; ventana principal, informe de errores y diagnóstico: **1100 × 600**.
+
+Los cuatro apartados son **Ajustes**, **Atajos**, **Límites de velocidad** y **Fin del lote**. Los límites incluyen el global y el predeterminado para nuevas solicitudes. Para modificar una existente, seleccione sus filas y utilice **clic derecho → Limitar la velocidad de la solicitud…**. El límite aparece en **Detalle**, también en carpetas; sin límite no se añade texto.
+
+![Ajustes → Opciones… a](images/es-ES/21-options-debits.png)
 
 ![La pestaña Atajos controla la integración de los gestores de archivos.](images/es-ES/14-options-raccourcis.png)
 
@@ -175,7 +228,7 @@ Otros administradores que admiten menús de servicio KIO también pueden ofrecer
 
 ![Controles de origen y destino y opciones de verificación](images/es-ES/02-sources-options.png)
 
-Elige el destino **antes** añadiendo o pegando archivos. Agregar archivos envía la solicitud inmediatamente; no hay ninguna confirmación de inicio por separado.
+Elija destino y opciones y añada los archivos en Gad. Si no hay trabajo activo, revise la lista y pulse **Iniciar**. El pegado habitual arranca automáticamente; los nuevos elementos durante una transferencia se añaden a la cola. **Ctrl+C** copia y **Ctrl+X** mueve. Arrastrar y soltar siempre prepara una copia.
 
 ### Desde Dolphin {#from-dolphin}
 
@@ -632,3 +685,88 @@ Estas protecciones son automáticas, incluso sin MD5. Gad compara la identidad, 
 Antes de restaurar, Gad comprueba los archivos seleccionados, las copias de seguridad, las rutas padre y los volúmenes necesarios. Una copia de seguridad alterada, permisos o propietario modificados, un resultado movido ausente o un origen restaurado y editado después pueden bloquear la restauración. Las comprobaciones se repiten antes de eliminar el resultado. Los archivos afectados se conservan; consulte el detalle del error antes de reintentar.
 
 La comprobación de fechas depende de la precisión del sistema de archivos y del servicio remoto. No crea una instantánea de un archivo abierto por otra aplicación. MD5 añade una comparación del contenido antes de publicar; los diarios antiguos utilizan la información disponible.
+
+## Perfiles de transferencia {#transfer-profiles}
+
+El botón **Perfiles**, en **Ajustes**, guarda y aplica **todas las opciones del diálogo**, pero **nunca el destino**: verificaciones MD5/propiedades/espacio, exclusiones y elementos ocultos, duplicación, historial, recuperación tras interrupciones, límites global y predeterminado, idioma, inicio automático y atajos de Dolphin/Konqueror.
+
+1. Configure las opciones en **Opciones…**.
+2. Elija **Perfiles → Guardar ajustes actuales…** e introduzca un nombre único.
+3. Seleccione el nombre para aplicar todas las opciones. El destino no cambia, aunque esté vacío. No se inicia ninguna transferencia.
+
+**Gestionar perfiles…** permite aplicar, renombrar, eliminar o **actualizar con los ajustes actuales**. El resumen muestra todos los valores. Eliminar la definición no deshace los ajustes aplicados. Se conservan hasta 64 perfiles entre sesiones.
+
+El idioma, el límite global y otros ajustes globales tienen su efecto habitual inmediato. Las verificaciones, exclusiones y límites predeterminados se capturan para nuevas solicitudes; los lotes existentes conservan sus opciones. El atajo de Dolphin se aplica de forma asíncrona. Si falla una etapa, Gad intenta restaurar los valores anteriores y avisa si la restauración es incompleta.
+
+Los perfiles antiguos migran automáticamente: se elimina el destino y las opciones que faltaban se inicializan una sola vez con los ajustes actuales. Puede modificarlas con **Actualizar con los ajustes actuales**. No se guardan rutas de origen, destinos ni contraseñas.
+
+![Gestión de perfiles de transferencia](images/es-ES/15-profils.png)
+
+En la línea de órdenes, `gad --profile "Mi perfil"` aplica los ajustes sin iniciar una transferencia. Para copiar: `gad --profile "Mi perfil" --copy /ruta/origen --to /ruta/destino`; también funciona con `--move` / `--paste`. Gad espera a que se aplique el perfil. El destino procede de la orden y las opciones explícitas, como `--md5`, prevalecen. Un nombre desconocido devuelve un error sin encolar archivos. `--configure --profile "Mi perfil"` admite ajustes adicionales, aplicados después del perfil.
+
+## Políticas de conflictos en perfiles
+
+En **Opciones → Conflictos de archivos**, elija **Preguntar**, **Omitir archivos existentes**, **Reemplazar solo archivos más antiguos** o **Conservar ambos archivos**. Guarde o actualice el perfil. Las solicitudes existentes conservan su política.
+
+Solo se reemplazan destinos cuya fecha de modificación sea estrictamente anterior a la del origen; se omiten los de fecha igual o posterior. Fechas ilegibles y enlaces simbólicos provocan un error sin reemplazo: cambie la política y reintente. La fiabilidad de las fechas depende del sistema de archivos o servicio remoto. Se combinan las carpetas existentes y se aplica la política a los conflictos interiores. Conservar ambos añade un sufijo numerado. Los archivos omitidos permanecen en el origen al mover; los reemplazos permiten restauración.
+
+Orden: `gad --configure --conflict-policy newer`. Los perfiles de los formatos 1 y 2 se migran a **Preguntar**, sin destino.
+
+## Buscar en el historial conservado {#history-search}
+
+Pulse **Buscar en el historial** o **Ctrl+F**. Escriba un nombre o parte de una ruta de origen/destino, incluidas URL remotas. Las palabras se combinan con Y, sin distinguir mayúsculas y sin expresiones regulares. Elija un estado del lote y active **Añadido entre** para filtrar la fecha de incorporación, con fechas locales inclusivas.
+
+**Solo historial** muestra lotes terminados, cancelados, restaurados o fallidos; desmárquelo para incluir solicitudes activas. Los filtros de columnas se combinan con la búsqueda. Se conservan los padres de los resultados. **Restablecer búsqueda** borra sus criterios sin cambiar los filtros de columnas; cerrar la barra o pulsar **Escape** desactiva solo esta búsqueda. La cola y sus prioridades no cambian.
+
+La ayuda de la columna de orden muestra la fecha de incorporación. Las operaciones antiguas sin fecha aparecen como desconocidas y siguen disponibles sin filtro de fecha. El historial debe conservarse: las operaciones borradas no se pueden recuperar mediante búsqueda.
+
+![Buscar en el historial conservado](images/es-ES/16-recherche-historique.png)
+
+## Diagnóstico de transferencias {#transfer-diagnostics}
+
+El botón **Diagnóstico de transferencias…**, en la parte inferior, abre una vista no modal de solicitudes activas y pendientes. Muestra el estado, la actividad o espera observada, los límites globales y por solicitud, la velocidad y el tiempo restante. Los números de los lotes bloqueantes corresponden a la lista principal.
+
+Las causas distinguen pausas, análisis del origen, conflictos pendientes, dispositivos o montajes remotos no disponibles, verificación MD5, comprobación del prefijo de reanudación, cambio de nombre local, restauración exclusiva, dos trabajadores ocupados, prioridad de filas, discos compartidos o rutas superpuestas y ejecución en serie cuando se desconocen los recursos.
+
+Una espera de presupuesto de velocidad solo se indica si el limitador la observó en el último segundo. Un límite configurado no demuestra una ralentización. Tras cinco segundos sin progreso de bytes durante una copia o MD5, fuera de esperas del limitador, Gad informa de esta falta de progreso: las operaciones de archivos o su finalización pueden esperar, pero no permiten identificar un cuello de botella concreto del disco o la red. No son pruebas de rendimiento ni se guardan en el historial. Cerrar la ventana no cambia las transferencias.
+
+![Diagnóstico de transferencias](images/es-ES/17-diagnostic-transferts.png)
+
+Los límites de velocidad se aplican a los bytes copiados; las lecturas MD5 y los cambios de nombre locales son fases distintas.
+
+## Verificar movimientos rápidos {#verify-fast-moves}
+
+En **Opciones**, marque **Verificar movimientos rápidos**. Está desactivado por defecto, se guarda en los perfiles y se captura por solicitud nueva. Tras un cambio de nombre local, Gad comprueba identidad (dispositivo/inodo), tipo, tamaño, fecha de modificación, permisos, propietario/grupo, destinos de enlaces y árbol exacto, además de la desaparición de la ruta original. Se aceptan cambios legítimos de ctime de la raíz renombrada; los descendientes deben conservarlo.
+
+El detalle indica **Movimiento rápido verificado** al terminar. El diagnóstico distingue esta fase de MD5. Diferencias, elementos añadidos o ausentes, una ruta original recreada o errores de lectura hacen fallar el lote e identifican la ruta comprobada. Se conservan el resultado movido y el diario, sin restauración automática que sobrescriba archivos modificados. Pausar o cancelar no elimina el resultado ya movido.
+
+Se verifican metadatos, no el contenido; no sustituye una comparación criptográfica. MD5 sigue siendo independiente y exige copiar/verificar/eliminar. Las copias ordinarias no reciben un falso resultado de verificación rápida. Los perfiles antiguos migran con la opción desactivada. Orden: `gad --configure --verify-fast-move`; desactivar: `--no-verify-fast-move`.
+
+![Movimiento rápido verificado](images/es-ES/18-verification-deplacement-rapide.png)
+
+## Acciones de fin del lote {#queue-completion}
+
+En **Opciones → Fin del lote**, elija notificar, cerrar Gad, suspender o apagar el equipo. Configure entre **5 y 3600 segundos** para cancelar (30 de forma predeterminada) y pulse **Activar para este lote**. El estado indica si la acción está activa. Seleccionar una acción o cargar un perfil solo guarda los ajustes. Cambiar los ajustes de finalización desactiva una activación anterior.
+
+La cuenta atrás empieza cuando todas las transferencias seguidas terminan correctamente, incluida la preparación remota y el guardado final. Aún puede cancelar. Añadir transferencias aplaza la acción y reinicia después la cuenta completa. Un error, una cancelación, una restauración o eliminar una solicitud desactiva la acción. La pausa impide ejecutarla.
+
+Desactivar la acción o cerrar la cuenta atrás no cancela transferencias. Solo se ejecuta una vez y no se reactiva al reiniciar Gad. El menú de fin del lote ofrece las mismas acciones y abre la pestaña correspondiente. Aquí «lote» comprende todas las transferencias seguidas, no una sola fila seleccionada.
+
+Suspender y apagar utilizan logind y respetan sus permisos e inhibidores. Una notificación permite abrir Gad si está oculto. `gad --configure --completion-action suspend --completion-delay 60` solo guarda las preferencias; actívelas después en Gad.
+
+![Acciones de fin del lote](images/es-ES/19-fin-de-file.png)
+
+![Acciones de fin del lote](images/es-ES/20-options-fin-de-file.png)
+
+
+## Preparar transferencias en la lista principal {#preparing-transfers}
+
+Si no hay trabajo en curso, los archivos añadidos desde la ventana (**Añadir archivos…**, **Añadir carpeta…** o arrastrar y soltar) se analizan y muestran sin iniciar la transferencia. Elija antes el destino y las opciones, revise el árbol y pulse **Iniciar**. Ya no hay una ventana de simulación independiente.
+
+El mismo botón pasa a pausar todo y después a reanudar la cola. Si ya hay transferencias autorizadas, los nuevos elementos se incorporan automáticamente. El pegado habitual y las órdenes externas arrancan sin abrir la ventana principal; una solicitud externa rechazada no inicia el trabajo preparado. Los duplicados pendientes se ignoran con un aviso.
+
+Durante la copia, el archivo parcial aparece como `archivo.ext.part` y recibe su nombre final al terminar. Gad elige un sufijo único si el nombre está ocupado. Una transferencia interrumpida puede continuar sobre el mismo archivo parcial tras verificarlo. Borrar el historial elimina la posibilidad de restaurar transferencias terminadas.
+
+El informe de errores y el diagnóstico también bloquean la ventana principal. **Mostrar en la lista** cierra el informe y desactiva búsquedas que oculten la fila. El filtro del informe sigue el idioma seleccionado.
+
+![Preparar transferencias en la lista principal](images/es-ES/22-preparation.png)

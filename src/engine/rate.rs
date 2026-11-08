@@ -18,6 +18,9 @@ struct Bucket {
     rate: u64,
     credit: f64,
     updated: Option<Instant>,
+    /// Dernier refus de budget local/global ; absent du journal et des mesures de débit.
+    local_wait: Option<Instant>,
+    global_wait: Option<Instant>,
 }
 impl Bucket {
     /// Une nouvelle valeur repart sans crédit ; aucun rattrapage après une baisse de limite.
@@ -51,6 +54,19 @@ impl Bucket {
     }
 }
 impl Limiter {
+    /// Une observation expire après une seconde ; une limite configurée ne prouve pas une attente.
+    pub(super) fn waiting(&self, id: u64, now: Instant) -> (bool, bool) {
+        let recent = |time: Option<Instant>| {
+            time.is_some_and(|time| now.saturating_duration_since(time) < Duration::from_secs(1))
+        };
+        self.jobs.get(&id).map_or((false, false), |job| {
+            (recent(job.global_wait), recent(job.local_wait))
+        })
+    }
+    /// Les compteurs sont liés au travailleur actif, pas à l’historique conservé.
+    pub(super) fn forget(&mut self, id: u64) {
+        self.jobs.remove(&id);
+    }
     /// Consomme les deux budgets atomiquement ; aucun octet n’est réservé à un travailleur endormi.
     fn grant(
         &mut self,
@@ -63,8 +79,16 @@ impl Limiter {
         self.global.refill(global, now);
         let job = self.jobs.entry(id).or_default();
         job.refill(local, now);
-        let wait = self.global.wait(bytes).max(job.wait(bytes));
+        let global_wait = self.global.wait(bytes);
+        let local_wait = job.wait(bytes);
+        let wait = global_wait.max(local_wait);
         if !wait.is_zero() {
+            if !global_wait.is_zero() {
+                job.global_wait = Some(now);
+            }
+            if !local_wait.is_zero() {
+                job.local_wait = Some(now);
+            }
             return Err(wait.max(Duration::from_millis(1)));
         }
         let count = self.global.available(bytes).min(job.available(bytes));
@@ -197,5 +221,30 @@ mod tests {
             limiter.grant(1, 0, 0, 65536, now + Duration::from_secs(60)),
             Ok(65536)
         );
+    }
+}
+
+#[cfg(test)]
+mod diagnostic_tests {
+    use super::*;
+    #[test]
+    /// Seul un budget réellement refusé est signalé ; les observations expirent et sont libérées.
+    fn rate_diagnostics_distinguish_global_and_local_waits() {
+        let now = Instant::now();
+        let mut limiter = Limiter::default();
+        assert_eq!(limiter.grant(1, 0, 0, 100, now), Ok(100));
+        assert_eq!(limiter.waiting(1, now), (false, false));
+        assert!(limiter.grant(1, 100, 0, 100, now).is_err());
+        assert_eq!(limiter.waiting(1, now), (true, false));
+        assert_eq!(
+            limiter.waiting(1, now + Duration::from_secs(1)),
+            (false, false)
+        );
+        assert!(limiter.grant(2, 0, 100, 100, now).is_err());
+        assert_eq!(limiter.waiting(2, now), (false, true));
+        assert!(limiter.grant(3, 100, 100, 100, now).is_err());
+        assert_eq!(limiter.waiting(3, now), (true, true));
+        limiter.forget(3);
+        assert_eq!(limiter.waiting(3, now), (false, false));
     }
 }

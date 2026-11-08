@@ -4,16 +4,23 @@
 //! Les indices des entrées restent stables pour relier interface, transfert et journal.
 
 use serde::{Deserialize, Serialize};
+mod completion;
+mod conflicts;
 mod controls;
+mod diagnostics;
 mod duplicates;
 mod duplication;
 mod errors;
 mod exclusions;
 mod fast_move;
+mod fast_verify;
+mod prepared;
 mod properties;
 mod rate;
 mod reconnect;
 mod resume;
+mod simulation;
+mod staging;
 mod tree_move;
 use fast_move::EntryOutcome;
 mod protocol;
@@ -40,6 +47,9 @@ use std::{
 #[derive(Clone, Serialize, Deserialize)]
 /// Une ligne de fichier, lien ou dossier, identifiée par sa position stable dans un lot.
 struct Entry {
+    #[serde(default)]
+    /// Résultat de la vérification facultative d’un renommage rapide.
+    fast_move_check: Option<fast_verify::Report>,
     #[serde(default)]
     /// Pause propre à cette ligne, distincte de la pause globale et de celle du lot.
     paused: bool,
@@ -93,6 +103,12 @@ struct Entry {
 #[derive(Clone, Serialize, Deserialize)]
 /// Un lot soumis par une action de copie ou de déplacement, avec ses options figées.
 struct Job {
+    /// Les ajouts manuels sont analysés mais exigent une validation explicite.
+    #[serde(default)]
+    start_required: bool,
+    #[serde(default)]
+    /// Date d’ajout UTC en secondes Unix ; zéro désigne un ancien journal sans date connue.
+    created_at: u64,
     #[serde(default)]
     /// Règles immuables du lot, réutilisées aux reprises et réactivations.
     exclusions: exclusions::Rules,
@@ -155,6 +171,8 @@ struct Job {
     /// Vérification facultative des propriétaires, permissions, ACL et attributs.
     verify_properties: bool,
     #[serde(default)]
+    verify_fast_move: bool,
+    #[serde(default)]
     /// Contrôle facultatif de la place requise par la file avant écriture.
     verify_space: bool,
     #[serde(default)]
@@ -194,6 +212,19 @@ struct Job {
 #[serde(default)]
 /// État sérialisable du moteur ; les réservations de travailleurs ne sont pas persistées.
 struct State {
+    #[serde(skip)]
+    completion_claimed: bool,
+    #[serde(skip)]
+    work_epoch: u64,
+    #[serde(skip)]
+    last_work_command: String,
+    #[serde(skip)]
+    preparing: u64,
+    #[serde(skip)]
+    finalizing: u64,
+    /// Politique par défaut, capturée dans chaque nouveau lot.
+    #[serde(default = "conflicts::ask")]
+    conflict_policy: String,
     /// Règles par défaut des futurs lots ; inclure les cachés préserve le comportement initial.
     exclusions: exclusions::Rules,
     /// Autorise uniquement les copies sur place, jamais les déplacements sur eux-mêmes.
@@ -211,6 +242,8 @@ struct State {
     /// Valeur par défaut pour les futures opérations.
     verify_md5: bool,
     verify_properties: bool,
+    #[serde(default)]
+    verify_fast_move: bool,
     #[serde(default)]
     /// Contrôle facultatif de la place requise par la file avant écriture.
     verify_space: bool,
@@ -238,6 +271,10 @@ struct State {
 /// Ressources partagées par l’interface, l’analyse et les deux travailleurs.
 /// Ordre de sauvegarde : writer puis state ; ne jamais conserver state en appelant save.
 struct Shared {
+    /// Sérialise les commandes avec la prise de garde de fin de file, jamais les E/S des travailleurs.
+    requests: Mutex<()>,
+    /// Analyses sans écriture, annulables indépendamment de la file de transfert.
+    simulations: Mutex<simulation::Registry>,
     /// Protège les mutations d’état ; les longues copies travaillent hors de ce verrou.
     state: Mutex<State>,
     /// Budgets volatils, toujours verrouillés après state et jamais persistés.
@@ -271,6 +308,9 @@ impl Engine {
     /// Partage l’état puis démarre deux travailleurs ; l’ordonnanceur réserve les lots
     /// sous le verrou d’état avant toute opération de fichiers.
     fn start(mut state: State, history_path: Option<PathBuf>) -> Self {
+        if conflicts::parse(&json!(state.conflict_policy)).is_err() {
+            state.conflict_policy = conflicts::ask();
+        }
         state.next_execution_order = state.next_execution_order.max(state.next_id).max(
             state
                 .jobs
@@ -281,6 +321,8 @@ impl Engine {
         );
         let engine = Self {
             shared: Arc::new(Shared {
+                requests: Mutex::new(()),
+                simulations: Mutex::new(simulation::Registry::default()),
                 state: Mutex::new(state),
                 limiter: Mutex::new(rate::Limiter::default()),
                 wake: Condvar::new(),
@@ -303,6 +345,12 @@ impl Engine {
     /// par le mutex ; les sauvegardes et attentes se font après libération de ce verrou.
     pub fn request(&self, request: &str) -> Result<Value, String> {
         let v: Value = serde_json::from_str(request).map_err(|e| e.to_string())?;
+        // Les analyses parcourent le disque hors du verrou des commandes : pause,
+        // annulation et rafraîchissement restent disponibles pendant la simulation.
+        if let Some(result) = self.simulation_request(&v) {
+            return result;
+        }
+        let _request_guard = self.shared.requests.lock().unwrap();
         if self.shared.stop.load(std::sync::atomic::Ordering::SeqCst)
             && v["command"] != Command::Status.as_str()
             && v["command"] != Command::Shutdown.as_str()
@@ -311,11 +359,47 @@ impl Engine {
         }
         let command =
             Command::from_wire(v["command"].as_str().unwrap_or("")).ok_or("Commande inconnue")?;
+        {
+            let mut state = self.shared.state.lock().unwrap();
+            if state.completion_claimed
+                && !matches!(
+                    command,
+                    Command::Status
+                        | Command::Poll
+                        | Command::ErrorReport
+                        | Command::CompletionRelease
+                        | Command::Shutdown
+                )
+            {
+                return Err(
+                    "A completion action is being dispatched; no operation was added".into(),
+                );
+            }
+            if !matches!(
+                command,
+                Command::Status
+                    | Command::Poll
+                    | Command::ErrorReport
+                    | Command::Configure
+                    | Command::SetRateLimit
+                    | Command::CompletionClaim
+                    | Command::CompletionRelease
+                    | Command::Shutdown
+            ) {
+                state.work_epoch = state.work_epoch.saturating_add(1);
+                state.last_work_command = command.as_str().into();
+            }
+        }
         let _mutation = snapshot::Mutation(!matches!(
             command,
             Command::Status | Command::Poll | Command::ErrorReport
         ));
         match command {
+            Command::CompletionClaim => self.claim_completion(&v),
+            Command::CompletionRelease => {
+                self.shared.state.lock().unwrap().completion_claimed = false;
+                Ok(json!({"ok":true}))
+            }
             Command::Poll => self.poll(v["since"].as_u64()),
             Command::ErrorReport => self.error_report(),
             Command::RetryErrors => self.retry_errors(&v),
@@ -326,6 +410,9 @@ impl Engine {
                 let mut value = serde_json::to_value(&*state).map_err(|e| e.to_string())?;
                 value["protocol_version"] = json!(protocol::VERSION);
                 value["parallel_limit"] = json!(2);
+                value["queue_guard"] = completion::snapshot(&state);
+                value["diagnostics"] =
+                    diagnostics::snapshot(&mut state, &self.shared.limiter.lock().unwrap());
                 value["queue_order"] = json!(queue::ids(&state));
                 value["row_order"] = json!(view.ordered);
                 Ok(value)
@@ -333,13 +420,21 @@ impl Engine {
             // Applique les valeurs par défaut ; les options déjà capturées par les lots restent valides.
             Command::SetRateLimit => self.set_rate_limit(&v),
             Command::Configure => {
+                if v.get("verify_fast_move")
+                    .is_some_and(|value| !value.is_boolean())
+                {
+                    return Err("Invalid fast-move verification option".into());
+                }
+                let policy = v.get("conflict_policy").map(conflicts::parse).transpose()?;
                 let limit = v.get("rate_limit").map(rate::value).transpose()?;
                 let exclusions = v
                     .get("exclusions")
                     .map(exclusions::Rules::parse)
                     .transpose()?;
-                if limit.is_none()
+                if policy.is_none()
+                    && limit.is_none()
                     && exclusions.is_none()
+                    && v["verify_fast_move"].as_bool().is_none()
                     && v["verify_md5"].as_bool().is_none()
                     && v["keep_history"].as_bool().is_none()
                     && v["resume_interrupted"].as_bool().is_none()
@@ -351,6 +446,9 @@ impl Engine {
                 }
                 {
                     let mut state = self.shared.state.lock().unwrap();
+                    if let Some(policy) = policy {
+                        state.conflict_policy = policy;
+                    }
                     if let Some(rules) = exclusions {
                         state.exclusions = rules;
                     }
@@ -362,6 +460,9 @@ impl Engine {
                     }
                     if let Some(value) = v["verify_space"].as_bool() {
                         state.verify_space = value;
+                    }
+                    if let Some(value) = v["verify_fast_move"].as_bool() {
+                        state.verify_fast_move = value;
                     }
                     if let Some(value) = v["verify_properties"].as_bool() {
                         state.verify_properties = value;
@@ -381,7 +482,24 @@ impl Engine {
                 Ok(json!({"ok":true}))
             }
             // Valide le protocole puis réserve le lot avant ses contrôles de chemins en arrière-plan.
+            Command::StartPrepared => self.start_prepared(&v),
             Command::Enqueue => {
+                if v.get("prepare_only")
+                    .is_some_and(|value| !value.is_boolean())
+                {
+                    return Err("Invalid preparation option".into());
+                }
+                if v.get("verify_fast_move")
+                    .is_some_and(|value| !value.is_boolean())
+                {
+                    return Err("Invalid fast-move verification option".into());
+                }
+                let request_policy = v.get("conflict_policy").map(conflicts::parse).transpose()?;
+                let request_rate = v
+                    .get("rate_limit")
+                    .map(rate::value)
+                    .transpose()?
+                    .unwrap_or(0);
                 let exclusions = v
                     .get("exclusions")
                     .map(exclusions::Rules::parse)
@@ -459,23 +577,39 @@ impl Engine {
                     state.next_id += 1;
                     let id = state.next_id;
                     let verify_md5 = v["verify_md5"].as_bool().unwrap_or(state.verify_md5);
+                    let verify_fast_move = v["verify_fast_move"]
+                        .as_bool()
+                        .unwrap_or(state.verify_fast_move);
                     let verify_properties = v["verify_properties"]
                         .as_bool()
                         .unwrap_or(state.verify_properties);
                     let verify_space = v["verify_space"].as_bool().unwrap_or(state.verify_space);
                     let resume_enabled = state.resume_interrupted && destination_url.is_none();
                     let exclusions = exclusions.unwrap_or_else(|| state.exclusions.clone());
+                    let policy = request_policy.unwrap_or_else(|| state.conflict_policy.clone());
                     let allow_duplication = v["allow_duplication"]
                         .as_bool()
                         .unwrap_or(state.allow_duplication);
+                    // Une demande manuelle ne retient la file que lorsqu’aucun
+                    // travail déjà autorisé n’attend, ne s’analyse ou ne s’exécute.
+                    let start_required = v["prepare_only"].as_bool().unwrap_or(false)
+                        && !state
+                            .jobs
+                            .iter()
+                            .any(|j| !j.start_required && !terminal(&j.state) && !j.cancel);
                     state.jobs.push(
                         Job {
+                            start_required,
+                            created_at: std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs(),
                             exclusions,
                             allow_duplication,
                             duplicate_targets: Default::default(),
                             paused: false,
                             execution_order: 0,
-                            rate_limit: 0,
+                            rate_limit: request_rate,
                             retry_entries: None,
                             retry_all: false,
                             disks: None,
@@ -492,6 +626,7 @@ impl Engine {
                             resume_pending: false,
                             verify_md5,
                             verify_properties,
+                            verify_fast_move,
                             verify_space,
                             space_warning: String::new(),
                             mode,
@@ -504,7 +639,7 @@ impl Engine {
                             entries: vec![],
                             error: String::new(),
                             cancel: false,
-                            policy: "ask".into(),
+                            policy,
                             resolution: None,
                         }
                         .into(),
@@ -524,7 +659,8 @@ impl Engine {
                 let engine = self.clone();
                 self.spawn_preparation(
                     id,
-                    v["background"].as_bool() == Some(true),
+                    v["background"].as_bool() == Some(true)
+                        && !v["prepare_only"].as_bool().unwrap_or(false),
                     pause_epoch,
                     move || {
                         let destination = engine.validate_roots(id, &sources, &destination)?;
@@ -549,6 +685,11 @@ impl Engine {
                     let mut state = self.shared.state.lock().unwrap();
                     state.paused = v["paused"].as_bool().unwrap_or(true);
                     state.pause_epoch = state.pause_epoch.wrapping_add(1);
+                    if !state.paused {
+                        for job in &mut state.jobs {
+                            job.start_required = false;
+                        }
+                    }
                 }
                 self.shared.wake.notify_all();
                 self.save()?;
@@ -670,15 +811,11 @@ impl Engine {
             }
             // Refuse toute fermeture avec opération active, puis attend les travailleurs après réveil.
             Command::Shutdown => {
-                if self
-                    .shared
-                    .state
-                    .lock()
-                    .unwrap()
-                    .jobs
-                    .iter()
-                    .any(|j| !terminal(&j.state) || j.undo_requested)
-                {
+                if self.shared.state.lock().unwrap().jobs.iter().any(|j| {
+                    (!terminal(&j.state)
+                        && (!j.start_required || j.state == TransferState::Scanning))
+                        || j.undo_requested
+                }) {
                     return Err("Operations are still active".into());
                 }
                 if !self.shared.state.lock().unwrap().keep_history {
@@ -692,6 +829,11 @@ impl Engine {
                         .stop
                         .store(true, std::sync::atomic::Ordering::SeqCst);
                     self.shared.wake.notify_all();
+                }
+                // Les simulations n’écrivent rien et ne retardent pas la fermeture.
+                for (_, flag) in std::mem::take(&mut self.shared.simulations.lock().unwrap().tasks)
+                {
+                    flag.store(true, std::sync::atomic::Ordering::Relaxed);
                 }
                 for handle in self.shared.worker.lock().unwrap().drain(..) {
                     let _ = handle.join();
@@ -862,6 +1004,7 @@ impl Engine {
             copied: 0,
             verified: 0,
             properties: None,
+            fast_move_check: None,
             md5_source: None,
             md5_destination: None,
             interrupted: false,
@@ -1273,6 +1416,7 @@ impl Engine {
                     }
                 }
             });
+            let _finalization = completion::Activity::new(self.clone(), false);
             self.release_worker(job.id);
             if let Err(error) = self.prune_hidden_jobs().and_then(|_| self.save()) {
                 self.update(job.id, |j| {
@@ -1305,7 +1449,13 @@ impl Engine {
                 return Ok(action);
             }
             if job.policy != "ask" {
-                return Ok(job.policy.clone());
+                let policy = job.policy.clone();
+                if policy == "newer" {
+                    let entry = job.entries[index].clone();
+                    drop(state);
+                    return conflicts::newer(&entry.source, &entry.destination).map(str::to_owned);
+                }
+                return Ok(policy);
             }
             job.entries[index].state = TransferState::Conflict;
             state = self.shared.wake.wait(state).unwrap();
@@ -1467,24 +1617,7 @@ impl Engine {
                 resumed.bytes,
             )
         } else {
-            let (temp, output) = (0..1000)
-                .find_map(|suffix| {
-                    let path = parent.join(format!(
-                        ".gad-{}-{id}-{index}-{suffix}.part",
-                        std::process::id()
-                    ));
-                    match OpenOptions::new()
-                        .write(true)
-                        .create_new(true)
-                        .mode(0o600)
-                        .open(&path)
-                    {
-                        Ok(file) => Some(Ok((path, file))),
-                        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => None,
-                        Err(e) => Some(Err(io(e))),
-                    }
-                })
-                .ok_or("Unable to create temporary file")??;
+            let (temp, output) = self.create_staging(id, index, &destination)?;
             let record = undo::Record {
                 source_stamp: Some(origin_stamp),
                 staging: Some(temp.clone()),
@@ -1671,6 +1804,18 @@ impl Engine {
         record.source_stamp = Some(undo::Stamp::read(&entry.source)?);
         record.result = Some(undo::Stamp::read(&temp)?);
         if replace {
+            let newer = self
+                .shared
+                .state
+                .lock()
+                .unwrap()
+                .jobs
+                .iter()
+                .find(|job| job.id == id)
+                .is_some_and(|job| job.policy == "newer");
+            if newer && conflicts::newer(&entry.source, &destination)? != "replace" {
+                return Err("Destination is no longer older; kept".into());
+            }
             self.protect_fast_result(id, index, &destination)?;
             let meta = fs::symlink_metadata(&destination).map_err(io)?;
             if meta.is_dir() {

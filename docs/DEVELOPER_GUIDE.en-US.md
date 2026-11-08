@@ -1,6 +1,6 @@
 # Gad — Developer Guide
 
-Documented version: **0.1.0**, protocol **22**, November 6, 2026.
+Documented version: **0.2.0**, protocol **33**, November 8, 2026.
 
 Gad means **Gestionnaire Avancé de Duplication**; its slogan is **Gad, il copie.** This guide describes the implementation in this repository. The code remains authoritative for exact fields and defaults.
 
@@ -74,7 +74,9 @@ KIO Fuse exposes remote endpoints as mounted paths; the Rust engine still transf
 
 ## Building
 
-Requirements include Rust/Cargo, a C++17 compiler, `pkg-config`, Python 3, Qt 6 Widgets/Network/DBus and its `moc`, `rcc`, and `qmake6` tools, plus KF6 WindowSystem. Qt tests also require Qt Test and `dbus-run-session`. Wayland clipboard access uses `wl-clipboard`; remote endpoints require KIO Fuse. Rust dependencies are locked in `Cargo.lock`.
+To install a compiled version, use the [Gad PPA](https://launchpad.net/~hizo/+archive/ubuntu/gad) or [GitHub releases](https://github.com/Hizoka76/gad/releases/latest): a `.deb` package, an archive with sources and a binary under `prebuilt/`, or the direct executable. See the [installation instructions](USER_GUIDE.en-US.md#installation-and-startup). The build steps below are for development and source installations.
+
+Requirements include Rust/Cargo, a C++17 compiler, `pkg-config`, Python 3, Qt 6 Widgets/Network/DBus and its `moc`, `rcc`, and `qmake6` tools, plus KF6 WindowSystem/XmlGui, CMake. Qt tests also require Qt Test and `dbus-run-session`. Wayland clipboard access uses `wl-clipboard`; remote endpoints require KIO Fuse. Rust dependencies are locked in `Cargo.lock`.
 
 ```bash
 cargo build --locked
@@ -96,7 +98,7 @@ Arguments become a command, with clipboard and URL processing where required. Qt
 
 The socket is `gad.sock` under the user runtime directory. Requests are newline-terminated JSON, one reply per connection, with a 16 MiB incoming request limit and user-only access. `--status` without an instance must fail instead of starting a graphical engine.
 
-Only Gad's own settings and journal locations are used. Current protocol version is **22**. Capability/version checks prevent silently sending a move, remote endpoint, or verification request to an older instance that cannot implement it. A newly installed executable may still contact an older process; update an idle instance through normal shutdown.
+Only Gad's own settings and journal locations are used. Current protocol version is **33**. Capability/version checks prevent silently sending a move, remote endpoint, or verification request to an older instance that cannot implement it. A newly installed executable may still contact an older process; update an idle instance through normal shutdown.
 
 ```bash
 gad
@@ -220,7 +222,7 @@ Pause is also a presentation/control overlay and is not a new serialized transfe
 
 ## File copy and publication
 
-For a regular file, recheck controls and mount availability, validate destination parents, resolve conflicts, reserve the target name, and allocate a private `.gad-…part` file in the destination directory. Use exclusive creation and restrictive initial permissions. Sources are opened without following their final symlink and are checked against scanned identities.
+For a regular file, recheck controls and mount availability, validate destination parents, resolve conflicts, reserve the target name, and allocate a private `file.ext.part` file in the destination directory. Use exclusive creation and restrictive initial permissions. Sources are opened without following their final symlink and are checked against scanned identities.
 
 The copy buffer is **64 KiB** and can be written in smaller granted fractions when rate-limited. Progress advances by actual written bytes. An incremental MD5 digest is maintained even without independent MD5 verification because undo uses content evidence.
 
@@ -296,7 +298,7 @@ On loading interrupted work, the engine classifies compatible unfinished copies 
 
 `Job.resume_enabled` captures automatic crash-recovery preference; `resume_pending` marks recoverable interrupted work. Local session reconnection still creates checkpoints when that preference is off. Missing old fields default conservatively.
 
-Recovery requires an expected private `.gad-…part` in the correct parent, without a symlink or extra hard links, matching the saved device and inode. Check open descriptors too. Compare source and temporary prefixes block by block, verify the recorded hash and versions again, and only then truncate unconfirmed trailing bytes and reposition both streams. Rebuild the incremental MD5 context and retain the temporary's inode.
+Recovery requires an expected private `file.ext.part` in the correct parent, without a symlink or extra hard links, matching the saved device and inode. Check open descriptors too. Compare source and temporary prefixes block by block, verify the recorded hash and versions again, and only then truncate unconfirmed trailing bytes and reposition both streams. Rebuild the incremental MD5 context and retain the temporary's inode.
 
 `resume_checking`, `resume_checked`, and `resumed_from` describe validation and restart progress. A previously applied read-only permission is adjusted only on a validated owned temporary. Remove the resume record before final publication and transition to ordinary undo journaling. Final independent MD5 still runs when requested.
 
@@ -342,7 +344,7 @@ Estimate remaining copy bytes at copy speed plus remaining MD5 reads at MD5 spee
 
 A failed empty analysis uses full root validation and scanning. Reset structural ancestors whose Error state came only from a child. Recheck source/target aliases before retry. Separate incomplete undo is not converted into copying; retry-preparation failures keep references so they can be attempted again after repair. Modified outputs remain protected by undo preflight.
 
-`window_errors.cpp` is a nonmodal, explicitly refreshed snapshot with plain-text cells and `QPlainTextEdit` details. Filtering and sorting do not change stored row references. All six buttons use theme icons with standard Qt fallbacks. Text/JSON export uses `QSaveFile`; only a complete successful write replaces the report. Export includes the whole loaded snapshot, whereas retries target displayed or selected failures.
+`window_errors.cpp` is a modal, explicitly refreshed snapshot with plain-text cells and `QPlainTextEdit` details. Filtering and sorting do not change stored row references. All six buttons use theme icons with standard Qt fallbacks. Text/JSON export uses `QSaveFile`; only a complete successful write replaces the report. Export includes the whole loaded snapshot, whereas retries target displayed or selected failures.
 
 ### Plasma and window activation
 
@@ -352,7 +354,7 @@ A failed empty analysis uses full root validation and scanning. Reset structural
 
 ## Protocol reference
 
-`native/protocol.def` is the shared vocabulary; Rust structures and validators define exact contracts. Current version is **22**. GUI-specific commands are routed by Qt and engine commands by Rust.
+`native/protocol.def` is the shared vocabulary; Rust structures and validators define exact contracts. Current version is **33**. GUI-specific commands are routed by Qt and engine commands by Rust.
 
 | Command | Main parameters | Behavior |
 |---|---|---|
@@ -445,7 +447,7 @@ After adding display strings, run `make translations` to synchronize sources, tr
 
 ## Documentation tooling
 
-The root README is a short entry point; detailed guides are maintained here. The documentation covers six languages. Each edition includes Quick Start, User Guide, Developer Guide, and 14 screenshots of its own interface in the light theme. Architecture and lifecycle diagrams have localized labels.
+The root README is a short entry point; detailed guides are maintained here. The documentation covers six languages. Each edition includes Quick Start, User Guide, Developer Guide, and 20 screenshots of its own interface in the light theme. Architecture and lifecycle diagrams have localized labels.
 
 `doc_catalog.py` identifies each source's language and audience. `build_docs.py` generates language-correct covers, same-audience language switches, relative links/fragments, and offline embedded images. English PDFs use US Letter; other PDFs use A4. `check_docs.py` validates all README/testing/guide links, captures, language metadata, and all 36 HTML/PDF exports.
 
@@ -517,7 +519,11 @@ The plugin also exposes the active folder to **Paste into the open folder with G
 
 ## Settings dialog {#settings-menu}
 
-`Window` keeps one nonmodal `QDialog`, named `settingsDialog`, with a `QTabWidget` for settings and shortcuts. The `settingsPanel` remains scrollable; controls, connections, translation bindings, and values survive reopening. Close and Escape hide the dialog. Exclusion and speed subdialogs use it as their parent while it is visible. Minimum sizes are 800 × 740 for settings and 1100 × 600 for the main window and error report. The `settingsRequestRate` button now belongs to the main action bar; its enabled state follows tree selection.
+**Settings → Options…** opens a modal window: the main window is blocked until it closes, while transfers continue. Settings apply immediately; **Close** or Escape does not undo them. Command-line options appear in gray below each control. Minimum size: **800 × 740**; main window, error report and diagnostics: **1100 × 600**.
+
+The four tabs are **Settings**, **Shortcuts**, **Speed limits** and **Batch completion**. **Speed limits** contains the global cap and the default cap for new requests. To change an existing request, select its rows and choose **right-click → Limit request speed…**. The limit appears in the **Detail** cell, including folders; unlimited transfers have no extra limit text.
+
+`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`. `rowRateLimit` → `Window::showRateLimit`.
 
 Dolphin commands and its checkbox share `Window::configureDolphin`. It runs the private `gad/integration/dolphin_shortcut.py` component with Python and QProcess without blocking transfers. The receipt remains in `gad/dolphin-paste.json`. An eight-second timeout bounds execution; failures restore the checkbox and return an error to the client. `Window::handleAsync` delays the IPC reply until completion. Konqueror keeps `konquerorCtrlV`, read by its plugin on each Ctrl+V. No separate public command is installed.
 
@@ -546,3 +552,68 @@ make test-dolphin-watchdog-real
 `undo::Stamp` checks permissions and stores optional owner/group information. `undo::Record.backup_ctime` is captured after the backup rename and journaled before publication. Restoration preflight validates every selected entry, existing parents, backups and already restored sources. A missing moved file is rejected before changing neighboring entries. Restored source contents are compared with the journal digest before removing the result. New fields remain optional for older journals.
 
 Regression tests in `src/engine/tests/integrity.rs` cover edits preserving size/mtime, path replacement, copies and moves without MD5, altered backups, permissions, interrupted restoration and older journals. These checks reduce ordinary races without isolating against concurrent path manipulation.
+
+## Transfer profiles {#transfer-profiles}
+
+QSettings `transferProfiles` schema version 5 separates `options`, `gui` and `request_rate_limit`, with no destination field. Loading version 1 preserves its existing options, fills missing ones from current preferences, drops the destination and writes version 5 once. Invalid or unknown documents remain untouched.
+
+`currentTransferProfile` captures every settings control. Application validates language availability, prepares Dolphin shortcuts asynchronously, snapshots the exact startup entry, then applies internal configuration. Rejection triggers attempted restoration of configuration, startup and shortcuts; incomplete rollback is reported. Concurrent configuration changes and quitting are blocked during application. File submissions remain possible and are never triggered by a profile. The engine protocol is 33; profile schema versioning is independent.
+
+Qt tests cover migration, destination removal, every option, Dolphin/engine failures, exact startup restoration, concurrent configuration, unavailable languages and persistence.
+
+From the command line, `gad --profile "My profile"` applies settings without starting a transfer. Combine it with a copy: `gad --profile "My profile" --copy /path/source --to /path/destination`, or with `--move` / `--paste`. Gad waits for profile application before starting the transfer. The destination comes from the command; explicit options such as `--md5` override the profile. An unknown name returns an error without queuing files. `--configure --profile "My profile"` also accepts additional settings, applied after the profile.
+
+## Conflict policies in profiles
+
+In **Options → File conflicts**, choose **Ask**, **Skip existing files**, **Replace older files only**, or **Keep both files**. Save or update a profile to preserve this choice. Existing requests retain their captured policy.
+
+Replacement compares destination and source modification times: only strictly older destination files are replaced; equal or newer files are skipped. Unreadable dates and symbolic links cause an error without automatic replacement; choose another policy and retry. Timestamp reliability depends on the filesystem or remote service. Existing folders are merged; the policy applies to file and link conflicts inside them. Keeping both uses the usual numbered rename suffix. Skipped files remain at the source when moving, and replacements retain restoration support.
+
+Command: `gad --configure --conflict-policy newer`. Older profiles migrate to **Ask** and never gain a destination.
+
+`conflict_policy` (protocol 27) is captured in `Job.policy`. `src/engine/conflicts.rs` validates policies and compares timestamps without following symbolic links. Profile schema 3 migrates earlier versions to `ask`.
+
+## Search retained history
+
+Click **Search history** or press **Ctrl+F**. Enter a file name or part of a source/destination path, including remote URLs. Words are combined with AND, case-insensitively, without regular expressions. Optionally choose a batch status and enable **Added between** to filter by the date the request was added, with inclusive local dates.
+
+**History only** shows completed, canceled, restored or failed batches; clear it to include active requests. Column filters combine with this search. Matching files retain their parent folders. **Reset search** clears its criteria without changing column filters; closing the bar or pressing **Escape** disables only history search. Queue order and priorities remain unchanged.
+
+The queue-order tooltip shows the date added. Older operations without a recorded date are marked unknown and remain searchable while the date filter is off. History must be retained: cleared or removed operations can no longer be found.
+
+`Job.created_at` → Unix UTC, `0` = ?; `HistorySearch::Query` → `TableView::Settings` → `TransferTree::setHistorySearch`; `native/window_history.cpp` → Ctrl+F, Escape, 150 ms.
+
+## Transfer diagnostics
+
+The **Transfer diagnostics…** button at the bottom opens a modal view of active and queued requests. It shows status, observed activity or waiting, global and request speed limits, speed, and remaining time. Blocking batch numbers refer to the main list.
+
+Causes distinguish pauses, source scanning, conflicts awaiting a decision, unavailable devices or remote mounts, MD5 verification, resume-prefix checks, local renames, exclusive restoration, both workers occupied, row priority, shared disks or overlapping paths, and conservative serialization when resources are unknown.
+
+A speed-budget wait is reported only when the limiter actually observed one within the last second. A configured limit alone is not proof of a slowdown. After five seconds without byte progress during copying or MD5, outside rate-limit waiting, Gad reports the lack of progress: file I/O or finalization may be waiting, but this cannot precisely identify a disk or network bottleneck. Diagnostics are not performance benchmarks and are not recorded in history. Closing this window changes no transfer.
+
+`src/engine/diagnostics.rs` → `status` / `poll` (`diagnostics`, protocol 29); `rate::Limiter::waiting` → 1 s. `QueueSnapshot` → `TransferDiagnostics::Tracker` → `window_diagnostics.cpp`.
+
+## Verify fast moves
+
+In **Options**, select **Verify fast moves**. Disabled by default, this setting is stored in profiles and captured for each new request. After a local rename, Gad checks identity (device/inode), type, size, modification time, permissions, owner and group, link targets, and the exact tree. It also checks that the source path disappeared. Legitimate ctime changes on the renamed root are accepted; descendants must retain their ctime.
+
+Details show **Fast move verified** on success. Diagnostics distinguish this phase from MD5. A mismatch, added or missing item, recreated source path, or read error fails the batch and identifies the checked path; Gad preserves the moved result and its journal. No automatic rollback overwrites modified files. Pausing or canceling verification does not delete the result already moved.
+
+This checks metadata rather than file contents: it preserves rename speed but does not replace a cryptographic comparison. Existing MD5 remains separate and forces copy/verify/delete. Ordinary copies do not receive a false fast-move verification result. Older profiles migrate with the option off. Command: `gad --configure --verify-fast-move`; disable with `--no-verify-fast-move`.
+
+`verify_fast_move` (30) → `fast_verify.rs` → `Entry.fast_move_check`; `TransferProfiles` → schema 4.
+
+## Batch-completion actions {#queue-completion}
+
+In **Options → Batch completion**, choose notification, quitting Gad, suspend or power off. Set the cancellation delay from **5 to 3600 seconds** (default 30), then click **Activate for this batch**. The status explicitly shows whether the action is active. Choosing an action, changing a setting or loading a profile does not activate it; changing completion settings disables an earlier activation.
+
+The action waits until all tracked transfers succeed, remote preparation ends and final saves complete. The countdown still allows cancellation. New transfers postpone the action and restart a full countdown afterward. An error, cancellation, restoration or removed request disables the action. Pausing prevents execution.
+
+**Deactivate completion action**, **Cancel action** or closing the countdown does not cancel transfers. Activation is used once and is not restored after restarting Gad. **When batch finishes…** provides the same actions and opens the dedicated tab directly. Here “batch” means all tracked transfers, not only one selected row.
+
+Suspend and power off use logind and respect its authorization and inhibitors. A notification reopens hidden Gad. `gad --configure --completion-action suspend --completion-delay 60` only saves preferences; activate the action separately in Gad.
+
+
+## Prepare transfers in the main list {#preparing-transfers}
+
+The current protocol is **33**. `Job.start_required` is persisted; `prepare_only` distinguishes manual preparation from external submissions. Scheduling skips unapproved preparations. The single control sends `pause` with `paused=false` to start or resume. `staging.rs` creates visible partial files; `resume.rs` verifies their identity and prefix before resuming. Read-only simulation commands remain internal to the engine, without a dedicated window.

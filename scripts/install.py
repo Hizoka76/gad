@@ -98,7 +98,7 @@ for path, contents in entries.items():
 # Installer le gestionnaire réversible de raccourcis avec ses seules dépendances standard Python.
 integration = data_dir / "gad/integration"
 integration.mkdir(parents=True, exist_ok=True)
-for name in ("dolphin_shortcut.py", "xdg_paths.py"):
+for name in ("dolphin_shortcut.py", "krusader_shortcut.py", "xdg_paths.py"):
     shutil.copy2(project / "scripts" / name, integration / name)
 # Le raccourci appartient à Dolphin : aucun raccourci global concurrent n’est installé.
 configure()

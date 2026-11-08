@@ -4,25 +4,25 @@
       "file": "01-vue-ensemble.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "d80bac2bd01ccec7ae3415930b7b38d7bcbf99f04b3902bd03bba500cd7f56d3"
+      "sha256": "55d11b8c6e0cfdf20f19f23ceaa9f0f7bc4e701f36c57119954157986104d84d"
     },
     {
       "file": "02-sources-options.png",
       "height": 1480,
       "width": 1600,
-      "sha256": "4356038357d4e70e4defee81668a5beb8bf5184522d4981a3b9f21b5d64dc5c1"
+      "sha256": "fb3da7147eba7d0d1bb2283fa4f628c63563dd280bcd31d883e27043e1ca335e"
     },
     {
       "file": "14-options-raccourcis.png",
       "height": 1480,
       "width": 1600,
-      "sha256": "0855be5322a147465b02040b54e0f03827afca84e0266a909df1ee86ffbe673e"
+      "sha256": "6f89f54764a608a385eecc1d9b935475614cdbaff6a135c0611196fa0e929461"
     },
     {
       "file": "03-pause.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "11ca22fbc5a8576c1cd9689840fc387298bd3a987f6bdd66e7beb352dcb738a3"
+      "sha256": "6a27d3f1cfd297f562a24b390453457f69299daa4b48fa529188d16a43f918fc"
     },
     {
       "file": "04-menu-annulation.png",
@@ -46,13 +46,13 @@
       "file": "07-verification-md5.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "9f5a1d762bacfbc5e0ecc4b5cdb73eeb4158bd13c07c801ade287564a75ac2d5"
+      "sha256": "59ec1932f9ef37bef935c23c04667766ba2e72fc20b809aeaea038dcec70648c"
     },
     {
       "file": "08-conflit.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "dbd242510af810139b637af2d27a11900b3c049dfe65cfcbe82d51739ce35ca6"
+      "sha256": "cfed9adb4d7c4403548fc4e09963a9e35dbfff82ddca500271490aca1b198f89"
     },
     {
       "file": "09-menu-zone-notification.png",
@@ -64,25 +64,73 @@
       "file": "10-a-propos.png",
       "height": 612,
       "width": 770,
-      "sha256": "aa992bce2b85f7ef8f852a0d06dc34e49d8a66d068a72f95819cba8590060aaa"
+      "sha256": "e3b4fb82c68aa48bd2443a5f9f6885fa80685df99f5eafaebef3e1af79535f89"
     },
     {
       "file": "11-verification-proprietes.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "4f9e0b7907020998e2c3c9386198e8b6741997f83a1c8578fe85794bec9aa437"
+      "sha256": "705b1ebf897938ab17455104a057d063f944658dfbd1c06cb5a82909a5827ca1"
     },
     {
       "file": "12-reconnexion.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "3ee517903ca7dc66179e8cf8a0e477462312acd185f85f50bb75d480f27fc8c2"
+      "sha256": "f46b218f048d352bed2623a6925f4e5920f068fb0e7e776cb96644a70ab0edc3"
     },
     {
       "file": "13-bilan-erreurs.png",
       "height": 1300,
       "width": 2640,
-      "sha256": "4b1396d0b420c05fa4cc08177a52b0d8c143500c4c51b9753c5d60c8410c42f1"
+      "sha256": "40f1e2491804adf9da383de487a799f7d0f75b86ccc18d917e241bd7183e8833"
+    },
+    {
+      "file": "15-profils.png",
+      "height": 1500,
+      "width": 2000,
+      "sha256": "7a3e94b2e8606a992794f1187174da77aff197dc6c66188939be1ccf4a7e8594"
+    },
+    {
+      "file": "16-recherche-historique.png",
+      "height": 1400,
+      "width": 2480,
+      "sha256": "b095f0e63254429d23136ad0af3f091920efa12c416f187422291b3d22049a19"
+    },
+    {
+      "file": "17-diagnostic-transferts.png",
+      "height": 1500,
+      "width": 2900,
+      "sha256": "209990b0556f9bbf06bdfcfa810c7386594d7c0ec1c712bcfc5d220e1443c3ed"
+    },
+    {
+      "file": "18-verification-deplacement-rapide.png",
+      "height": 1400,
+      "width": 2480,
+      "sha256": "6e116a3e31d5d03850040dac394ad650593e7d16298a70e1199aa7ed49b5d7e6"
+    },
+    {
+      "file": "19-fin-de-file.png",
+      "height": 480,
+      "width": 1100,
+      "sha256": "a3b8ef60bcf78f3ce7f793c7bbd4a19f37670a31db08f053f5db2e6723529b2d"
+    },
+    {
+      "file": "20-options-fin-de-file.png",
+      "height": 1480,
+      "width": 1600,
+      "sha256": "5dafcca8f0095db38c6733c84008badb9084243141e1f931059a608928c702e4"
+    },
+    {
+      "file": "21-options-debits.png",
+      "height": 1480,
+      "width": 1600,
+      "sha256": "f3e00109b02f0b21a3cc2bf23b06cd9093f372a0a89751f2b69940194483c042"
+    },
+    {
+      "file": "22-preparation.png",
+      "height": 1400,
+      "width": 2480,
+      "sha256": "116e27d1ed729762c83a5eebdaed41a5b8c8a5fe46db3321c6b211884c981c01"
     }
   ],
   "demo": true,
@@ -95,7 +143,7 @@
   "style": "breeze",
   "theme": "light",
   "window_color": "#eff0f1",
-  "version": "0.1.0",
-  "generated_at": "2026-11-07",
+  "version": "0.2.0",
+  "generated_at": "2026-11-08",
   "language": "en-US"
 }

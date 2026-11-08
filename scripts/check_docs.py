@@ -5,9 +5,10 @@ import hashlib
 import json
 import re
 import struct
+import tomllib
 from pathlib import Path
 from urllib.parse import unquote
-from doc_catalog import GUIDES, LANGUAGES, LABELS, portal, runtime_catalog
+from doc_catalog import GUIDES, LANGUAGES, LABELS, portal, runtime_catalog, CAPTURE_COUNT
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
@@ -17,6 +18,7 @@ def main():
     """Échoue sur un document absent, une ancre invalide ou une capture altérée."""
     import markdown
     errors = []
+    version=tomllib.loads((ROOT / "Cargo.toml").read_text())["package"]["version"]
     markdown_cache = {}
     html_cache = {}
     sources=[*(ROOT / portal(lang) for lang in LANGUAGES),*(ROOT / ("TESTING.md" if lang=="fr" else "TESTING."+lang+".md") for lang in LANGUAGES),*(DOCS / portal(lang) for lang in LANGUAGES),*(DOCS / guide.source for guide in GUIDES)]
@@ -39,7 +41,8 @@ def main():
     for language in LANGUAGES:
         directory=DOCS / "images" / language
         manifest=json.loads((directory / "captures.json").read_text());manifests[language]=manifest
-        assert len(manifest["captures"])==14, f"Quatorze captures attendues : {language}"
+        assert len(manifest["captures"])==CAPTURE_COUNT, f"{CAPTURE_COUNT} captures attendues : {language}"
+        assert manifest.get("version")==version, f"Version des captures périmée : {language}"
         assert manifest["locale"]==LABELS[language]["locale"], f"Langue des captures : {language}"
         assert manifest.get("theme")=="light", f"Thème clair attendu : {language}"
         assert sum(int(manifest["window_color"][i:i+2],16) for i in (1,3,5))>540, f"Palette sombre : {language}"
@@ -51,6 +54,7 @@ def main():
     for guide in GUIDES:
         slug=guide.slug
         html = (DOCS / "html" / (slug + ".html")).read_text()
+        assert version in html, f"Version du guide périmée : {guide.source}"
         assert f'lang="{guide.language}"' in html and 'src="images/' not in html
         for target in re.findall(r'href="([^"]+)"', html):
             if re.match(r'^[a-z]+:', target):

@@ -23,7 +23,12 @@
 
 /// Convertit les arguments CLI en requête JSON, notamment la destination déduite du contexte Dolphin.
 QJsonObject parse(const QStringList &args, QString &error) {
-    error.clear();
+    error.clear();auto filtered=args;const auto profile=CliOptions::takeProfile(filtered,error);if(!error.isEmpty())return {};
+    if(!profile.isNull()) {
+        auto request=(filtered.size()==1 || (filtered.size()==2 && filtered[1]=="--configure"))?QJsonObject{{"command",Protocol::Command::Configure}}:parse(filtered,error);
+        if(!error.isEmpty() || !CliOptions::attachProfile(request,profile,error))return {};
+        return request;
+    }
     if (args.size() == 1) return {{"command", Protocol::Command::Show}};
     const auto option = args[1];
     if(option=="--configure")return CliOptions::configure(args,error);
@@ -85,13 +90,15 @@ extern "C" int sc_gui(int argc, char **argv) {
     I18n::initialize();
     auto args = app.arguments();
     if(args.size()>1 && args[1]=="--dolphin")return DolphinLauncher::launch(args.mid(2));
+    QString profileError;const auto profile=CliOptions::takeProfile(args,profileError);
+    if(!profileError.isEmpty()){std::fprintf(stderr,"%s\n",qPrintable(profileError));return 2;}
     const bool configuring=args.size()>1 && args[1]=="--configure";
     const bool explicitMd5 = !configuring && args.removeAll("--md5") > 0;
     const bool explicitProperties=!configuring && args.removeAll("--properties")>0;
-    if (args.size() == 3 && args[1] == "--export-icons") return exportIcons(args[2]);
+    if (args.size() == 3 && args[1] == "--export-icons") {if(!profile.isNull())return 2;return exportIcons(args[2]);}
     if (args.contains("--help") || args.contains("-h")) {
         std::puts(qPrintable(GAD_TR("Gad copies. — File transfer manager for KDE\n  gad\n  gad --background\n  gad --paste FOLDER\n  gad --copy SOURCE… --to FOLDER\n  gad --move SOURCE… --to FOLDER\n  gad --status\n  gad --smoke-test\n  Add --md5 to verify file contents.")));
-        std::puts("  gad --paste-current\n  gad --paste-context URL...\n  gad --dolphin [URL...]\n  gad --configure [--md5|--no-md5] [--properties|--no-properties]\n    [--verify-space|--no-verify-space] [--keep-history|--no-keep-history]\n    [--resume-interrupted|--no-resume-interrupted] [--include-hidden|--no-include-hidden]\n    [--allow-duplication|--no-allow-duplication] [--autostart|--no-autostart]\n    [--dolphin-ctrl-v|--no-dolphin-ctrl-v]\n    [--konqueror-ctrl-v|--no-konqueror-ctrl-v] [--language LOCALE]\n    [--rate-limit MIB_PER_SECOND] [--exclude-folder PATTERN] [--exclude-file PATTERN]\n    [--clear-exclusions]");
+        std::puts("  gad --paste-current\n  gad --paste-context URL...\n  gad --dolphin [URL...]\n  gad --profile NAME [--copy SOURCE... --to FOLDER | --move SOURCE... --to FOLDER | --paste FOLDER]\n  gad --configure [--md5|--no-md5] [--properties|--no-properties]\n    [--verify-fast-move|--no-verify-fast-move] [--verify-space|--no-verify-space] [--keep-history|--no-keep-history]\n    [--resume-interrupted|--no-resume-interrupted] [--include-hidden|--no-include-hidden]\n    [--allow-duplication|--no-allow-duplication] [--autostart|--no-autostart]\n    [--dolphin-ctrl-v|--no-dolphin-ctrl-v]\n    [--krusader-ctrl-v|--no-krusader-ctrl-v]\n    [--konqueror-ctrl-v|--no-konqueror-ctrl-v] [--language LOCALE]\n    [--rate-limit MIB_PER_SECOND] [--request-rate-limit MIB_PER_SECOND] [--exclude-folder PATTERN] [--exclude-file PATTERN]\n    [--completion-action none|notify|quit|suspend|poweroff] [--completion-delay SECONDS] [--clear-exclusions] [--conflict-policy ask|skip|newer|rename]");
         std::printf("  --properties: %s\n",qPrintable(GAD_TR("Verify properties")));return 0;
     }
     const bool smoke = args.size() == 2 && args[1] == "--smoke-test";
@@ -103,7 +110,9 @@ extern "C" int sc_gui(int argc, char **argv) {
         qputenv("XDG_CONFIG_HOME", QFile::encodeName(smokeStorage->path()+"/config"));
     }
     QString error;
-    QJsonObject initial = smoke ? QJsonObject{{"command", Protocol::Command::Show}} : parse(args, error);
+    QJsonObject initial = smoke ? QJsonObject{{"command", Protocol::Command::Show}} :
+        (!profile.isNull() && (args.size()==1 || (args.size()==2 && args[1]=="--configure")))?QJsonObject{{"command",Protocol::Command::Configure}}:parse(args,error);
+    if(!profile.isNull())CliOptions::attachProfile(initial,profile,error);
     if (!error.isEmpty()) { std::fprintf(stderr, "%s\n", qPrintable(error)); return 2; }
     if(initial.take("dolphin_current").toBool()) {
         const auto target=DolphinDestination::current();
@@ -117,9 +126,10 @@ extern "C" int sc_gui(int argc, char **argv) {
             QMessageBox::warning(nullptr, "Gad", files.error);
             return 1;
         }
-        const auto context=initial.value("destination_context");
+        const auto context=initial.value("destination_context");const auto selectedProfile=initial.value("profile");
         initial = Clipboard::request(files, initial["destination"].toString());
         if(context.isArray())initial["destination_context"]=context;
+        if(selectedProfile.isString())initial["profile"]=selectedProfile;
         initial["background"] = true;
     }
     // Transmet le jeton reçu par le lanceur KDE à l’instance déjà ouverte sous Wayland.
@@ -135,7 +145,7 @@ extern "C" int sc_gui(int argc, char **argv) {
         QString endpoint=name;
         client.connectToServer(endpoint);
         if (!client.waitForConnected(200))return -1;
-        if (initial["command"]==Protocol::Command::Configure || initial["verify_space"].toBool() || initial["mode"] == "move" || initial["verify_md5"].toBool() || initial["verify_properties"].toBool() || SourceUrls::needsResolution(initial)) {
+        if (initial.contains("profile") || initial["command"]==Protocol::Command::Configure || initial["verify_space"].toBool() || initial["mode"] == "move" || initial["verify_md5"].toBool() || initial["verify_properties"].toBool() || SourceUrls::needsResolution(initial)) {
             QLocalSocket probe; probe.connectToServer(endpoint);
             if (!probe.waitForConnected(500)) return 1;
             probe.write("{\"command\":\"status\"}\n"); probe.waitForBytesWritten(1000);
@@ -156,7 +166,7 @@ extern "C" int sc_gui(int argc, char **argv) {
         if (!client.waitForBytesWritten(3000)) return 1;
         QByteArray reply;
         QElapsedTimer timeout; timeout.start();
-        while (!reply.contains('\n') && timeout.elapsed() < 10000) {
+        while (!reply.contains('\n') && timeout.elapsed() < (initial.contains("profile")?30000:10000)) {
             if (client.bytesAvailable() || client.waitForReadyRead(500)) reply += client.readAll();
             else if (client.state() == QLocalSocket::UnconnectedState) break;
         }
@@ -169,7 +179,7 @@ extern "C" int sc_gui(int argc, char **argv) {
     if (initial["command"] == Protocol::Command::Status) { std::fprintf(stderr, "%s", qPrintable(GAD_TR("Gad is not running\n"))); return 1; }
     // Une configuration lancée depuis un terminal ne garde pas ce terminal occupé.
     // Le processus détaché prend le verrou normal, puis reçoit la même requête validée.
-    if(initial["command"]==Protocol::Command::Configure) {
+    if(initial["command"]==Protocol::Command::Configure || initial.contains("profile")) {
         QProcess launcher;launcher.setProgram(QCoreApplication::applicationFilePath());launcher.setArguments({"--background"});
         launcher.setStandardInputFile(QProcess::nullDevice());launcher.setStandardOutputFile(QProcess::nullDevice());launcher.setStandardErrorFile(QProcess::nullDevice());
         if(!launcher.startDetached())return 1;
@@ -207,7 +217,7 @@ extern "C" int sc_gui(int argc, char **argv) {
         }
     });
     // Le traitement après démarrage de la boucle Qt évite de montrer une fenêtre pour un collage caché.
-    QTimer::singleShot(0, &window, [&] { window.handle(initial); });
+    QTimer::singleShot(0, &window, [&] { window.handleAsync(initial,[](QJsonObject){}); });
     if (smoke) QTimer::singleShot(700, &app, [&] {
         const auto screenshot = qEnvironmentVariable("GAD_SCREENSHOT");
         if (!screenshot.isEmpty()) window.grab().save(screenshot);

@@ -10,10 +10,30 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 import build_docs
-from doc_catalog import GUIDES, LANGUAGES, AUDIENCES, peer
+from doc_catalog import GUIDES, LANGUAGES, AUDIENCES, CAPTURE_COUNT, peer
 
 
 class DocumentationTest(unittest.TestCase):
+    def test_release_guides_cover_preparation_and_all_settings_tabs(self):
+        import tomllib
+        root=Path(__file__).resolve().parents[2]
+        version=tomllib.loads((root/'Cargo.toml').read_text())['package']['version']
+        locked=tomllib.loads((root/'Cargo.lock').read_text())['package']
+        self.assertEqual(next(p['version'] for p in locked if p['name']=='gad'),version)
+        self.assertEqual(CAPTURE_COUNT, 22)
+        for guide in GUIDES:
+            text=(root/'docs'/guide.source).read_text()
+            self.assertIn(version,text)
+            self.assertNotIn('**Simulate…**',text)
+            self.assertNotIn('**Simuler…**',text)
+            self.assertNotIn('settingsRequestRate',text)
+            if guide.audience in ('user','developer'):
+                self.assertIn('{#preparing-transfers}',text)
+                self.assertNotIn('native/window_simulation.cpp',text)
+            if guide.audience=='user':
+                for image in ('20-options-fin-de-file.png','21-options-debits.png','22-preparation.png'):
+                    self.assertIn(f'images/{guide.language}/{image}',text)
+
     def test_catalog_has_both_audiences_in_each_language(self):
         self.assertEqual({(g.language, g.audience) for g in GUIDES},
                          {(language,audience) for language in LANGUAGES for audience in AUDIENCES})
@@ -86,7 +106,7 @@ class DocumentationTest(unittest.TestCase):
                 continue
             text = (build_docs.DOCS / guide.source).read_text()
             captures = re.findall(r"images/([^/]+)/([0-9][0-9]-[^)]+\.png)", text)
-            self.assertEqual(len({name for _, name in captures}), 14, guide.language)
+            self.assertEqual(len({name for _, name in captures}), CAPTURE_COUNT, guide.language)
             self.assertEqual({language for language, _ in captures}, {guide.language})
             manifest = json.loads((build_docs.DOCS / "images" / guide.language / "captures.json").read_text())
             self.assertEqual(manifest["theme"], "light")

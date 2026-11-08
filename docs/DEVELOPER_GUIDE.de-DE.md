@@ -1,6 +1,6 @@
 # Gad — Entwicklerhandbuch {#gad-developer-guide}
 
-Dokumentierte Version: **0.1.0**, Protokoll **22**, 6. November 2026.
+Dokumentierte Version: **0.2.0**, Protokoll **33**, 8. November 2026.
 
 Gad bedeutet **Gestionnaire Avancé de Duplication**; Sein Slogan lautet **Gad, il copie.**. Dieser Leitfaden beschreibt die Implementierung in diesem Repository. Der Code bleibt maßgeblich für die genauen Felder und Standardeinstellungen.
 
@@ -74,7 +74,9 @@ KIO Fuse macht entfernte Endpunkte als bereitgestellte Pfade verfügbar; Die Rus
 
 ## Kompilierung {#building}
 
-Zu den Anforderungen gehören Rust/Cargo, ein C++17-Compiler, `pkg-config`, Python 3, Qt 6 Widgets/Network/DBus und seine Tools `moc`, `rcc` und `qmake6` sowie KF6 WindowSystem. Für Qt-Tests sind außerdem Qt-Test und `dbus-run-session` erforderlich. Der Zugriff auf die Wayland-Zwischenablage verwendet `wl-clipboard`; Remote-Endpunkte erfordern die Sicherung KIO. Rust-Abhängigkeiten sind in `Cargo.lock` gesperrt.
+Für eine bereits kompilierte Version verwenden Sie das [Gad-PPA](https://launchpad.net/~hizo/+archive/ubuntu/gad) oder die [GitHub-Releases](https://github.com/Hizoka76/gad/releases/latest): `.deb`-Paket, Archiv mit Quellen und Programm unter `prebuilt/` oder direkte Programmdatei. Siehe [Installationsanleitung](USER_GUIDE.de-DE.md#installation-and-startup). Die folgenden Kompilierschritte betreffen Entwicklung und Installation aus dem Quellcode.
+
+Zu den Anforderungen gehören Rust/Cargo, ein C++17-Compiler, `pkg-config`, Python 3, Qt 6 Widgets/Network/DBus und seine Tools `moc`, `rcc` und `qmake6` sowie KF6 WindowSystem/XmlGui, CMake. Für Qt-Tests sind außerdem Qt-Test und `dbus-run-session` erforderlich. Der Zugriff auf die Wayland-Zwischenablage verwendet `wl-clipboard`; Remote-Endpunkte erfordern die Sicherung KIO. Rust-Abhängigkeiten sind in `Cargo.lock` gesperrt.
 
 ```bash
 cargo build --locked
@@ -96,7 +98,7 @@ Argumente werden zu einem Befehl, bei Bedarf mit Zwischenablage und URL-Verarbei
 
 Der Socket ist `gad.sock` im Laufzeitverzeichnis des Benutzers. Anfragen werden mit Zeilenumbrüchen beendet (JSON), eine Antwort pro Verbindung, mit einem Limit von 16 MiB für eingehende Anfragen und Zugriff nur für Benutzer. `--status` ohne Instanz muss fehlschlagen, anstatt eine grafische Engine zu starten.
 
-Es werden nur die eigenen Einstellungen und Journalspeicherorte von Gad verwendet. Die aktuelle Protokollversion ist **22**. Fähigkeits-/Versionsprüfungen verhindern, dass eine Verschiebung, ein Remote-Endpunkt oder eine Verifizierungsanforderung stillschweigend an eine ältere Instanz gesendet wird, die diese nicht implementieren kann. Eine neu installierte ausführbare Datei kontaktiert möglicherweise immer noch einen älteren Prozess. Aktualisieren Sie eine inaktive Instanz durch normales Herunterfahren.
+Es werden nur die eigenen Einstellungen und Journalspeicherorte von Gad verwendet. Die aktuelle Protokollversion ist **33**. Fähigkeits-/Versionsprüfungen verhindern, dass eine Verschiebung, ein Remote-Endpunkt oder eine Verifizierungsanforderung stillschweigend an eine ältere Instanz gesendet wird, die diese nicht implementieren kann. Eine neu installierte ausführbare Datei kontaktiert möglicherweise immer noch einen älteren Prozess. Aktualisieren Sie eine inaktive Instanz durch normales Herunterfahren.
 
 ```bash
 gad
@@ -220,7 +222,7 @@ Pause ist ebenfalls eine Präsentations-/Steuerungsüberlagerung und kein neuer 
 
 ## Dateikopie und Bereitstellung des Ergebnisses {#file-copy-and-publication}
 
-Überprüfen Sie für eine reguläre Datei erneut die Kontrollen und die Mount-Verfügbarkeit, validieren Sie übergeordnete Zieldateien, lösen Sie Konflikte, reservieren Sie den Zielnamen und weisen Sie eine private `.gad-…part`-Datei im Zielverzeichnis zu. Nutzen Sie exklusive Erstellungs- und restriktive Anfangsberechtigungen. Quellen werden geöffnet, ohne ihrem endgültigen Symlink zu folgen, und mit gescannten Identitäten verglichen.
+Überprüfen Sie für eine reguläre Datei erneut die Kontrollen und die Mount-Verfügbarkeit, validieren Sie übergeordnete Zieldateien, lösen Sie Konflikte, reservieren Sie den Zielnamen und weisen Sie eine private `file.ext.part`-Datei im Zielverzeichnis zu. Nutzen Sie exklusive Erstellungs- und restriktive Anfangsberechtigungen. Quellen werden geöffnet, ohne ihrem endgültigen Symlink zu folgen, und mit gescannten Identitäten verglichen.
 
 Der Kopierpuffer ist **64 KiB** und kann bei Ratenbegrenzung in kleineren gewährten Bruchteilen geschrieben werden. Der Fortschritt schreitet um die tatsächlich geschriebenen Bytes voran. Ein inkrementeller MD5-Digest wird auch ohne unabhängige MD5-Überprüfung beibehalten, da beim Rückgängigmachen Inhaltsnachweise verwendet werden.
 
@@ -296,7 +298,7 @@ Beim Laden unterbrochener Arbeit klassifiziert der Motor kompatible unfertige Ko
 
 `Job.resume_enabled` erfasst automatische Crash-Recovery-Präferenzen; `resume_pending` markiert wiederherstellbare unterbrochene Arbeit. Lokale Session-Reconnection erstellt immer noch Checkpoints, wenn diese Präferenz abgelaufen ist.
 
-Erholung erfordert eine erwartete private `.gad-…part` im richtigen Elternteil, ohne Symlink oder extra harte Links, passend für das gespeicherte Gerät und Inode. Überprüfen Sie auch offene Deskriptoren. Vergleichen Sie Quell- und temporäre Präfixe blockweise, überprüfen Sie die aufgezeichnete Hash und Versionen wieder, und erst dann unbestätigte Nachfolgebytes und Reposition beide Streams. MD5 den Kontext und die Inode der vorübergehenden Zeit behalten.
+Erholung erfordert eine erwartete private `file.ext.part` im richtigen Elternteil, ohne Symlink oder extra harte Links, passend für das gespeicherte Gerät und Inode. Überprüfen Sie auch offene Deskriptoren. Vergleichen Sie Quell- und temporäre Präfixe blockweise, überprüfen Sie die aufgezeichnete Hash und Versionen wieder, und erst dann unbestätigte Nachfolgebytes und Reposition beide Streams. MD5 den Kontext und die Inode der vorübergehenden Zeit behalten.
 
 `resume_checking`, `resume_checked`und `resumed_from` Beschreibung des Validierungs- und Neustartfortschritts. Eine zuvor angewandte Nur-Lesen-Berechtigung wird nur auf einer validierten Eigenzeit angepasst. Entfernen Sie den Wiederaufnahmerekord vor der endgültigen Veröffentlichung und dem Übergang zu gewöhnlichen undo-Journalierungen. MD5 läuft noch, wenn gewünscht.
 
@@ -352,7 +354,7 @@ Eine gescheiterte leere Analyse verwendet die vollständige Wurzelvalidierung un
 
 ## Protokollreferenz {#protocol-reference}
 
-`native/protocol.def` ist der geteilte Vokabular; Rust-Strukturen und Validierungser definieren genaue Verträge. Aktuelle Version ist **22**. GUI-spezifische Befehle werden von Qt und Motorbefehlen von Rust geleitet.
+`native/protocol.def` ist der geteilte Vokabular; Rust-Strukturen und Validierungser definieren genaue Verträge. Aktuelle Version ist **33**. GUI-spezifische Befehle werden von Qt und Motorbefehlen von Rust geleitet.
 
 | Befehl | Hauptparameter | Verhalten |
 |---|---|---|
@@ -445,7 +447,7 @@ Nach dem Hinzufügen von Display-Strings laufen `make translations` um Quellen z
 
 ## Werkzeuge für die Dokumentation {#documentation-tooling}
 
-Die Root-README ist ein kurzer Einstiegspunkt; detaillierte Anleitungen werden hier beibehalten. Die Dokumentation umfasst sechs Sprachen. Jede Ausgabe beinhaltet Quick Start, User Guide, Developer Guide und 14 Screenshots seiner eigenen Schnittstelle im Lichtthema. Architektur und Lifecycle-Diagramme haben lokalisierte Labels.
+Die Root-README ist ein kurzer Einstiegspunkt; detaillierte Anleitungen werden hier beibehalten. Die Dokumentation umfasst sechs Sprachen. Jede Ausgabe beinhaltet Quick Start, User Guide, Developer Guide und 15 Screenshots seiner eigenen Schnittstelle im Lichtthema. Architektur und Lifecycle-Diagramme haben lokalisierte Labels.
 
 `doc_catalog.py` identifiziert die Sprache und das Publikum der jeweiligen Quelle. `build_docs.py` generiert sprachkorrigierte Cover, Sprachschalter, relative Links/Fragen und Offline-Einbettbilder. Englische PDFs verwenden US Letter; andere PDFs verwenden A4. `check_docs.py` validiert alle LEADME/Testing/guide-Links, Erfassungen, SprachmetadatenPDF und alle 36 HTML/
 
@@ -517,7 +519,11 @@ Das Plugin stellt auch den aktiven Ordner frei, **In den offenen Ordner mit Gad 
 
 ## Einstellungsdialog {#settings-menu}
 
-`Window` behält einen nichtmodalen `QDialog` namens `settingsDialog` mit einem `QTabWidget` für Einstellungen und Tastenkürzel. `settingsPanel` bleibt scrollbar; Steuerelemente, Verbindungen, Übersetzungsbindungen und Werte bleiben beim erneuten Öffnen erhalten. Schließen und Escape verbergen den Dialog. Ausschluss- und Geschwindigkeitsdialoge verwenden ihn als Elternfenster, solange er sichtbar ist. Mindestgrößen sind 800 × 740 für Optionen und 1100 × 600 für Hauptfenster und Fehlerbericht. `settingsRequestRate` gehört zur Hauptaktionsleiste; sein Aktivierungszustand folgt der Baumauswahl.
+**Einstellungen → Optionen…** öffnet ein modales Fenster: Das Hauptfenster bleibt bis zum Schließen gesperrt, Übertragungen laufen weiter. Änderungen gelten sofort; **Schließen** oder Escape macht sie nicht rückgängig. Befehlszeilenoptionen stehen grau unter den Bedienelementen. Mindestgröße: **800 × 740**; Hauptfenster, Fehlerbericht und Diagnose: **1100 × 600**.
+
+Die vier Reiter heißen **Einstellungen**, **Tastenkürzel**, **Geschwindigkeitslimits** und **Stapelabschluss**. Die Limits umfassen die globale Grenze und den Standard für neue Aufträge. Bestehende Aufträge ändern Sie über die ausgewählten Zeilen und **Rechtsklick → Geschwindigkeit des Auftrags begrenzen…**. Das Limit steht in **Details**, auch bei Ordnern; bei unbegrenzter Geschwindigkeit entfällt der Zusatz.
+
+`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`. `rowRateLimit` → `Window::showRateLimit`.
 
 Dolphin-Befehle und Kontrollkästchen verwenden gemeinsam `Window::configureDolphin`. Die Methode führt die private Komponente `gad/integration/dolphin_shortcut.py` mit Python und QProcess aus, ohne Übertragungen zu blockieren. Der Nachweis bleibt in `gad/dolphin-paste.json`. Nach spätestens acht Sekunden wird abgebrochen; Fehler stellen das Kontrollkästchen wieder her und werden dem Client gemeldet. `Window::handleAsync` antwortet erst nach Abschluss über IPC. Konqueror behält `konquerorCtrlV`, das sein Modul bei jedem Ctrl+V liest. Es wird kein separater öffentlicher Befehl installiert.
 
@@ -546,3 +552,70 @@ make test-dolphin-watchdog-real
 `undo::Stamp` prüft Berechtigungen und speichert optionale Eigentümer-/Gruppenangaben. `undo::Record.backup_ctime` wird nach dem Umbenennen der Sicherung erfasst und vor der Veröffentlichung protokolliert. Die Vorprüfung validiert alle ausgewählten Einträge, vorhandene Elternpfade, Sicherungen und bereits wiederhergestellte Quellen. Ein fehlendes verschobenes Ergebnis blockiert den Vorgang vor Änderungen an benachbarten Einträgen. Wiederhergestellte Inhalte werden vor dem Entfernen des Ergebnisses mit dem Journal-Digest verglichen. Neue Felder bleiben für ältere Journale optional.
 
 `src/engine/tests/integrity.rs` deckt Änderungen bei unveränderter Größe/mtime, Pfadersetzung, Kopieren und Verschieben ohne MD5, geänderte Sicherungen, Berechtigungen, unterbrochene Wiederherstellungen und ältere Journale ab. Diese Prüfungen verringern übliche Wettlaufsituationen, isolieren jedoch nicht gegen gleichzeitige Pfadänderungen.
+
+## Übertragungsprofile {#transfer-profiles}
+
+QSettings-Schema `transferProfiles` Version 5 trennt `options`, `gui` und `request_rate_limit` ohne Zielfeld. Version 1 behält ihre Optionen, ergänzt fehlende Werte aus aktuellen Vorgaben und entfernt das Ziel vor dem einmaligen Schreiben von Version 5. Ungültige oder unbekannte Dokumente bleiben erhalten.
+
+`currentTransferProfile` erfasst alle Einstellungen. Die Anwendung prüft die Sprache, bereitet Dolphin-Tastenkürzel asynchron vor, sichert den exakten Autostart-Eintrag und übernimmt die interne Konfiguration. Bei Fehlern werden Konfiguration, Autostart und Tastenkürzel möglichst wiederhergestellt; eine unvollständige Rücknahme wird gemeldet. Gleichzeitige Konfigurationsänderungen und Beenden sind währenddessen gesperrt. Profile starten keine Übertragung. Das Engine-Protokoll ist 32.
+
+Qt-Tests decken Migration, Zielentfernung, sämtliche Optionen, externe und interne Fehler, Autostart-Wiederherstellung, Nebenläufigkeit, fehlende Sprachen und Speicherung ab.
+
+In der Befehlszeile übernimmt `gad --profile "Mein Profil"` die Einstellungen ohne Transfer. Zum Kopieren: `gad --profile "Mein Profil" --copy /pfad/quelle --to /pfad/ziel`; auch mit `--move` / `--paste` verwendbar. Gad wartet auf die vollständige Anwendung des Profils. Das Ziel stammt aus dem Befehl; explizite Optionen wie `--md5` haben Vorrang. Bei unbekanntem Namen werden keine Dateien eingereiht. `--configure --profile "Mein Profil"` erlaubt zusätzliche Einstellungen, die anschließend angewendet werden.
+
+## Konfliktrichtlinien in Profilen
+
+Unter **Optionen → Dateikonflikte** stehen **Nachfragen**, **Vorhandene Dateien überspringen**, **Nur ältere Dateien ersetzen** und **Beide Dateien behalten** zur Auswahl. Speichern oder aktualisieren Sie das Profil. Bestehende Aufträge behalten ihre Richtlinie.
+
+Nur Zieldateien mit strikt früherem Änderungsdatum als die Quelle werden ersetzt; gleich alte oder neuere werden übersprungen. Unlesbare Daten und symbolische Links führen ohne Ersetzung zu einem Fehler: Richtlinie ändern und erneut versuchen. Die Zuverlässigkeit der Zeitangaben hängt vom Dateisystem oder entfernten Dienst ab. Vorhandene Ordner werden zusammengeführt; die Richtlinie gilt für Konflikte darin. Beide behalten verwendet ein nummeriertes Namenssuffix. Übersprungene Dateien bleiben beim Verschieben an der Quelle; Ersetzungen bleiben wiederherstellbar.
+
+Befehl: `gad --configure --conflict-policy newer`. Alte Profile werden auf **Nachfragen** migriert und speichern weiterhin kein Ziel.
+
+`conflict_policy` (Protokoll 27) wird in `Job.policy` erfasst. `src/engine/conflicts.rs` prüft Richtlinien und vergleicht Zeitangaben ohne symbolischen Links zu folgen. Profilschema 3 migriert frühere Versionen zu `ask`.
+
+## Gespeicherten Verlauf durchsuchen
+
+Klicken Sie auf **Verlauf durchsuchen** oder drücken Sie **Strg+F**. Geben Sie einen Dateinamen oder einen Teil des Quell-/Zielpfads ein, auch entfernte URLs. Wörter werden mit UND verbunden, ohne Groß-/Kleinschreibung und ohne reguläre Ausdrücke. Wählen Sie einen Auftragsstatus und aktivieren Sie **Hinzugefügt zwischen**, um das Hinzufügedatum mit einschließlichen lokalen Daten zu begrenzen.
+
+**Nur Verlauf** zeigt abgeschlossene, abgebrochene, wiederhergestellte oder fehlerhafte Aufträge; deaktivieren Sie es für aktive Aufträge. Spaltenfilter gelten zusätzlich. Übergeordnete Ordner bleiben sichtbar. **Suche zurücksetzen** leert die Kriterien ohne Änderung der Spaltenfilter; Schließen oder **Escape** deaktiviert nur diese Suche. Reihenfolge und Prioritäten bleiben unverändert.
+
+Der Tooltip der Reihenfolgenspalte zeigt das Hinzufügedatum. Alte Vorgänge ohne Datum werden als unbekannt markiert und bleiben ohne Datumsfilter durchsuchbar. Der Verlauf muss gespeichert sein: gelöschte Vorgänge lassen sich nicht mehr finden.
+
+`Job.created_at` → Unix UTC, `0` = ?; `HistorySearch::Query` → `TableView::Settings` → `TransferTree::setHistorySearch`; `native/window_history.cpp` → Ctrl+F, Escape, 150 ms.
+
+## Transferdiagnose
+
+Die Schaltfläche **Transferdiagnose…** unten öffnet eine modale Ansicht aktiver und wartender Aufträge. Sie zeigt Status, beobachtete Aktivität oder Wartezeit, globale und auftragsspezifische Grenzen, Geschwindigkeit und Restzeit. Die Nummern blockierender Aufträge beziehen sich auf die Hauptliste.
+
+Die Ursachen unterscheiden Pausen, Quellenanalyse, offene Konflikte, nicht verfügbare Geräte oder entfernte Einbindungen, MD5-Prüfung, Prüfung des Fortsetzungspräfixes, lokale Umbenennung, exklusive Wiederherstellung, zwei belegte Arbeiter, Zeilenpriorität, gemeinsame Festplatten oder überlappende Pfade und vorsichtige serielle Ausführung bei unbekannten Ressourcen.
+
+Eine Wartezeit auf das Geschwindigkeitsbudget wird nur gemeldet, wenn der Begrenzer sie in der letzten Sekunde beobachtet hat. Eine konfigurierte Grenze allein beweist keine Verlangsamung. Nach fünf Sekunden ohne Byte-Fortschritt beim Kopieren oder MD5 außerhalb von Begrenzungswartezeiten meldet Gad diesen Stillstand: Datei-E/A oder Abschlussarbeiten könnten warten, ohne einen konkreten Festplatten- oder Netzwerkengpass nachzuweisen. Die Diagnose ist kein Leistungstest und wird nicht im Verlauf gespeichert. Schließen ändert keine Transfers.
+
+`src/engine/diagnostics.rs` → `status` / `poll` (`diagnostics`, protocol 29); `rate::Limiter::waiting` → 1 s. `QueueSnapshot` → `TransferDiagnostics::Tracker` → `window_diagnostics.cpp`.
+
+## Schnelle Verschiebungen prüfen
+
+Unter **Optionen** aktivieren Sie **Schnelle Verschiebungen prüfen**. Standardmäßig aus, wird die Einstellung in Profilen gespeichert und für neue Aufträge erfasst. Nach einer lokalen Umbenennung prüft Gad Identität (Gerät/Inode), Typ, Größe, Änderungsdatum, Berechtigungen, Eigentümer/Gruppe, Linkziele, den exakten Baum und das Verschwinden des Quellpfads. Zulässige ctime-Änderungen der umbenannten Wurzel werden akzeptiert; Nachfahren müssen ihre ctime behalten.
+
+Bei Erfolg erscheint **Schnelle Verschiebung geprüft**. Die Diagnose unterscheidet diese Phase von MD5. Unterschiede, zusätzliche oder fehlende Elemente, ein neu angelegter Quellpfad oder Lesefehler führen zu einem Fehler mit geprüftem Pfad. Verschobenes Ergebnis und Journal bleiben erhalten; keine automatische Rücknahme überschreibt geänderte Dateien. Pausieren oder Abbrechen löscht das bereits verschobene Ergebnis nicht.
+
+Geprüft werden Metadaten, keine Inhalte; dies ersetzt keinen kryptografischen Vergleich. MD5 bleibt separat und erzwingt Kopieren/Prüfen/Löschen. Normale Kopien erhalten kein falsches Ergebnis einer Schnellprüfung. Alte Profile werden mit deaktivierter Option migriert. Befehl: `gad --configure --verify-fast-move`; deaktivieren: `--no-verify-fast-move`.
+
+`verify_fast_move` (30) → `fast_verify.rs` → `Entry.fast_move_check`; `TransferProfiles` → schema 4.
+
+## Aktionen nach Warteschlangenabschluss
+
+Unter **Optionen → Warteschlangenabschluss** wählen Sie Benachrichtigung, Gad beenden, Bereitschaft oder Ausschalten mit **5 bis 3600 Sekunden** (Standard 30). Profile speichern Vorgaben, aktivieren aber nie eine Aktion. Unter **Nach Abschluss der Warteschlange…** aktiviert die Auswahl eine Aktion einmal; **Gespeicherte Aktion einmal aktivieren** nutzt die Vorgaben. Die Schaltfläche zeigt den aktivierten Zustand. **Nichts tun** oder **Abschlussaktion abbrechen** deaktiviert sie.
+
+Bei leerer Warteschlange wird auf einen neuen Auftrag gewartet; alter Verlauf löst nichts aus. Der Countdown startet erst nach erfolgreichem Abschluss aller Aufträge, entfernter Vorbereitungen und abschließender Speicherungen. Fehler, Abbrüche, Wiederherstellungen oder entfernte Aufträge deaktivieren die Aktion. Neue, auch sehr schnelle Aufträge starten nach ihrem Abschluss den vollständigen Countdown erneut. Eine Pause verhindert den Versand.
+
+Der Dialog zeigt Aktion und Restzeit. **Aktion abbrechen** oder Schließen deaktiviert sie ohne Änderung der Transfers. Eine Benachrichtigung öffnet ein verborgenes Gad. Bei null verhindert ein atomarer Schutz neue Vorgänge während des Versands. Logind wendet Berechtigungs- und Sperrregeln für Bereitschaft und Ausschalten an; Ablehnungen werden ohne erzwungene Ersatzbefehle gemeldet. Nach Ausführung oder Neustart wird nicht erneut aktiviert.
+
+Passive Vorgabe: `gad --configure --completion-action suspend --completion-delay 60`. Separat im grafischen Menü aktivieren.
+
+`Completion::Plan` → `window_completion.cpp`; `queue_guard` → `completion_claim` / `completion_release` (32). `completion.rs`: `Activity`, `Shared.requests`. `org.freedesktop.login1.Manager`: `CanSuspend` / `Suspend(true)`, `CanPowerOff` / `PowerOff(true)`. `TransferProfiles`: schema 5, `gui.completion_action`, `gui.completion_delay`.
+
+
+## Übertragungen in der Hauptliste vorbereiten {#preparing-transfers}
+
+Das aktuelle Protokoll ist **33**. `Job.start_required` wird gespeichert; `prepare_only` unterscheidet manuelle Vorbereitung von externen Anforderungen. Die Planung überspringt unbestätigte Vorbereitungen. Die einzelne Steuerung sendet `pause` mit `paused=false` zum Starten oder Fortsetzen. `staging.rs` erstellt sichtbare Teildateien; `resume.rs` prüft Identität und Präfix. Schreibgeschützte Simulationsbefehle bleiben intern, ohne eigenes Fenster.

@@ -109,23 +109,7 @@ fn partial_path(
         .staging
         .as_deref()
         .ok_or("Temporaire de reprise absent")?;
-    let name = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .ok_or("Nom de temporaire invalide")?;
-    let fields: Vec<_> = name
-        .strip_suffix(".part")
-        .ok_or("Nom de temporaire invalide")?
-        .split('-')
-        .collect();
-    if fields.len() != 5
-        || fields[0] != ".gad"
-        || fields[1].parse::<u32>().is_err()
-        || fields[2].parse::<u64>().ok() != Some(id)
-        || fields[3].parse::<usize>().ok() != Some(index)
-        || fields[4].parse::<u16>().is_err()
-        || path.parent() != entry.destination.parent()
-    {
+    if !staging::matches(path, &entry.destination, id, index) {
         return Err("Resume refused: temporary file does not match this entry".into());
     }
     if point.digest.len() != 32 || !point.digest.bytes().all(|byte| byte.is_ascii_hexdigit()) {

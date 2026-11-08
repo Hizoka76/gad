@@ -581,6 +581,15 @@ impl Engine {
                     fs::symlink_metadata(&entry.destination).map_err(|e| e.to_string())?;
                 record.rename_ctime = Some((renamed.ctime(), renamed.ctime_nsec()));
                 self.record(id, index, record)?;
+                self.verify_fast_result(
+                    id,
+                    index,
+                    &[fast_verify::Expected {
+                        entry,
+                        stamp: &stamp,
+                        ctime: None,
+                    }],
+                )?;
                 self.update(id, |job| {
                     job.entries[index].size = if entry.kind == "file" { meta.len() } else { 0 };
                     job.entries[index].copied = job.entries[index].size;

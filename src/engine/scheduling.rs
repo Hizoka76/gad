@@ -78,7 +78,7 @@ fn compatible(a: &Disks, b: &Disks) -> bool {
 }
 /// Les renommages peuvent partager le disque d’une copie, mais jamais ses chemins.
 /// Une réservation inconnue ou des racines qui se recouvrent conservent la sérialisation.
-fn compatible_jobs(a: &Job, b: &Job) -> bool {
+pub(super) fn compatible_jobs(a: &Job, b: &Job) -> bool {
     if a.fast_move || b.fast_move {
         let (Some(a_paths), Some(b_paths)) = (&a.paths, &b.paths) else {
             return false;
@@ -137,7 +137,8 @@ pub(super) fn next(state: &mut State) -> Option<(u64, bool)> {
     let mut earlier: Vec<&Job> = Vec::new();
     for id in row_queue::ordered_jobs(state) {
         let job = &**state.jobs.iter().find(|job| job.id == id).unwrap();
-        if terminal(&job.state) || state.active.contains_key(&job.id) {
+        // Une préparation ne réserve ni un disque ni l’ordre des collages immédiats.
+        if job.start_required || terminal(&job.state) || state.active.contains_key(&job.id) {
             continue;
         }
         // A scan may still discover a mount point: keep its ordering barrier.
@@ -168,7 +169,10 @@ pub(super) fn next(state: &mut State) -> Option<(u64, bool)> {
 impl Engine {
     /// Libère la réservation du lot et réveille les travailleurs qui peuvent démarrer.
     pub(super) fn release_worker(&self, id: u64) {
-        self.shared.state.lock().unwrap().active.remove(&id);
+        let mut state = self.shared.state.lock().unwrap();
+        state.active.remove(&id);
+        self.shared.limiter.lock().unwrap().forget(id);
+        drop(state);
         self.shared.wake.notify_all();
     }
 }

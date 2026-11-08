@@ -13,7 +13,7 @@ public:
     /// Fusionne une réponse différentielle en conservant l’ordre et les objets inchangés.
     QSet<qint64> apply(const QJsonObject &delta) {
         QSet<qint64> changed;
-        if(delta["unchanged"].toBool())return changed;
+        if(delta["unchanged"].toBool()){if(delta.contains("diagnostics"))current["diagnostics"]=delta["diagnostics"];if(delta.contains("queue_guard"))current["queue_guard"]=delta["queue_guard"];return changed;}
         // Le repli complet permet aussi d’utiliser un double de moteur ou un client historique.
         const bool legacy=!delta.contains("revision");
         if(legacy || delta["reset"].toBool())jobs.clear();

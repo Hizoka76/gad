@@ -27,8 +27,17 @@ inline bool setAutostart(bool enabled) {
     QSaveFile file(path);
     return file.open(QIODevice::WriteOnly) && file.write(contents)==contents.size() && file.commit();
 }
+/// Le journal garde la trace d’un résultat, d’un temporaire ou d’un original à restaurer.
+/// Les octets copiés couvrent aussi les anciens historiques dont le journal est incomplet.
+inline bool hasTransferChanges(const QJsonObject &entry) {
+    if(entry["copied"].toDouble()>0)return true;
+    const auto record=entry["undo"].toObject();
+    for(const auto &key:{"result","backup","staging","restore_staging"})if(record.contains(key) && !record[key].isNull())return true;
+    return record["source_removed"].toBool() || record["source_dir_removed"].toBool() || record["directory_move"].toBool() || record["rename_move"].toBool();
+}
 /// Traduit l’état métier et ajoute la pause d’affichage sans modifier l’état du moteur.
-inline QString label(const QString &state, bool paused = false) {
+inline QString label(const QString &state, bool paused = false, bool unchanged = false) {
+    if(state==Protocol::State::Undone && unchanged)return GAD_TR("Canceled");
     if(state==Protocol::State::DeviceWaiting)return paused?GAD_TR("Device disconnected · paused"):GAD_TR("Waiting for device");
     if (paused) {
         if (state == Protocol::State::Running || state == Protocol::State::Waiting || state == Protocol::State::Verifying) return GAD_TR("Paused");

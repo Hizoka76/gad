@@ -36,9 +36,10 @@ struct Probe {
         QStringList names;
         for(const auto &root:job["sources"].toArray())names.append(QFileInfo(root.toString()).fileName());
         p.name=names.join(", ");p.name.replace('\n'," ⏎ ");p.name.replace('\r'," ");p.name.replace('\t'," ");if(p.name.size()>60)p.name=p.name.left(57)+"…";
-        bool copying=false,verifying=false,conflict=false,checking=false,hasPending=false,allPaused=true;
+        bool copying=false,verifying=false,conflict=false,checking=false,hasPending=false,allPaused=true,fastChecking=false;
         for(const auto &value:job["entries"].toArray()) {
             const auto e=value.toObject();const auto s=e["state"].toString();
+            fastChecking |= !Protocol::terminal(s) && s!=Protocol::State::Skipped && !e["cancel"].toBool() && !e["hidden"].toBool() && e["fast_move_check"].toObject()["status"]=="checking";
             if(e["hidden"].toBool() || e["cancel"].toBool() || e["kind"]=="directory")continue;
             if(s==Protocol::State::Skipped || s==Protocol::State::Cancelled || s==Protocol::State::Undone || s==Protocol::State::Error)continue;
             const bool pending=s==Protocol::State::Waiting || s==Protocol::State::Running || s==Protocol::State::Verifying || s==Protocol::State::Conflict;
@@ -62,6 +63,7 @@ struct Probe {
         p.paused |= hasPending && allPaused;
         if(p.status==Protocol::State::DeviceWaiting)p.phase="device";
         else if(p.status==Protocol::State::Undoing || p.status==Protocol::State::UndoWaiting)p.phase="undo";
+        else if(fastChecking)p.phase="fast_verify";
         else if(checking)p.phase="resume";
         else if(conflict)p.phase="conflict";
         else if(job["fast_move"].toBool())p.phase="rename";
@@ -86,7 +88,7 @@ struct Sample {
     void tick(qint64 now,bool paused) {
         const auto current=phase(paused);
         const bool reset=!initialized || now<time || probe.copied<previousCopy || probe.verified<previousVerify;
-        if(reset || current=="pause" || current=="conflict" || current=="waiting" || current=="resume" || current=="device") {copy.reset();verify.reset();}
+        if(reset || current=="pause" || current=="conflict" || current=="waiting" || current=="resume" || current=="fast_verify" || current=="device") {copy.reset();verify.reset();}
         else if(current==previousPhase) {
             if(current=="copy")copy.add(now-time,probe.copied-previousCopy);
             if(current=="md5")verify.add(now-time,probe.verified-previousVerify);
@@ -112,6 +114,7 @@ inline QString detail(const Sample &s,bool paused) {
     if(phase=="pause")return GAD_TR("Paused · remaining time suspended");
     if(phase=="conflict")return GAD_TR("Decision required · remaining time unknown");
     if(phase=="resume")return GAD_TR("Checking resume data… · estimating remaining time");
+    if(phase=="fast_verify")return GAD_TR("Verifying fast move · metadata and paths");
     if(phase=="rename")return GAD_TR("Local rename · no data copied");
     if(phase=="undo")return GAD_TR("Restoring · remaining time unknown");
     if(phase=="waiting")return GAD_TR("Queued · estimate available when started");
@@ -134,6 +137,7 @@ inline QString detail(const Sample &s,bool paused) {
 class Tracker {
     QHash<qint64,Sample> samples;
 public:
+    const Sample *sample(qint64 id) const {const auto found=samples.constFind(id);return found==samples.cend()?nullptr:&found.value();}
     QStringList sync(const QJsonObject &state,const QSet<qint64> &changed,qint64 now,bool reset=false) {
         if(reset)samples.clear();
         QSet<qint64> live;QStringList lines;

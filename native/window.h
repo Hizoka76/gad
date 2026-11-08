@@ -9,6 +9,9 @@
 #include "transfer_tree.h"
 #include "presentation.h"
 #include "transfer_metrics.h"
+#include "transfer_diagnostics.h"
+#include "transfer_profiles.h"
+#include "completion_plan.h"
 
 class Window : public QMainWindow {
     // Widgets possédés par la hiérarchie Qt ; les lignes sont aussi indexées dans jobRows.
@@ -16,6 +19,13 @@ class Window : public QMainWindow {
     QLabel *summary, *conflictTitle;
     QLabel *requestMetrics;
     TransferMetrics::Tracker metricsTracker;
+    TransferDiagnostics::Tracker diagnosticTracker;
+    Completion::Plan completionPlan;
+    bool completionExecuting=false;
+    QComboBox *completionAction=nullptr;
+    QSpinBox *completionDelay=nullptr;
+    QToolButton *completionButton=nullptr;
+    void updateCompletionControls();
     QElapsedTimer metricsClock;
     QHash<qint64,QPointer<SourceUrls::Resolver>> reconnectResolvers;
     QHash<qint64,qint64> reconnectAttempts;
@@ -30,13 +40,19 @@ class Window : public QMainWindow {
     QCheckBox *all;
     QCheckBox *includeHidden;
     QCheckBox *allowDuplication;
+    QComboBox *conflictPolicy;
     QLabel *exclusionSummary;
     QJsonObject exclusionRules;
     QCheckBox *verifyMd5;
+    QCheckBox *verifyFastMove;
     QCheckBox *verifyProperties;
     QCheckBox *verifySpace;
     QCheckBox *keepHistory;
     QDoubleSpinBox *globalRate;
+    QDoubleSpinBox *requestRate;
+    QMenu *profilesMenu=nullptr;
+    bool profileApplying=false;
+    bool profileCommitting=false;
     QCheckBox *resumeInterrupted;
     QPushButton *pause;
     QLineEdit *destination;
@@ -97,6 +113,26 @@ public:
     void showMainWindow(const QString &token = QString());
     /// Crée une boîte À propos non bloquante, détruite à sa fermeture.
     void showAbout();
+    void setupCompletion(QVBoxLayout *settings,QHBoxLayout *controls,QDialog *settingsDialog);
+    void refreshCompletion(const QJsonObject &snapshot,qint64 now=-1);
+    void armCompletion();
+    void cancelCompletion();
+    virtual void executeCompletion(const QString &action,std::function<void(QJsonObject)> reply);
+    virtual void completionNotice(const QString &title,const QString &message);
+    void showDiagnostics();
+    void refreshDiagnostics();
+    /// Profils : modifier les valeurs par défaut sans soumettre de fichiers ni toucher aux lots existants.
+    void setupHistorySearch(QVBoxLayout *layout,QHBoxLayout *controls);
+    void setupProfiles(QHBoxLayout *row);
+    void refreshProfilesMenu();
+    void refreshProfilesList();
+    void updateProfileSelection();
+    void showProfiles();
+    void saveCurrentProfile();
+    TransferProfiles::Profile currentTransferProfile() const;
+    bool applyTransferProfile(const QString &id,std::function<void(QJsonObject)> reply = {});
+    QString transferProfileDescription(const TransferProfiles::Profile &profile) const;
+    void setProfileApplying(bool applying);
     /// Encode les indices des enfants sélectionnés et déduplique ceux déjà couverts par un lot entier.
     QJsonObject selectionRequest(const QString &command) const;
 
@@ -143,7 +179,8 @@ public:
     QJsonObject handle(QJsonObject request);
     /// Termine une configuration Dolphin sans bloquer les transferts ni la réponse IPC.
     void handleAsync(QJsonObject request,std::function<void(QJsonObject)> reply);
-    void configureDolphin(bool enabled,std::function<void(QJsonObject)> reply);
+    void configureKrusader(bool enabled,std::function<void(QJsonObject)> reply);
+    virtual void configureDolphin(bool enabled,std::function<void(QJsonObject)> reply);
     static QString dolphinIntegration();
     /// Met à jour les lignes existantes à partir d’un instantané JSON, sans reconstruire le modèle.
     /// La conservation des items préserve le survol, les infobulles, les indices et la sélection.

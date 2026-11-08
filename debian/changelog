@@ -1,3 +1,16 @@
+gad (0.2.0-0~resolute) resolute; urgency=medium
+
+  * Version 0.2.0 : préparation manuelle, reprise partielle et temporaires visibles.
+  * Profils, conflits, fin de lot, débits, historique et raccourcis Krusader.
+  * Corriger les interactions modales, les filtres et la destination Dolphin.
+  * Actualiser les traductions, tests et guides illustrés dans six langues.
+  * Release 0.2.0: manual preparation, partial resume and visible staging files.
+  * Add profiles, conflict policies, completion actions and bandwidth tabs.
+  * Fix modal navigation, translated filters and Dolphin paste destinations.
+  * Refresh translations, tests and illustrated guides in six languages.
+
+ -- Terence Belleguic <hizo@free.fr>  Sun, 08 Nov 2026 22:16:28 +0100
+
 gad (0.1.0b-0~resolute) resolute; urgency=medium
 
   * Mise à jour automatique du PPA de test.

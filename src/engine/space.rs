@@ -26,9 +26,9 @@ struct Demand {
 }
 #[derive(Clone)]
 pub(super) struct Volume {
-    device: u64,
+    pub(super) device: u64,
     pub(super) available: u64,
-    block: u64,
+    pub(super) block: u64,
 }
 /// Utilise le parent de la cible : un lien final sera remplacé, pas suivi.
 pub(super) fn volume(path: &Path) -> Result<Volume, String> {
@@ -224,6 +224,147 @@ impl Engine {
             self.update(id, |job| job.space_warning = warning);
         }
         Ok(())
+    }
+}
+
+impl Engine {
+    /// Réutilise les mêmes blocs et réservations que le contrôle avant copie.
+    /// Les sauvegardes présentes sont informatives : disponibles les déduit déjà.
+    pub(super) fn simulation_space(
+        &self,
+        rows: &[Value],
+        jobs: &[Job],
+        cancelled: &std::sync::atomic::AtomicBool,
+    ) -> Result<(Vec<Value>, bool), String> {
+        let mut totals: BTreeMap<String, Value> = BTreeMap::new();
+        let mut complete = true;
+        let checkpoint = || {
+            if cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+                Err("Simulation canceled".to_string())
+            } else {
+                Ok(())
+            }
+        };
+        let mut probes: BTreeMap<PathBuf, Result<Volume, String>> = BTreeMap::new();
+        let mut probe = |path: &Path| {
+            probes
+                .entry(path.parent().unwrap_or(path).into())
+                .or_insert_with(|| volume(path))
+                .clone()
+        };
+        for row in rows {
+            checkpoint()?;
+            if matches!(row["action"].as_str(), Some("excluded" | "error")) {
+                continue;
+            }
+            let path = Path::new(
+                row["destination"]
+                    .as_str()
+                    .ok_or("Invalid simulation destination")?,
+            );
+            let size = row["size"].as_u64().unwrap_or(0);
+            let capacity = probe(path);
+            let (key, available, block, warning) = match &capacity {
+                Ok(v) => (
+                    v.device.to_string(),
+                    Some(v.available),
+                    v.block,
+                    String::new(),
+                ),
+                Err(e) => {
+                    complete = false;
+                    (
+                        format!("unknown:{}", path.parent().unwrap_or(path).display()),
+                        None,
+                        1,
+                        e.clone(),
+                    )
+                }
+            };
+            let required = if row["fast_move"] == true {
+                0
+            } else {
+                u128::from(size).max(1).div_ceil(u128::from(block.max(1)))
+                    * u128::from(block.max(1))
+            };
+            let total=totals.entry(key).or_insert_with(||json!({"path":path.parent(),"available":available,"required":0,"queued":0,"retained":0,"warning":warning}));
+            total["required"] = json!(total["required"]
+                .as_u64()
+                .unwrap_or(0)
+                .saturating_add(u64::try_from(required).unwrap_or(u64::MAX)));
+        }
+        let mut backups = std::collections::HashSet::new();
+        for job in jobs {
+            for entry in &job.entries {
+                checkpoint()?;
+                // Un dossier sauvegardé peut contenir tout un arbre ; compter ses blocs
+                // sans suivre les liens et sans compter deux fois un lien physique.
+                let mut pending = entry
+                    .undo
+                    .as_ref()
+                    .and_then(|r| r.backup.clone())
+                    .into_iter()
+                    .collect::<Vec<_>>();
+                while let Some(path) = pending.pop() {
+                    checkpoint()?;
+                    let meta = match fs::symlink_metadata(&path) {
+                        Ok(m) => m,
+                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+                        Err(_) => {
+                            complete = false;
+                            continue;
+                        }
+                    };
+                    if !backups.insert((meta.dev(), meta.ino())) {
+                        continue;
+                    }
+                    if let Some(total) = totals.get_mut(&meta.dev().to_string()) {
+                        total["retained"] = json!(total["retained"]
+                            .as_u64()
+                            .unwrap_or(0)
+                            .saturating_add(meta.blocks().saturating_mul(512)));
+                    }
+                    if meta.is_dir() {
+                        match fs::read_dir(&path) {
+                            Ok(children) => {
+                                for child in children {
+                                    match child {
+                                        Ok(child) => pending.push(child.path()),
+                                        Err(_) => complete = false,
+                                    }
+                                }
+                            }
+                            Err(_) => complete = false,
+                        }
+                    }
+                }
+                if terminal(&job.state)
+                    || job.cancel
+                    || job.undo_requested
+                    || job.fast_move
+                    || entry.kind != "file"
+                    || terminal(&entry.state)
+                    || entry.state == TransferState::Skipped
+                    || entry.cancel
+                    || entry.hidden
+                {
+                    continue;
+                }
+                let demand = demand(job.id, job.destination_url.is_some(), entry);
+                match probe(&entry.destination) {
+                    Ok(v) => {
+                        if let Some(total) = totals.get_mut(&v.device.to_string()) {
+                            let bytes = u64::try_from(needed(&demand, v.block, v.device))
+                                .unwrap_or(u64::MAX);
+                            total["queued"] =
+                                json!(total["queued"].as_u64().unwrap_or(0).saturating_add(bytes));
+                        }
+                    }
+                    Err(_) => complete = false,
+                }
+            }
+        }
+        Ok((totals.into_values().collect(), complete))
     }
 }
 

@@ -59,7 +59,9 @@ impl Engine {
         let view = row_queue::layout(&mut state);
         let revision = CLOCK.load(Ordering::SeqCst);
         if since == Some(revision) {
-            return Ok(json!({"revision":revision,"unchanged":true}));
+            return Ok(
+                json!({"revision":revision,"unchanged":true,"queue_guard":completion::snapshot(&state),"diagnostics":diagnostics::snapshot(&mut state,&self.shared.limiter.lock().unwrap())}),
+            );
         }
         let reset = since.is_none_or(|value| value > revision);
         let jobs = state
@@ -72,11 +74,14 @@ impl Engine {
         let mut result = json!({"revision":revision,"reset":reset,"jobs":jobs,
             "queue_order":queue::ids(&state),"duplicates_ignored":state.duplicates_ignored,"rate_limit":state.rate_limit,
             "job_ids":state.jobs.iter().map(|job|job.id).collect::<Vec<_>>(),
-            "allow_duplication":state.allow_duplication,"exclusions":state.exclusions,"verify_space":state.verify_space,"verify_properties":state.verify_properties,"paused":state.paused,"verify_md5":state.verify_md5,"keep_history":state.keep_history,"resume_interrupted":state.resume_interrupted,
+            "conflict_policy":state.conflict_policy,"allow_duplication":state.allow_duplication,"exclusions":state.exclusions,"verify_space":state.verify_space,"verify_properties":state.verify_properties,"verify_fast_move":state.verify_fast_move,"paused":state.paused,"verify_md5":state.verify_md5,"keep_history":state.keep_history,"resume_interrupted":state.resume_interrupted,
             "protocol_version":protocol::VERSION,"parallel_limit":2});
         if reset || since.is_none_or(|since| since < state.row_revision) {
             result["row_order"] = json!(view.ordered);
         }
+        result["queue_guard"] = completion::snapshot(&state);
+        result["diagnostics"] =
+            diagnostics::snapshot(&mut state, &self.shared.limiter.lock().unwrap());
         Ok(result)
     }
 }

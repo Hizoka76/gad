@@ -44,7 +44,16 @@ inline Result resolve(const Call &call) {
     if(QDir::isAbsolutePath(first))url=QUrl::fromLocalFile(first);
     else if(SourceUrls::isUrl(first))url=QUrl(first,QUrl::TolerantMode);
     if(!SourceUrls::supported(url))return {{},GAD_TR("Dolphin did not provide a usable full path. Enable the full path in its title bar, or use Paste with Gad from the context menu.")};
-    const auto open=call(activeService,activePath,"org.kde.dolphin.MainWindow","isUrlOpen",{url.toString(QUrl::FullyEncoded)});
+    auto open=call(activeService,activePath,"org.kde.dolphin.MainWindow","isUrlOpen",{url.toString(QUrl::FullyEncoded)});
+    // Dolphin peut conserver le / final de l’URL de l’onglet, alors que son
+    // titre le retire (ou l’inverse). Ne changer que ce séparateur, sans décoder
+    // les noms, résoudre les liens ni choisir un autre onglet.
+    const auto encodedPath=url.path(QUrl::FullyEncoded);
+    if(open.type()!=QDBusMessage::ErrorMessage && !open.arguments().isEmpty() && !open.arguments()[0].toBool()
+        && !encodedPath.isEmpty() && encodedPath!="/") {
+        auto alternate=url;alternate.setPath(encodedPath.endsWith('/')?encodedPath.left(encodedPath.size()-1):encodedPath+"/",QUrl::TolerantMode);
+        open=call(activeService,activePath,"org.kde.dolphin.MainWindow","isUrlOpen",{alternate.toString(QUrl::FullyEncoded)});
+    }
     if(open.type()==QDBusMessage::ErrorMessage || open.arguments().isEmpty() || !open.arguments()[0].toBool())return {{},GAD_TR("The folder provided by Dolphin is no longer open. Paste again.")};
     const auto stillActive=call(activeService,activePath,"org.kde.dolphin.MainWindow","isActiveWindow",{});
     if(stillActive.type()==QDBusMessage::ErrorMessage || stillActive.arguments().isEmpty() || !stillActive.arguments()[0].toBool() || title()!=first)

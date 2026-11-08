@@ -1,10 +1,10 @@
 # Gad — Documentação
 
-Version 0.1.0 · Português
+Version 0.2.0 · Português
 
 ## Escolher um guia
 
-Cada idioma tem um guia de início rápido, um guia do utilizador e um guia de desenvolvimento. Os guias do utilizador incluem catorze capturas dos widgets reais com o tema claro e no respetivo idioma.
+Cada idioma tem um guia de início rápido, um guia do utilizador e um guia de desenvolvimento. Os guias do utilizador incluem vinte e duas capturas dos widgets reais com o tema claro e no respetivo idioma.
 
 | Documento | Fonte | HTML | PDF |
 | --- | --- | --- | --- |
@@ -32,4 +32,4 @@ make docs
 make docs-check
 ```
 
-84 captures · 18 HTML · 18 PDF
+132 captures · 18 HTML · 18 PDF

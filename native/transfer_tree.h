@@ -130,6 +130,8 @@ public:
     void removeViewSort(int column) {
         auto &keys=viewSettings.sorts;keys.erase(std::remove_if(keys.begin(),keys.end(),[column](const auto &key){return key.column==column;}),keys.end());changed();
     }
+    /// Invalide aussi un instantané moteur inchangé pour appliquer la recherche immédiatement.
+    void setHistorySearch(const HistorySearch::Query &query) {viewSettings.history=query;++filterRevision;changed();}
     void setColumnFilter(int column,const QString &text) {
         if(column<0 || column>=TableView::ColumnCount)return;
         if(viewSettings.contains[column]==text)return;

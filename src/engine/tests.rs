@@ -6216,3 +6216,1370 @@ fn duplication_retains_recursive_and_move_guards() {
 
 // Régressions des contrôles de stabilité source et des préconditions de restauration.
 mod integrity;
+
+#[test]
+/// Le plafond fourni à l’ajout est figé par lot ; le débit global et les lots précédents restent indépendants.
+fn enqueue_captures_request_rate_and_rejects_invalid_values_before_reservation() {
+    let f = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    engine
+        .request(r#"{"command":"configure","rate_limit":999}"#)
+        .unwrap();
+    for (index, limit) in [Some(12345u64), None, Some(rate::MAX)]
+        .into_iter()
+        .enumerate()
+    {
+        let destination = f.0.join(format!("profile-{index}"));
+        fs::create_dir(&destination).unwrap();
+        let mut request =
+            json!({"command":"enqueue","sources":[f.0.join("source")],"destination":destination});
+        if let Some(limit) = limit {
+            request["rate_limit"] = json!(limit);
+        }
+        engine.request(&request.to_string()).unwrap();
+    }
+    let state = wait(&engine, |s| {
+        s["jobs"].as_array().unwrap().len() == 3
+            && s["jobs"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|j| j["state"] == "waiting")
+    });
+    assert_eq!(state["rate_limit"], 999);
+    assert_eq!(state["jobs"][0]["rate_limit"], 12345);
+    assert_eq!(state["jobs"][1]["rate_limit"], 0);
+    assert_eq!(state["jobs"][2]["rate_limit"], rate::MAX);
+    for invalid in [
+        json!(-1),
+        json!(true),
+        json!("123"),
+        json!(1.5),
+        json!(rate::MAX + 1),
+        Value::Null,
+    ] {
+        let request = json!({"command":"enqueue","sources":[f.0.join("source")],"destination":f.0.join("dest"),"rate_limit":invalid});
+        assert!(engine.request(&request.to_string()).is_err());
+    }
+    let unchanged = engine.request(r#"{"command":"status"}"#).unwrap();
+    assert_eq!(unchanged["jobs"].as_array().unwrap().len(), 3);
+    assert_eq!(unchanged["next_id"], state["next_id"]);
+    let persisted: State = serde_json::from_value(unchanged).unwrap();
+    assert_eq!(persisted.jobs[0].rate_limit, 12345);
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    wait(&engine, |s| {
+        s["jobs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|job| job["state"] == "cancelled")
+    });
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+/// Les politiques sont validées avant mutation et capturées indépendamment des changements futurs.
+fn conflict_policies_validate_and_capture_defaults() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    assert_eq!(
+        engine.request(r#"{"command":"status"}"#).unwrap()["conflict_policy"],
+        "ask"
+    );
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    engine
+        .request(r#"{"command":"configure","conflict_policy":"skip"}"#)
+        .unwrap();
+    fixture.enqueue(&engine);
+    engine
+        .request(r#"{"command":"configure","conflict_policy":"rename"}"#)
+        .unwrap();
+    for value in [json!("replace"), json!(null), json!(true), json!(2)] {
+        assert!(engine
+            .request(
+                &json!({"command":"configure","conflict_policy":value,"verify_md5":true})
+                    .to_string()
+            )
+            .is_err());
+        assert!(engine.request(&json!({"command":"enqueue","conflict_policy":value,"sources":[fixture.0.join("source")],"destination":fixture.0.join("dest")}).to_string()).is_err());
+    }
+    let state = engine.request(r#"{"command":"status"}"#).unwrap();
+    assert_eq!(state["conflict_policy"], "rename");
+    assert_eq!(state["jobs"][0]["policy"], "skip");
+    assert_eq!(state["next_id"], 1);
+    assert_eq!(state["verify_md5"], false);
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+}
+
+#[test]
+/// Copies et déplacements conservent les originaux ignorés ; les remplacements restent restaurables.
+fn conflict_policies_apply_to_copy_and_move_with_undo() {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    for mode in ["copy", "move"] {
+        for policy in ["skip", "rename", "newer"] {
+            for older in [true, false] {
+                let fixture = Fixture::local();
+                let source = fixture.0.join("source/item.txt");
+                let destination = fixture.0.join("dest/item.txt");
+                fs::write(&source, b"source-content").unwrap();
+                fs::write(&destination, b"existing-content").unwrap();
+                let time = |seconds| UNIX_EPOCH + Duration::from_secs(seconds);
+                let set_time = |path: &Path, modified: SystemTime| {
+                    fs::File::open(path)
+                        .unwrap()
+                        .set_times(fs::FileTimes::new().set_modified(modified))
+                        .unwrap()
+                };
+                set_time(&source, time(200));
+                set_time(&destination, time(if older { 100 } else { 200 }));
+                let engine = Engine::new();
+                engine.request(&json!({"command":"enqueue","sources":[source],"destination":fixture.0.join("dest"),"mode":mode,"conflict_policy":policy}).to_string()).unwrap();
+                let state = wait(&engine, |state| state["jobs"][0]["state"] == "done");
+                let replaced = policy == "newer" && older;
+                let renamed = policy == "rename";
+                assert_eq!(
+                    fs::read(&destination).unwrap(),
+                    if replaced {
+                        b"source-content".as_slice()
+                    } else {
+                        b"existing-content".as_slice()
+                    }
+                );
+                assert_eq!(source.exists(), mode == "copy" || (!replaced && !renamed));
+                let result = PathBuf::from(
+                    state["jobs"][0]["entries"][0]["destination"]
+                        .as_str()
+                        .unwrap(),
+                );
+                if renamed {
+                    assert_ne!(result, destination);
+                    assert_eq!(fs::read(&result).unwrap(), b"source-content");
+                }
+                engine.request(r#"{"command":"undo_all"}"#).unwrap();
+                wait(&engine, |state| state["jobs"][0]["state"] == "undone");
+                assert_eq!(fs::read(&source).unwrap(), b"source-content");
+                assert_eq!(fs::read(&destination).unwrap(), b"existing-content");
+                if renamed {
+                    assert!(!result.exists());
+                }
+            }
+        }
+    }
+}
+
+#[test]
+/// Les liens ne sont jamais suivis par la comparaison automatique ; les fichiers récents sont conservés.
+fn conflict_newer_refuses_links_and_compares_strict_dates() {
+    let fixture = Fixture::new();
+    let source = fixture.0.join("source/item.txt");
+    let destination = fixture.0.join("dest/item.txt");
+    fs::write(&source, b"new").unwrap();
+    fs::write(&destination, b"existing").unwrap();
+    let time = std::time::UNIX_EPOCH + Duration::from_secs(100);
+    fs::File::open(&source)
+        .unwrap()
+        .set_times(fs::FileTimes::new().set_modified(time))
+        .unwrap();
+    fs::File::open(&destination)
+        .unwrap()
+        .set_times(fs::FileTimes::new().set_modified(time + Duration::from_secs(1)))
+        .unwrap();
+    assert_eq!(conflicts::newer(&source, &destination).unwrap(), "skip");
+    let link = fixture.0.join("source/link.txt");
+    symlink(&source, &link).unwrap();
+    assert!(conflicts::newer(&link, &destination).is_err());
+    assert!(conflicts::newer(&source, &fixture.0.join("dest")).is_err());
+    assert!(conflicts::newer(&source, &fixture.0.join("missing")).is_err());
+    assert_eq!(fs::read(&destination).unwrap(), b"existing");
+    let mut state: State = serde_json::from_value(json!({})).unwrap();
+    assert_eq!(state.conflict_policy, "ask");
+    state.conflict_policy = "rename".into();
+    assert_eq!(
+        serde_json::from_value::<State>(serde_json::to_value(state).unwrap())
+            .unwrap()
+            .conflict_policy,
+        "rename"
+    );
+}
+
+#[test]
+/// La destination peut devenir récente pendant la copie : le contrôle est répété avant publication.
+fn conflict_newer_rechecks_destination_before_publication() {
+    let fixture = Fixture::new();
+    let source = fixture.0.join("source/item.txt");
+    let destination = fixture.0.join("dest/item.txt");
+    fs::write(&source, vec![7u8; 1024 * 1024]).unwrap();
+    fs::write(&destination, b"old-content").unwrap();
+    let time = |seconds| std::time::UNIX_EPOCH + Duration::from_secs(seconds);
+    let set_time = |path: &Path, seconds| {
+        fs::File::open(path)
+            .unwrap()
+            .set_times(fs::FileTimes::new().set_modified(time(seconds)))
+            .unwrap()
+    };
+    set_time(&source, 200);
+    set_time(&destination, 100);
+    let engine = Engine::new();
+    engine.request(&json!({"command":"enqueue","sources":[source],"destination":fixture.0.join("dest"),"conflict_policy":"newer","rate_limit":524288}).to_string()).unwrap();
+    wait(&engine, |state| {
+        state["jobs"][0]["entries"]
+            .as_array()
+            .is_some_and(|entries| {
+                entries
+                    .iter()
+                    .any(|entry| entry["copied"].as_u64().unwrap_or(0) > 0)
+            })
+    });
+    fs::write(&destination, b"edited-destination").unwrap();
+    set_time(&destination, 300);
+    wait(&engine, |state| state["jobs"][0]["state"] == "error");
+    assert_eq!(fs::read(&destination).unwrap(), b"edited-destination");
+    assert_eq!(fs::metadata(&source).unwrap().len(), 1024 * 1024);
+}
+
+#[test]
+/// La date d’ajout ne dépend pas des modifications des fichiers et survit au journal et aux reprises.
+fn history_creation_date_is_persisted_and_legacy_dates_remain_unknown() {
+    let fixture = Fixture::new();
+    let journal = fixture.0.join("history.json");
+    let created;
+    {
+        let engine = Engine::persistent(journal.clone()).unwrap();
+        engine
+            .request(r#"{"command":"configure","keep_history":true}"#)
+            .unwrap();
+        engine
+            .request(r#"{"command":"pause","paused":true}"#)
+            .unwrap();
+        let before = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        fixture.enqueue(&engine);
+        let state = wait(&engine, |state| state["jobs"][0]["state"] == "waiting");
+        created = state["jobs"][0]["created_at"].as_u64().unwrap();
+        assert!(created >= before);
+        assert!(
+            created
+                <= std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+        );
+        engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+        wait(&engine, |state| state["jobs"][0]["state"] == "cancelled");
+        engine.request(r#"{"command":"shutdown"}"#).unwrap();
+    }
+    let engine = Engine::persistent(journal).unwrap();
+    let state = engine.request(r#"{"command":"status"}"#).unwrap();
+    assert_eq!(state["jobs"][0]["created_at"], created);
+    let mut job = state["jobs"][0].clone();
+    job.as_object_mut().unwrap().remove("created_at");
+    assert_eq!(serde_json::from_value::<Job>(job).unwrap().created_at, 0);
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+/// La vue explique les mêmes barrières que le planificateur sans lancer ni modifier une demande.
+fn diagnostic_scheduler_reasons_match_resource_reservations() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    for index in 0..3 {
+        fixture.enqueue_distinct(&engine, index);
+    }
+    wait(&engine, |state| {
+        state["jobs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|job| job["state"] == "waiting")
+    });
+    {
+        let mut state = engine.shared.state.lock().unwrap();
+        let limiter = rate::Limiter::default();
+        let ids = state.jobs.iter().map(|job| job.id).collect::<Vec<_>>();
+        assert_eq!(
+            diagnostics::snapshot(&mut state, &limiter)[ids[1].to_string()]["queue_reason"],
+            "paused"
+        );
+        state.paused = false;
+        state.active.insert(ids[0], None);
+        state.jobs[0].state = TransferState::Running;
+        let view = diagnostics::snapshot(&mut state, &limiter);
+        assert_eq!(
+            view[ids[1].to_string()]["queue_reason"],
+            "resources_unknown"
+        );
+        assert_eq!(view[ids[1].to_string()]["blockers"], json!([ids[0]]));
+        for job in &mut state.jobs {
+            job.disks = Some(std::collections::BTreeSet::from(["disk-a".into()]));
+        }
+        assert_eq!(
+            diagnostics::snapshot(&mut state, &limiter)[ids[1].to_string()]["queue_reason"],
+            "shared_resources"
+        );
+        state.active.insert(ids[2], None);
+        state.jobs[2].state = TransferState::Running;
+        assert_eq!(
+            diagnostics::snapshot(&mut state, &limiter)[ids[1].to_string()]["queue_reason"],
+            "parallel_limit"
+        );
+        state.active.clear();
+        state.jobs[0].state = TransferState::Scanning;
+        state.jobs[2].state = TransferState::Waiting;
+        assert_eq!(
+            diagnostics::snapshot(&mut state, &limiter)[ids[1].to_string()]["queue_reason"],
+            "earlier_scan"
+        );
+        state.jobs[0].state = TransferState::Waiting;
+        state.paused = true;
+    }
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+}
+
+#[test]
+/// Les observations sont diffusées même sans révision métier et restent absentes du journal.
+fn diagnostic_poll_is_live_without_persisting_runtime_observations() {
+    let fixture = Fixture::new();
+    let journal = fixture.0.join("diagnostic-history.json");
+    let engine = Engine::persistent(journal.clone()).unwrap();
+    engine
+        .request(r#"{"command":"configure","keep_history":true}"#)
+        .unwrap();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    fixture.enqueue(&engine);
+    wait(&engine, |state| state["jobs"][0]["state"] == "waiting");
+    let mut second = engine.request(r#"{"command":"poll"}"#).unwrap();
+    // Les autres tests partagent l’horloge de révision : une mutation étrangère peut légitimement produire un delta.
+    for _ in 0..500 {
+        let revision = second["revision"].as_u64().unwrap();
+        second = engine
+            .request(&json!({"command":"poll","since":revision}).to_string())
+            .unwrap();
+        if second["unchanged"] == true {
+            break;
+        }
+        thread::yield_now();
+    }
+    assert_eq!(second["unchanged"], true);
+    assert_eq!(second["diagnostics"]["1"]["queue_reason"], "paused");
+    assert!(
+        serde_json::from_slice::<Value>(&fs::read(&journal).unwrap())
+            .unwrap()
+            .get("diagnostics")
+            .is_none()
+    );
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    wait(&engine, |state| state["jobs"][0]["state"] == "cancelled");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+/// Les vérifications ne lisent pas le contenu et ne désactivent pas le renommage, y compris pour un arbre avec liens.
+fn fast_move_verification_preserves_inodes_and_restoration() {
+    for tree in [false, true] {
+        let fixture = Fixture::local();
+        let source = fixture.0.join(if tree {
+            "source"
+        } else {
+            "source/sub/été\n.txt"
+        });
+        if tree {
+            symlink("sub/été\n.txt", fixture.0.join("source/link")).unwrap();
+        }
+        let inode = fs::symlink_metadata(&source).unwrap().ino();
+        let engine = Engine::new();
+        engine.request(&json!({"command":"enqueue","mode":"move","verify_fast_move":true,"sources":[source],"destination":fixture.0.join("dest")}).to_string()).unwrap();
+        let state = wait(&engine, |state| state["jobs"][0]["state"] == "done");
+        assert_eq!(state["jobs"][0]["fast_move"], true);
+        assert_eq!(state["jobs"][0]["verify_fast_move"], true);
+        for entry in state["jobs"][0]["entries"].as_array().unwrap() {
+            assert_eq!(entry["fast_move_check"]["status"], "ok");
+            assert!(entry["md5_source"].is_null());
+        }
+        let destination = PathBuf::from(
+            state["jobs"][0]["entries"][0]["destination"]
+                .as_str()
+                .unwrap(),
+        );
+        assert_eq!(fs::symlink_metadata(&destination).unwrap().ino(), inode);
+        assert!(!source.exists());
+        engine.request(r#"{"command":"undo_all"}"#).unwrap();
+        wait(&engine, |state| state["jobs"][0]["state"] == "undone");
+        assert_eq!(fs::symlink_metadata(&source).unwrap().ino(), inode);
+        engine.request(r#"{"command":"shutdown"}"#).unwrap();
+    }
+}
+
+#[test]
+/// Une altération après le renommage est signalée sans écraser ni déplacer le résultat modifié.
+fn fast_move_verification_rejects_modified_file_and_keeps_journal() {
+    let fixture = Fixture::local();
+    let source = fixture.0.join("source/sub/été\n.txt");
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    engine.request(&json!({"command":"enqueue","mode":"move","verify_fast_move":true,"sources":[source],"destination":fixture.0.join("dest")}).to_string()).unwrap();
+    wait(&engine, |state| state["jobs"][0]["state"] == "waiting");
+    let entry = {
+        let mut state = engine.shared.state.lock().unwrap();
+        state.paused = false;
+        state.jobs[0].state = TransferState::Running;
+        state.jobs[0].entries[0].clone()
+    };
+    assert!(engine
+        .rename_entry_using(1, 0, &entry, |source, destination| {
+            fast_move::rename_local(source, destination)?;
+            fs::write(destination, b"externally changed")
+        })
+        .is_err());
+    let state = engine.request(r#"{"command":"status"}"#).unwrap();
+    assert_eq!(
+        state["jobs"][0]["entries"][0]["fast_move_check"]["status"],
+        "error"
+    );
+    assert_eq!(state["jobs"][0]["entries"][0]["undo"]["rename_move"], true);
+    assert_eq!(fs::read(&entry.destination).unwrap(), b"externally changed");
+    assert!(!source.exists());
+    engine.update(1, |job| {
+        job.state = TransferState::Error;
+        job.entries[0].state = TransferState::Error;
+    });
+    engine.request(r#"{"command":"undo_all"}"#).unwrap();
+    wait(&engine, |state| state["jobs"][0]["state"] == "undo_error");
+    assert_eq!(fs::read(&entry.destination).unwrap(), b"externally changed");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+/// Des ajouts, retraits, liens changés, permissions ou un ancien chemin recréé ne passent pas silencieusement en OK.
+fn fast_move_verification_checks_the_complete_tree() {
+    use std::os::unix::fs::PermissionsExt;
+    for alteration in ["missing", "extra", "link", "permissions", "source"] {
+        let fixture = Fixture::local();
+        let source = fixture.0.join("source");
+        symlink("sub/été\n.txt", source.join("link")).unwrap();
+        let engine = Engine::new();
+        engine
+            .request(r#"{"command":"pause","paused":true}"#)
+            .unwrap();
+        engine.request(&json!({"command":"enqueue","mode":"move","verify_fast_move":true,"sources":[source],"destination":fixture.0.join("dest")}).to_string()).unwrap();
+        wait(&engine, |state| state["jobs"][0]["state"] == "waiting");
+        {
+            let mut state = engine.shared.state.lock().unwrap();
+            assert!(state.jobs[0].fast_move);
+            state.paused = false;
+            state.jobs[0].state = TransferState::Running;
+        }
+        let destination = fixture.0.join("dest/source");
+        assert!(
+            engine
+                .rename_tree_using(1, 0, |source, destination| {
+                    fast_move::rename_local(source, destination)?;
+                    match alteration {
+                        "missing" => fs::remove_file(destination.join("sub/été\n.txt")),
+                        "extra" => fs::write(destination.join("extra"), b"external"),
+                        "link" => {
+                            fs::remove_file(destination.join("link"))?;
+                            symlink("../external", destination.join("link"))
+                        }
+                        "permissions" => {
+                            let mode = (fs::symlink_metadata(destination)?.permissions().mode()
+                                & 0o7777)
+                                ^ 0o040;
+                            fs::set_permissions(destination, fs::Permissions::from_mode(mode))
+                        }
+                        "source" => fs::write(source, b"external original path"),
+                        _ => unreachable!(),
+                    }
+                })
+                .is_err(),
+            "{alteration}"
+        );
+        let state = engine.request(r#"{"command":"status"}"#).unwrap();
+        for entry in state["jobs"][0]["entries"].as_array().unwrap() {
+            assert_eq!(entry["fast_move_check"]["status"], "error", "{alteration}");
+            assert!(entry["undo"].is_object());
+        }
+        assert!(destination.is_dir());
+        if alteration == "source" {
+            assert_eq!(fs::read(&source).unwrap(), b"external original path");
+        } else {
+            assert!(!source.exists());
+        }
+        engine.update(1, |job| {
+            job.state = TransferState::Error;
+            for entry in &mut job.entries {
+                entry.state = TransferState::Error;
+            }
+        });
+        engine.request(r#"{"command":"shutdown"}"#).unwrap();
+    }
+}
+
+#[test]
+/// Les préférences sont figées par demande et les entrées invalides sont refusées avant toute mutation.
+fn fast_move_verification_configuration_is_typed_and_captured() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    engine
+        .request(r#"{"command":"configure","verify_fast_move":true}"#)
+        .unwrap();
+    fixture.enqueue(&engine);
+    engine
+        .request(r#"{"command":"configure","verify_fast_move":false}"#)
+        .unwrap();
+    for value in [json!("true"), json!(1), Value::Null] {
+        assert!(engine
+            .request(
+                &json!({"command":"configure","verify_fast_move":value,"verify_md5":true})
+                    .to_string()
+            )
+            .is_err());
+        assert!(engine.request(&json!({"command":"enqueue","verify_fast_move":value,"sources":[fixture.0.join("source")],"destination":fixture.0.join("dest")}).to_string()).is_err());
+    }
+    let state = engine.request(r#"{"command":"status"}"#).unwrap();
+    assert_eq!(state["verify_fast_move"], false);
+    assert_eq!(state["verify_md5"], false);
+    assert_eq!(state["jobs"][0]["verify_fast_move"], true);
+    assert_eq!(state["next_id"], 1);
+    let mut legacy = state.clone();
+    legacy.as_object_mut().unwrap().remove("verify_fast_move");
+    legacy["jobs"][0]
+        .as_object_mut()
+        .unwrap()
+        .remove("verify_fast_move");
+    assert!(
+        !serde_json::from_value::<State>(legacy)
+            .unwrap()
+            .verify_fast_move
+    );
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    wait(&engine, |state| state["jobs"][0]["state"] == "cancelled");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+/// Une pause après renommage reste annulable ; le résultat et son journal ne sont jamais supprimés.
+fn fast_move_verification_can_be_canceled_after_rename() {
+    let fixture = Fixture::local();
+    let source = fixture.0.join("source/sub/été\n.txt");
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    engine.request(&json!({"command":"enqueue","mode":"move","verify_fast_move":true,"sources":[source],"destination":fixture.0.join("dest")}).to_string()).unwrap();
+    wait(&engine, |state| state["jobs"][0]["state"] == "waiting");
+    let entry = {
+        let mut state = engine.shared.state.lock().unwrap();
+        state.paused = false;
+        state.jobs[0].state = TransferState::Running;
+        state.jobs[0].entries[0].clone()
+    };
+    let worker = engine.clone();
+    let control = engine.clone();
+    let destination = entry.destination.clone();
+    let handle = thread::spawn(move || {
+        worker.rename_entry_using(1, 0, &entry, |source, destination| {
+            fast_move::rename_local(source, destination)?;
+            control
+                .request(r#"{"command":"pause","paused":true}"#)
+                .unwrap();
+            Ok(())
+        })
+    });
+    wait(&engine, |state| {
+        state["jobs"][0]["entries"][0]["fast_move_check"]["status"] == "checking"
+    });
+    assert!(destination.exists());
+    assert!(!source.exists());
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    assert!(handle.join().unwrap().is_err());
+    let state = engine.request(r#"{"command":"status"}"#).unwrap();
+    assert_eq!(
+        state["jobs"][0]["entries"][0]["fast_move_check"]["status"],
+        "error"
+    );
+    assert_eq!(state["jobs"][0]["entries"][0]["undo"]["rename_move"], true);
+    assert!(destination.exists());
+    engine.update(1, |job| job.state = TransferState::Cancelled);
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+/// Le MD5 conserve son parcours de copie ; l’option rapide ne produit aucun faux contrôle sur une copie ordinaire.
+fn fast_move_verification_does_not_replace_md5_or_mark_regular_copies() {
+    for (mode, md5) in [("copy", false), ("move", true)] {
+        let fixture = Fixture::local();
+        let source = fixture.0.join("source/sub/été\n.txt");
+        let inode = fs::metadata(&source).unwrap().ino();
+        let engine = Engine::new();
+        engine.request(&json!({"command":"enqueue","mode":mode,"verify_md5":md5,"verify_fast_move":true,"sources":[source],"destination":fixture.0.join("dest")}).to_string()).unwrap();
+        let state = wait(&engine, |state| state["jobs"][0]["state"] == "done");
+        let entry = &state["jobs"][0]["entries"][0];
+        assert_eq!(state["jobs"][0]["fast_move"], false);
+        assert!(entry["fast_move_check"].is_null());
+        assert_ne!(
+            fs::metadata(entry["destination"].as_str().unwrap())
+                .unwrap()
+                .ino(),
+            inode
+        );
+        if md5 {
+            assert!(!entry["md5_source"].as_str().unwrap().is_empty());
+            assert_eq!(entry["md5_source"], entry["md5_destination"]);
+        }
+        engine.request(r#"{"command":"shutdown"}"#).unwrap();
+    }
+}
+
+#[test]
+/// La garde attend les analyses et sauvegardes finales ; elle bloque toute nouvelle mutation jusqu’à sa libération.
+fn completion_guard_waits_for_finalization_and_blocks_mutations() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    fixture.enqueue(&engine);
+    let state = wait(&engine, |state| {
+        state["queue_guard"]["idle"] == true && state["jobs"][0]["state"] == "done"
+    });
+    let claim = json!({"command":"completion_claim","ids":[1],"epoch":state["queue_guard"]["epoch"],"next_id":state["queue_guard"]["next_id"]});
+    for preparing in [true, false] {
+        let activity = completion::Activity::new(engine.clone(), preparing);
+        assert_eq!(
+            engine.request(r#"{"command":"status"}"#).unwrap()["queue_guard"]["idle"],
+            false
+        );
+        assert!(engine.request(&claim.to_string()).is_err());
+        drop(activity);
+    }
+    assert!(engine.request(&claim.to_string()).is_ok());
+    for command in [
+        json!({"command":"pause","paused":true}),
+        json!({"command":"undo_all"}),
+        json!({"command":"configure","verify_md5":true}),
+        json!({"command":"enqueue","sources":[fixture.0.join("source")],"destination":fixture.0.join("dest")}),
+    ] {
+        assert!(engine.request(&command.to_string()).is_err());
+    }
+    let state = engine.request(r#"{"command":"status"}"#).unwrap();
+    assert_eq!(state["queue_guard"]["claimed"], true);
+    assert_eq!(state["next_id"], 1);
+    assert_eq!(state["verify_md5"], false);
+    engine
+        .request(r#"{"command":"completion_release"}"#)
+        .unwrap();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+/// L’ajout d’une demande et la prise de garde ne peuvent pas tous deux réussir sur le même état.
+fn completion_claim_is_atomic_against_new_enqueue() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    fixture.enqueue(&engine);
+    let state = wait(&engine, |state| {
+        state["queue_guard"]["idle"] == true && state["jobs"][0]["state"] == "done"
+    });
+    let destination = fixture.0.join("other-destination");
+    fs::create_dir(&destination).unwrap();
+    let claim=json!({"command":"completion_claim","ids":[1],"epoch":state["queue_guard"]["epoch"],"next_id":state["queue_guard"]["next_id"]}).to_string();
+    let enqueue =
+        json!({"command":"enqueue","sources":[fixture.0.join("source")],"destination":destination})
+            .to_string();
+    let barrier = Arc::new(std::sync::Barrier::new(3));
+    let a = engine.clone();
+    let b = engine.clone();
+    let first = barrier.clone();
+    let second = barrier.clone();
+    let claim = thread::spawn(move || {
+        first.wait();
+        a.request(&claim)
+    });
+    let enqueue = thread::spawn(move || {
+        second.wait();
+        b.request(&enqueue)
+    });
+    barrier.wait();
+    let claimed = claim.join().unwrap().is_ok();
+    let accepted = enqueue.join().unwrap().is_ok();
+    assert_ne!(claimed, accepted);
+    engine
+        .request(r#"{"command":"completion_release"}"#)
+        .unwrap();
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    wait(&engine, |state| state["queue_guard"]["idle"] == true);
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+/// Une erreur ou un jeton périmé ne peut pas autoriser une action, même quand la file est au repos.
+fn completion_guard_rejects_failed_requests_and_stale_tokens() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    fixture.enqueue(&engine);
+    let state = wait(&engine, |state| {
+        state["queue_guard"]["idle"] == true && state["jobs"][0]["state"] == "done"
+    });
+    let mut claim = json!({"command":"completion_claim","ids":[1],"epoch":state["queue_guard"]["epoch"],"next_id":state["queue_guard"]["next_id"]});
+    claim["epoch"] = json!(u64::MAX);
+    assert!(engine.request(&claim.to_string()).is_err());
+    claim["epoch"] = state["queue_guard"]["epoch"].clone();
+    engine.update(1, |job| job.state = TransferState::Error);
+    assert!(engine.request(&claim.to_string()).is_err());
+    let raw = serde_json::to_value(&*engine.shared.state.lock().unwrap()).unwrap();
+    for field in [
+        "completion_claimed",
+        "work_epoch",
+        "preparing",
+        "finalizing",
+        "queue_guard",
+    ] {
+        assert!(raw.get(field).is_none());
+    }
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+/// Une simulation possède un jeton annulable, jamais un identifiant de lot.
+fn simulate_test(engine: &Engine, fixture: &Fixture, extra: Value) -> Result<Value, String> {
+    let token = engine.request(r#"{"command":"simulation_begin"}"#)?;
+    let mut request = json!({"command":"simulate","id":token["id"],"sources":[fixture.0.join("source")],"destination":fixture.0.join("dest")});
+    for (key, value) in extra.as_object().unwrap() {
+        request[key] = value.clone();
+    }
+    engine.request(&request.to_string())
+}
+#[test]
+fn simulation_does_not_change_files_queue_or_completion_guard() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    let before = engine.request(r#"{"command":"poll"}"#).unwrap();
+    let plan = simulate_test(&engine, &fixture, json!({})).unwrap();
+    assert_eq!(plan["rows"].as_array().unwrap().len(), 3);
+    assert_eq!(plan["rows"][1]["parent"], 0);
+    assert_eq!(plan["rows"][2]["parent"], 1);
+    assert_eq!(plan["rows"][2]["action"], "copy");
+    assert_eq!(plan["rows"][2]["size"], 13);
+    // L’horloge de révision est commune au processus : d’autres moteurs de tests
+    // peuvent l’avancer en parallèle, sans modifier cette file ni ses paramètres.
+    let mut before = before;
+    let mut after = engine.request(r#"{"command":"poll"}"#).unwrap();
+    before.as_object_mut().unwrap().remove("revision");
+    after.as_object_mut().unwrap().remove("revision");
+    assert_eq!(before, after);
+    assert_eq!(fs::read_dir(fixture.0.join("dest")).unwrap().count(), 0);
+    assert!(fixture.0.join("source/sub/été\n.txt").exists());
+    assert!(engine.shared.simulations.lock().unwrap().tasks.is_empty());
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn simulation_exclusions_do_not_expand_subtrees_and_links_are_not_followed() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    fs::create_dir_all(fixture.0.join("source/__cache/deep")).unwrap();
+    fs::write(fixture.0.join("source/.hidden"), b"hidden").unwrap();
+    symlink("/does/not/exist", fixture.0.join("source/link")).unwrap();
+    let plan = simulate_test(
+        &engine,
+        &fixture,
+        json!({"exclusions":{"include_hidden":false,"directories":["__*"],"files":[]}}),
+    )
+    .unwrap();
+    let rows = plan["rows"].as_array().unwrap();
+    assert_eq!(rows.iter().filter(|r| r["action"] == "excluded").count(), 2);
+    assert!(!rows
+        .iter()
+        .any(|r| r["source"].as_str().unwrap().ends_with("deep")));
+    assert!(rows
+        .iter()
+        .any(|r| r["kind"] == "link" && r["action"] == "copy"));
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn simulation_conflict_policies_match_actual_plans() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    let source = fixture.0.join("source/one.txt");
+    fs::write(&source, b"new").unwrap();
+    fs::write(fixture.0.join("dest/one.txt"), b"old").unwrap();
+    let args = |policy: &str| json!({"sources":[source],"conflict_policy":policy});
+    assert_eq!(
+        simulate_test(&engine, &fixture, args("ask")).unwrap()["rows"][0]["action"],
+        "conflict"
+    );
+    assert_eq!(
+        simulate_test(&engine, &fixture, args("skip")).unwrap()["rows"][0]["reason"],
+        "policy_skip"
+    );
+    let renamed = simulate_test(&engine, &fixture, args("rename")).unwrap();
+    assert_eq!(
+        renamed["rows"][0]["destination"],
+        json!(fixture.0.join("dest/one (copie 1).txt"))
+    );
+    let old = std::time::SystemTime::UNIX_EPOCH + Duration::from_secs(1000);
+    fs::File::open(&source)
+        .unwrap()
+        .set_times(fs::FileTimes::new().set_modified(old))
+        .unwrap();
+    assert_eq!(
+        simulate_test(&engine, &fixture, args("newer")).unwrap()["rows"][0]["reason"],
+        "not_newer"
+    );
+    fs::File::open(fixture.0.join("dest/one.txt"))
+        .unwrap()
+        .set_times(fs::FileTimes::new().set_modified(old - Duration::from_secs(1)))
+        .unwrap();
+    assert_eq!(
+        simulate_test(&engine, &fixture, args("newer")).unwrap()["rows"][0]["reason"],
+        "replace"
+    );
+    assert_eq!(fs::read(fixture.0.join("dest/one.txt")).unwrap(), b"old");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn simulation_merges_directories_and_reports_child_conflicts() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    fs::create_dir_all(fixture.0.join("dest/source/sub")).unwrap();
+    fs::write(fixture.0.join("dest/source/sub/été\n.txt"), b"old").unwrap();
+    let plan = simulate_test(&engine, &fixture, json!({})).unwrap();
+    assert_eq!(plan["rows"][0]["reason"], "merge");
+    assert_eq!(plan["rows"][2]["action"], "conflict");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn simulation_duplication_is_a_proposal_not_a_reservation() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    let invalid = simulate_test(&engine, &fixture, json!({"destination":fixture.0})).unwrap();
+    assert_eq!(invalid["rows"][0]["action"], "error");
+    let plan = simulate_test(
+        &engine,
+        &fixture,
+        json!({"destination":fixture.0,"allow_duplication":true}),
+    )
+    .unwrap();
+    assert_eq!(
+        plan["rows"][0]["destination"],
+        json!(fixture.0.join("source_copied1"))
+    );
+    assert!(!fixture.0.join("source_copied1").exists());
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn simulation_cancellation_before_start_is_reliable_and_slots_are_reusable() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    let token = engine.request(r#"{"command":"simulation_begin"}"#).unwrap();
+    engine
+        .request(&json!({"command":"simulation_cancel","id":token["id"]}).to_string())
+        .unwrap();
+    assert!(engine.request(&json!({"command":"simulate","id":token["id"],"sources":[fixture.0.join("source")],"destination":fixture.0.join("dest")}).to_string()).is_err());
+    assert!(simulate_test(&engine, &fixture, json!({})).is_ok());
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn simulation_does_not_take_the_transfer_command_lock() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    let token = engine.request(r#"{"command":"simulation_begin"}"#).unwrap();
+    let guard = engine.shared.requests.lock().unwrap();
+    let worker = engine.clone();
+    let request = json!({"command":"simulate","id":token["id"],"sources":[fixture.0.join("source")],"destination":fixture.0.join("dest")});
+    let (send, receive) = std::sync::mpsc::channel();
+    let task = thread::spawn(move || {
+        send.send(worker.request(&request.to_string())).unwrap();
+    });
+    assert!(receive
+        .recv_timeout(Duration::from_secs(2))
+        .unwrap()
+        .is_ok());
+    drop(guard);
+    task.join().unwrap();
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn simulation_fast_moves_need_no_content_allocation_but_md5_does() {
+    let fixture = Fixture::local();
+    let engine = Engine::new();
+    let plan = simulate_test(&engine, &fixture, json!({"mode":"move","verify_md5":false})).unwrap();
+    assert!(plan["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["fast_move"] == true));
+    let checked =
+        simulate_test(&engine, &fixture, json!({"mode":"move","verify_md5":true})).unwrap();
+    assert!(checked["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["fast_move"] == false));
+    assert!(checked["volumes"][0]["required"].as_u64().unwrap() > 0);
+    assert!(fixture.0.join("source").exists());
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn simulation_counts_pending_allocations_and_ignores_queued_duplicates() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    fixture.enqueue(&engine);
+    wait(&engine, |s| {
+        s["jobs"][0]["entries"]
+            .as_array()
+            .is_some_and(|e| !e.is_empty())
+    });
+    let duplicate = simulate_test(&engine, &fixture, json!({})).unwrap();
+    assert_eq!(duplicate["rows"][0]["reason"], "queued");
+    fs::write(fixture.0.join("source/fresh.txt"), b"fresh").unwrap();
+    let updated = simulate_test(&engine, &fixture, json!({})).unwrap();
+    assert_eq!(updated["rows"][0]["action"], "copy");
+    assert!(updated["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|r| r["source"]
+            .as_str()
+            .is_some_and(|s| s.ends_with("fresh.txt"))
+            && r["action"] == "copy"));
+    fs::write(fixture.0.join("new.txt"), b"other").unwrap();
+    let plan = simulate_test(
+        &engine,
+        &fixture,
+        json!({"sources":[fixture.0.join("new.txt")]}),
+    )
+    .unwrap();
+    assert!(plan["volumes"][0]["queued"].as_u64().unwrap() > 0);
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "cancelled");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+fn simulation_unknown_space_returns_an_explicit_nonblocking_estimate() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    let file = fixture.0.join("not-a-folder");
+    fs::write(&file, b"x").unwrap();
+    let rows =
+        vec![json!({"destination":file.join("child"),"size":42,"action":"copy","fast_move":false})];
+    let (volumes, complete) = engine
+        .simulation_space(&rows, &[], &std::sync::atomic::AtomicBool::new(false))
+        .unwrap();
+    assert!(!complete);
+    assert!(volumes[0]["available"].is_null());
+    assert!(!volumes[0]["warning"].as_str().unwrap().is_empty());
+    assert_eq!(volumes[0]["required"], 42);
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn simulation_retained_backups_are_reported_separately_from_pending_allocations() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"configure","keep_history":true}"#)
+        .unwrap();
+    let source = fixture.0.join("source/replace.txt");
+    let target = fixture.0.join("dest/replace.txt");
+    fs::write(&source, b"new contents").unwrap();
+    fs::write(&target, b"old contents").unwrap();
+    fs::File::open(&target)
+        .unwrap()
+        .set_times(
+            fs::FileTimes::new()
+                .set_modified(std::time::SystemTime::UNIX_EPOCH + Duration::from_secs(1)),
+        )
+        .unwrap();
+    engine.request(&json!({"command":"enqueue","sources":[source],"destination":fixture.0.join("dest"),"conflict_policy":"newer"}).to_string()).unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "done");
+    let new = fixture.0.join("new.txt");
+    fs::write(&new, b"one").unwrap();
+    let plan = simulate_test(&engine, &fixture, json!({"sources":[new]})).unwrap();
+    let volume = &plan["volumes"][0];
+    assert!(volume["retained"].as_u64().unwrap() > 0);
+    assert_eq!(volume["queued"], 0);
+    assert!(volume["required"].as_u64().unwrap() > 0);
+    assert_eq!(fs::read(target).unwrap(), b"new contents");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+fn simulation_hardlinks_cannot_be_announced_as_fast_moves() {
+    let fixture = Fixture::local();
+    let engine = Engine::new();
+    fs::hard_link(
+        fixture.0.join("source/sub/été\n.txt"),
+        fixture.0.join("other-link"),
+    )
+    .unwrap();
+    let plan = simulate_test(&engine, &fixture, json!({"mode":"move"})).unwrap();
+    assert!(plan["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|r| r["fast_move"] == false));
+    assert!(plan["volumes"][0]["required"].as_u64().unwrap() > 0);
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+/// Attend la fin de l’analyse d’un ajout manuel, sans autoriser son exécution.
+fn prepare_test(engine: &Engine, source: &Path, destination: &Path) -> u64 {
+    let id=engine.request(&json!({"command":"enqueue","prepare_only":true,"sources":[source],"destination":destination}).to_string()).unwrap()["id"].as_u64().unwrap();
+    wait(engine, |s| {
+        s["jobs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|j| j["id"] == id && j["state"] == "waiting")
+    });
+    id
+}
+#[test]
+fn prepared_resume_starts_the_inactive_manual_queue() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    prepare_test(&engine, &fixture.0.join("source"), &fixture.0.join("dest"));
+    assert!(!fixture.0.join("dest/source").exists());
+    engine
+        .request(r#"{"command":"pause","paused":false}"#)
+        .unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "done");
+    assert!(fixture.0.join("dest/source/sub/été\n.txt").exists());
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn prepared_start_releases_only_the_validated_jobs() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    let one = prepare_test(&engine, &fixture.0.join("source"), &fixture.0.join("dest"));
+    let other = fixture.0.join("other");
+    fs::create_dir(&other).unwrap();
+    let two = prepare_test(&engine, &fixture.0.join("source"), &other);
+    engine
+        .request(&json!({"command":"start_prepared","ids":[one]}).to_string())
+        .unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "done");
+    assert!(!other.join("source").exists());
+    engine
+        .request(&json!({"command":"start_prepared","ids":[two]}).to_string())
+        .unwrap();
+    wait(&engine, |s| s["jobs"][1]["state"] == "done");
+    assert!(other.join("source/sub/été\n.txt").exists());
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn prepared_start_respects_an_explicit_global_pause() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    let id = prepare_test(&engine, &fixture.0.join("source"), &fixture.0.join("dest"));
+    engine
+        .request(&json!({"command":"start_prepared","ids":[id]}).to_string())
+        .unwrap();
+    let state = engine.request(r#"{"command":"status"}"#).unwrap();
+    assert_eq!(state["paused"], true);
+    assert_eq!(state["jobs"][0]["start_required"], false);
+    assert!(!fixture.0.join("dest/source").exists());
+    engine
+        .request(r#"{"command":"pause","paused":false}"#)
+        .unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "done");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn prepared_history_never_starts_automatically_even_with_resume_enabled() {
+    let fixture = Fixture::new();
+    let path = fixture.0.join("state.json");
+    let engine = Engine::persistent(path.clone()).unwrap();
+    engine
+        .request(r#"{"command":"configure","resume_interrupted":true,"keep_history":false}"#)
+        .unwrap();
+    let id = prepare_test(&engine, &fixture.0.join("source"), &fixture.0.join("dest"));
+    wait(&engine, |_| {
+        engine.shared.state.lock().unwrap().preparing == 0
+    });
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+    let loaded = Engine::persistent(path).unwrap();
+    let state = loaded.request(r#"{"command":"status"}"#).unwrap();
+    assert_eq!(state["jobs"][0]["start_required"], true);
+    assert_eq!(state["jobs"][0]["state"], "waiting");
+    assert_eq!(state["jobs"][0]["resume_pending"], false);
+    assert!(!fixture.0.join("dest/source").exists());
+    loaded
+        .request(&json!({"command":"start_prepared","ids":[id]}).to_string())
+        .unwrap();
+    wait(&loaded, |s| s["jobs"][0]["state"] == "done");
+    assert!(fixture.0.join("dest/source/sub/été\n.txt").exists());
+    loaded.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn prepared_start_checks_every_identifier_before_authorizing_any_copy() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    let id = prepare_test(&engine, &fixture.0.join("source"), &fixture.0.join("dest"));
+    assert!(engine
+        .request(&json!({"command":"start_prepared","ids":[id,999999]}).to_string())
+        .is_err());
+    assert_eq!(
+        engine.request(r#"{"command":"status"}"#).unwrap()["jobs"][0]["start_required"],
+        true
+    );
+    assert!(!fixture.0.join("dest/source").exists());
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "cancelled");
+    assert!(fixture.0.join("source/sub/été\n.txt").exists());
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+fn prepared_additions_join_an_existing_authorized_queue_automatically() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    let automatic = fixture.0.join("automatic.txt");
+    fs::write(&automatic, b"automatic").unwrap();
+    engine.request(&json!({"command":"enqueue","sources":[automatic],"destination":fixture.0.join("dest")}).to_string()).unwrap();
+    engine.request(&json!({"command":"enqueue","prepare_only":true,"sources":[fixture.0.join("source")],"destination":fixture.0.join("dest")}).to_string()).unwrap();
+    let state = wait(&engine, |s| {
+        s["jobs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|j| j["state"] == "waiting")
+    });
+    assert!(state["jobs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|j| j["start_required"] == false));
+    assert!(state["paused"] == true);
+    engine
+        .request(r#"{"command":"pause","paused":false}"#)
+        .unwrap();
+    wait(&engine, |s| {
+        s["jobs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|j| j["state"] == "done")
+    });
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn prepared_external_request_starts_the_whole_inactive_queue() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    prepare_test(&engine, &fixture.0.join("source"), &fixture.0.join("dest"));
+    let automatic = fixture.0.join("automatic.txt");
+    fs::write(&automatic, b"automatic").unwrap();
+    engine.request(&json!({"command":"enqueue","background":true,"sources":[automatic],"destination":fixture.0.join("dest")}).to_string()).unwrap();
+    wait(&engine, |s| {
+        s["jobs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|j| j["state"] == "done")
+    });
+    assert!(fixture.0.join("dest/source/sub/été\n.txt").exists());
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn prepared_duplicate_external_request_starts_the_existing_request_once() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    prepare_test(&engine, &fixture.0.join("source"), &fixture.0.join("dest"));
+    fixture.enqueue(&engine);
+    let state = wait(&engine, |s| {
+        s["jobs"]
+            .as_array()
+            .is_some_and(|jobs| jobs.len() == 1 && jobs[0]["state"] == "done")
+            && s["duplicates_ignored"].as_u64().unwrap_or(0) > 0
+    });
+    assert_eq!(state["jobs"].as_array().unwrap().len(), 1);
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn prepared_failed_external_request_does_not_launch_manual_files() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    prepare_test(&engine, &fixture.0.join("source"), &fixture.0.join("dest"));
+    engine.request(&json!({"command":"enqueue","sources":[fixture.0.join("missing")],"destination":fixture.0.join("dest")}).to_string()).unwrap();
+    let state = wait(&engine, |s| s["jobs"][1]["state"] == "error");
+    assert_eq!(state["jobs"][0]["start_required"], true);
+    assert!(!fixture.0.join("dest/source").exists());
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "cancelled");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn prepared_manual_addition_after_queue_completion_waits_for_start_again() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    let automatic = fixture.0.join("automatic.txt");
+    fs::write(&automatic, b"automatic").unwrap();
+    engine.request(&json!({"command":"enqueue","sources":[automatic],"destination":fixture.0.join("dest")}).to_string()).unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "done");
+    prepare_test(&engine, &fixture.0.join("source"), &fixture.0.join("dest"));
+    assert!(!fixture.0.join("dest/source").exists());
+    engine
+        .request(r#"{"command":"pause","paused":false}"#)
+        .unwrap();
+    wait(&engine, |s| s["jobs"][1]["state"] == "done");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+fn staging_file_is_visible_while_copying_then_replaced_by_final_name() {
+    let fixture = Fixture::new();
+    let source = fixture.0.join("source/video.mkv");
+    let target = fixture.0.join("dest/video.mkv");
+    let data = vec![7u8; 128 * 1024];
+    fs::write(&source, &data).unwrap();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"configure","rate_limit":16384}"#)
+        .unwrap();
+    engine
+        .request(
+            &json!({"command":"enqueue","sources":[source],"destination":fixture.0.join("dest")})
+                .to_string(),
+        )
+        .unwrap();
+    let state = wait(&engine, |s| {
+        s["jobs"][0]["entries"].as_array().is_some_and(|entries| {
+            entries
+                .iter()
+                .any(|e| e["copied"].as_u64().unwrap_or(0) > 0 && e["state"] == "running")
+        })
+    });
+    let partial = PathBuf::from(
+        state["jobs"][0]["entries"][0]["undo"]["staging"]
+            .as_str()
+            .unwrap(),
+    );
+    assert_eq!(partial, fixture.0.join("dest/video.mkv.part"));
+    assert!(fs::metadata(&partial).unwrap().len() > 0);
+    assert!(!target.exists());
+    engine
+        .request(r#"{"command":"configure","rate_limit":0}"#)
+        .unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "done");
+    assert!(!partial.exists());
+    assert_eq!(fs::read(target).unwrap(), data);
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn staging_collision_preserves_existing_files_and_symlinks() {
+    for link in [false, true] {
+        let fixture = Fixture::new();
+        let target = fixture.0.join("dest/video.mkv");
+        let occupied = target.with_file_name("video.mkv.part");
+        let other = fixture.0.join("original");
+        fs::write(&other, b"keep").unwrap();
+        if link {
+            symlink(&other, &occupied).unwrap();
+        } else {
+            fs::write(&occupied, b"keep").unwrap();
+        }
+        let engine = Engine::new();
+        let (partial, file) = engine.create_staging(3, 2, &target).unwrap();
+        drop(file);
+        assert_ne!(partial, occupied);
+        assert!(!partial
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .starts_with('.'));
+        assert!(staging::matches(&partial, &target, 3, 2));
+        assert_eq!(fs::read(&occupied).unwrap(), b"keep");
+        assert_eq!(
+            fs::symlink_metadata(&occupied)
+                .unwrap()
+                .file_type()
+                .is_symlink(),
+            link
+        );
+        engine.request(r#"{"command":"shutdown"}"#).unwrap();
+    }
+}
+#[test]
+fn staging_hidden_and_long_destination_names_still_use_visible_temporaries() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    for name in [".secret".to_owned(), "é".repeat(125) + ".txt"] {
+        let target = fixture.0.join("dest").join(name);
+        let (partial, file) = engine.create_staging(3, 2, &target).unwrap();
+        drop(file);
+        let name = partial.file_name().unwrap().to_str().unwrap();
+        assert!(!name.starts_with('.'));
+        assert!(name.len() <= 255);
+        assert!(staging::matches(&partial, &target, 3, 2));
+    }
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn staging_avoids_a_filename_already_planned_in_the_queue() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    let source = fixture.0.join("source/video.mkv.part");
+    fs::write(&source, b"real file").unwrap();
+    engine
+        .request(
+            &json!({"command":"enqueue","sources":[source],"destination":fixture.0.join("dest")})
+                .to_string(),
+        )
+        .unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "waiting");
+    let target = fixture.0.join("dest/video.mkv");
+    let (partial, file) = engine.create_staging(2, 0, &target).unwrap();
+    drop(file);
+    assert_ne!(partial, fixture.0.join("dest/video.mkv.part"));
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "cancelled");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn staging_visible_files_resume_with_the_same_inode_and_content() {
+    for attempt in [0, 1] {
+        let f = ResumeFixture::new("copy", true, false);
+        let visible = staging::candidate(&f.target, 1, 0, std::process::id(), attempt).unwrap();
+        fs::rename(&f.partial, &visible).unwrap();
+        f.edit_journal(|state| state["jobs"][0]["entries"][0]["undo"]["staging"] = json!(visible));
+        let engine = Engine::persistent(f.journal.clone()).unwrap();
+        let state = wait(&engine, |s| {
+            s["jobs"][0]["state"] == "done" || s["jobs"][0]["state"] == "error"
+        });
+        assert_eq!(state["jobs"][0]["state"], "done", "{state}");
+        assert_eq!(fs::metadata(&f.target).unwrap().ino(), f.inode);
+        assert_eq!(fs::read(&f.target).unwrap(), f.data);
+        assert!(!visible.exists());
+        engine.request(r#"{"command":"shutdown"}"#).unwrap();
+    }
+}

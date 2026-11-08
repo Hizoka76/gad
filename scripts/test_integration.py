@@ -11,7 +11,7 @@ import tempfile
 import time
 
 root = Path(__file__).resolve().parent.parent
-binary = root / "target/debug/gad"
+binary = Path(os.environ.get("GAD_TEST_BINARY", str(root / "target/debug/gad")))
 # Isoler à la fois données, configuration, socket et journal pour ne jamais atteindre la session Gad réelle.
 with tempfile.TemporaryDirectory(prefix="gad-integration-") as tmp:
     base = Path(tmp)
@@ -61,6 +61,14 @@ with tempfile.TemporaryDirectory(prefix="gad-integration-") as tmp:
 
     try:
         initial=wait(lambda s: "jobs" in s)
+        # La vraie frontière Qt/Rust doit produire un plan sans fichier ni lot.
+        token=request({"command":"simulation_begin"})
+        preview=request({"command":"simulate","id":token["id"],"sources":[str(source)],"destination":str(dest)})
+        assert preview.get("ok") and preview["rows"]
+        assert not list(dest.iterdir()) and (source/"été\n.txt").is_file()
+        assert request({"command":"status"})["jobs"]==initial["jobs"]
+        assert any(row["kind"]=="link" for row in preview["rows"])
+
         # Le lien de progression et un second démarrage ciblent la même instance sans ajouter de lot.
         for argument in ("gad://show", "--background"):
             client = subprocess.run([binary, argument], env=env, capture_output=True, text=True, timeout=10)
@@ -108,7 +116,12 @@ with tempfile.TemporaryDirectory(prefix="gad-integration-") as tmp:
         assert (output / "été\n.txt").read_bytes() == (source / "été\n.txt").read_bytes()
         assert (output / "été\n (copie 1).txt").read_bytes() == (source / "été\n.txt").read_bytes()
         assert (output / "lien").readlink() == Path("été\n.txt")
-        assert not list(dest.rglob(".gad-*.part"))
+        for job in request({"command":"status"})["jobs"]:
+            for entry in job["entries"]:
+                staged=(entry.get("undo") or {}).get("staging")
+                if staged:
+                    partial=Path(staged)
+                    assert not partial.exists() and not partial.is_symlink(),partial
         result = subprocess.run([binary, "--status"], env=env, capture_output=True, text=True, timeout=10)
         assert result.returncode == 0 and len(json.loads(result.stdout)["jobs"]) == 2
         # Le mode déplacement avec MD5 doit retirer la source après vérification du résultat.
@@ -162,6 +175,26 @@ with tempfile.TemporaryDirectory(prefix="gad-integration-") as tmp:
         assert (dest / prop_source.name).read_bytes()==b"contenu"
         request({"command":"undo_many","ids":[prop_id]})
         wait(lambda s:next(j for j in s["jobs"] if j["id"]==prop_id)["state"]=="undone")
+        # Une file inactive attend le bouton ; un ajout externe démarre toute la file.
+        manual=base / "manual.txt";manual.write_bytes(b"manual preparation")
+        manual_dest=base / "manual-destination";manual_dest.mkdir()
+        prepared=request({"command":"enqueue","prepare_only":True,"sources":[str(manual)],"destination":str(manual_dest)})
+        manual_id=prepared["id"]
+        wait(lambda s:any(j["id"]==manual_id and j["state"]=="waiting" for j in s["jobs"]))
+        request({"command":"pause","paused":False})
+        automatic=base / "automatic.txt";automatic.write_bytes(b"automatic transfer")
+        added=subprocess.run([binary,"--copy",automatic,"--to",dest],env=env,capture_output=True,text=True,timeout=10)
+        assert added.returncode==0,added.stderr
+        automatic_id=json.loads(added.stdout)["id"]
+        wait(lambda s:any(j["id"]==automatic_id and j["state"]=="done" for j in s["jobs"]))
+        wait(lambda s:any(j["id"]==manual_id and j["state"]=="done" for j in s["jobs"]))
+        manual_after=base / "manual-after.txt";manual_after.write_bytes(b"next preparation")
+        after=request({"command":"enqueue","prepare_only":True,"sources":[str(manual_after)],"destination":str(manual_dest)})["id"]
+        wait(lambda s:any(j["id"]==after and j["state"]=="waiting" for j in s["jobs"]))
+        assert not (manual_dest/manual_after.name).exists()
+        assert request({"command":"pause","paused":False})["ok"]
+        wait(lambda s:any(j["id"]==after and j["state"]=="done" for j in s["jobs"]))
+        assert (manual_dest/manual.name).read_bytes()==b"manual preparation"
         # La fermeture sans conservation d’historique libère les journaux des lots terminés.
         request({"command": "configure", "keep_history": False})
         request({"command": "shutdown"})
