@@ -1,18 +1,18 @@
 # Gad — Dokumentation
 
-Version 0.2.0 · Deutsch
+Version 0.3.0 · Deutsch
 
 ## Ein Handbuch auswählen
 
 Für jede Sprache gibt es einen Schnellstart, ein Benutzerhandbuch und ein Entwicklerhandbuch. Die Benutzerhandbücher enthalten zweiundzwanzig Aufnahmen der echten Oberfläche im hellen Design und in ihrer jeweiligen Sprache.
 
-| Dokument | Quelle | HTML | PDF |
-| --- | --- | --- | --- |
-| Schnellstart | [Markdown](QUICK_START.de-DE.md) | [HTML](html/quick-start.de-DE.html) | [PDF](pdf/quick-start.de-DE.pdf) |
-| Benutzerhandbuch | [Markdown](USER_GUIDE.de-DE.md) | [HTML](html/user-guide.de-DE.html) | [PDF](pdf/user-guide.de-DE.pdf) |
-| Entwicklerhandbuch | [Markdown](DEVELOPER_GUIDE.de-DE.md) | [HTML](html/developer-guide.de-DE.html) | [PDF](pdf/developer-guide.de-DE.pdf) |
+| Dokument | Quelle | HTML |
+| --- | --- | --- |
+| Schnellstart | [Markdown](QUICK_START.de-DE.md) | [HTML](html/quick-start.de-DE.html) |
+| Benutzerhandbuch | [Markdown](USER_GUIDE.de-DE.md) | [HTML](html/user-guide.de-DE.html) |
+| Entwicklerhandbuch | [Markdown](DEVELOPER_GUIDE.de-DE.md) | [HTML](html/developer-guide.de-DE.html) |
 
-Alle 18 Handbücher sind als Markdown, eigenständiges HTML und PDF verfügbar. Englische PDFs verwenden US Letter, alle anderen A4.
+Alle 18 Handbücher sind als Markdown und eigenständiges HTML verfügbar.
 
 [Tests und Szenarien](../TESTING.de-DE.md)
 
@@ -24,7 +24,7 @@ Alle 18 Handbücher sind als Markdown, eigenständiges HTML und PDF verfügbar. 
 
 Die Aufnahmen verwenden eine Demo-Engine, temporäre Dateien und isolierte Sitzungen. Echte Übertragungen und die Zwischenablage des Desktops werden nicht gesteuert.
 
-Für den Export werden Python mit Markdown, Graphviz und WeasyPrint benötigt. Die Aufnahmen benötigen zusätzlich die nativen Build-Abhängigkeiten von Gad.
+Für den Export werden Python und Markdown benötigt. Die Aufnahmen benötigen zusätzlich die nativen Build-Abhängigkeiten von Gad.
 
 ```sh
 make docs-captures
@@ -32,4 +32,4 @@ make docs
 make docs-check
 ```
 
-132 captures · 18 HTML · 18 PDF
+138 captures · 18 HTML

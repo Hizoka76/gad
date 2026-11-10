@@ -22,16 +22,24 @@ pub(super) struct Layout {
 }
 /// Recrée l’index seulement après analyse, retrait de demande ou changement explicite d’ordre.
 pub(super) fn layout(state: &mut State) -> Arc<Layout> {
-    let shape = state
-        .jobs
-        .iter()
-        .map(|j| (j.id, j.entries.len()))
-        .collect::<Vec<_>>();
     if let Some(cache) = &state.row_layout {
-        if cache.shape == shape && cache.batches == state.queue_order {
+        if cache.batches == state.queue_order
+            && cache.shape.len() == state.jobs.len()
+            && cache
+                .shape
+                .iter()
+                .zip(&state.jobs)
+                .all(|((id, count), job)| *id == job.id && *count == job.entries.len())
+        {
             return cache.clone();
         }
     }
+    // Capturer la forme seulement quand une reconstruction est réellement nécessaire.
+    let shape = state
+        .jobs
+        .iter()
+        .map(|job| (job.id, job.entries.len()))
+        .collect::<Vec<_>>();
     let mut children: HashMap<Option<Key>, Vec<Key>> = HashMap::new();
     let mut parents = HashMap::new();
     for job in queue::ordered(state) {
@@ -288,17 +296,47 @@ fn validate_dependencies(state: &State, view: &Layout, order: &[Key]) -> Result<
     }
     Ok(())
 }
+/// La plupart des chemins n'appartiennent qu'à une branche : aucune table allouée dans ce cas.
+/// Les collisions réelles conservent un ensemble haché, sans recherche linéaire croissante.
+enum RootSet {
+    Single(Key),
+    Multiple(HashSet<Key>),
+}
+impl RootSet {
+    fn insert(&mut self, root: Key) {
+        match self {
+            Self::Single(previous) if *previous != root => {
+                *self = Self::Multiple(HashSet::from([*previous, root]));
+            }
+            Self::Multiple(roots) => {
+                roots.insert(root);
+            }
+            _ => {}
+        }
+    }
+    fn visit(&self, mut visit: impl FnMut(&Key)) {
+        match self {
+            Self::Single(root) => visit(root),
+            Self::Multiple(roots) => {
+                for root in roots {
+                    visit(root);
+                }
+            }
+        }
+    }
+}
 /// Indexe aussi les destinations contenues dans un dossier d’une autre demande.
 fn dependent_pairs(state: &State, root_of: &HashMap<Key, Key>) -> (Dependencies, Predecessors) {
-    let mut targets: HashMap<&Path, HashSet<Key>> = HashMap::new();
-    let mut directories: HashMap<&Path, HashSet<Key>> = HashMap::new();
+    let mut targets: HashMap<&Path, RootSet> = HashMap::new();
+    let mut directories: HashMap<&Path, RootSet> = HashMap::new();
     fn paths(job: &Job, index: usize) -> [Option<&Path>; 2] {
         [
             Some(job.entries[index].destination.as_path()),
             job.destination_keys
                 .as_ref()
                 .and_then(|keys| keys.get(index))
-                .map(PathBuf::as_path),
+                .map(PathBuf::as_path)
+                .filter(|path| *path != job.entries[index].destination),
         ]
     }
     for job in &state.jobs {
@@ -308,9 +346,17 @@ fn dependent_pairs(state: &State, root_of: &HashMap<Key, Key>) -> (Dependencies,
                     job: job.id,
                     index: Some(i),
                 };
-                targets.entry(path).or_default().insert(key);
+                // Les décisions portent sur les branches : ne pas conserver leurs feuilles.
+                let root = root_of[&key];
+                targets
+                    .entry(path)
+                    .and_modify(|roots| roots.insert(root))
+                    .or_insert(RootSet::Single(root));
                 if entry.kind == "directory" {
-                    directories.entry(path).or_default().insert(key);
+                    directories
+                        .entry(path)
+                        .and_modify(|roots| roots.insert(root))
+                        .or_insert(RootSet::Single(root));
                 }
             }
         }
@@ -324,25 +370,30 @@ fn dependent_pairs(state: &State, root_of: &HashMap<Key, Key>) -> (Dependencies,
                 index: Some(i),
             };
             let root = root_of[&current];
-            let mut related = HashSet::new();
-            for path in paths(job, i).into_iter().flatten() {
-                related.extend(targets.get(path).into_iter().flatten().copied());
-                for parent in path.ancestors().skip(1) {
-                    related.extend(directories.get(parent).into_iter().flatten().copied());
+            // Les ensembles de sortie dédoublonnent déjà les relations entre branches.
+            // Aucun ensemble temporaire de feuilles n'est nécessaire pour chaque fichier.
+            let mut relate = |other: &Key| {
+                if *other == root {
+                    return;
                 }
-            }
-            for other in related {
                 if other.job != job.id {
                     pairs.insert((job.id.min(other.job), job.id.max(other.job)));
                 } else {
-                    let other = root_of[&other];
-                    if other != root {
-                        let (early, late) = if root.index < other.index {
-                            (root, other)
-                        } else {
-                            (other, root)
-                        };
-                        predecessors.entry(late).or_default().insert(early);
+                    let (early, late) = if root.index < other.index {
+                        (root, *other)
+                    } else {
+                        (*other, root)
+                    };
+                    predecessors.entry(late).or_default().insert(early);
+                }
+            };
+            for path in paths(job, i).into_iter().flatten() {
+                if let Some(roots) = targets.get(path) {
+                    roots.visit(&mut relate);
+                }
+                for parent in path.ancestors().skip(1) {
+                    if let Some(roots) = directories.get(parent) {
+                        roots.visit(&mut relate);
                     }
                 }
             }
@@ -563,4 +614,268 @@ fn ancestor_selected(view: &Layout, key: Key, selected: &HashSet<Key>) -> bool {
         parent = view.parents[&p];
     }
     false
+}
+
+#[cfg(test)]
+mod dependency_tests {
+    use super::*;
+    fn fixture(files: usize, shared: bool) -> (State, HashMap<Key, Key>) {
+        let mut jobs = Vec::new();
+        let mut root_of = HashMap::new();
+        for id in 1..=2 {
+            let target = if shared {
+                "/out/common".to_owned()
+            } else {
+                format!("/out/{id}")
+            };
+            let entries = (0..=files).map(|index| {
+                let suffix = if index == 0 { String::new() } else { format!("/f{index}") };
+                json!({"source":format!("/source/{id}{suffix}"),"destination":format!("{target}{suffix}"),"kind":if index==0 {"directory"}else{"file"},"size":0,"copied":0,"verified":0,"state":"waiting","error":""})
+            }).collect::<Vec<_>>();
+            jobs.push(serde_json::from_value(json!({"id":id,"sources":[],"destination":"/out","mode":"copy","verify_md5":false,"state":"waiting","error":"","cancel":false,"policy":"ask","entries":entries})).unwrap());
+            let root = Key {
+                job: id,
+                index: Some(0),
+            };
+            for index in 0..=files {
+                root_of.insert(
+                    Key {
+                        job: id,
+                        index: Some(index),
+                    },
+                    root,
+                );
+            }
+        }
+        (
+            State {
+                jobs,
+                ..State::default()
+            },
+            root_of,
+        )
+    }
+    fn reference_pairs(state: &State, root_of: &HashMap<Key, Key>) -> (Dependencies, Predecessors) {
+        let mut targets: HashMap<&Path, HashSet<Key>> = HashMap::new();
+        let mut directories: HashMap<&Path, HashSet<Key>> = HashMap::new();
+        fn paths(job: &Job, index: usize) -> [Option<&Path>; 2] {
+            [
+                Some(job.entries[index].destination.as_path()),
+                job.destination_keys
+                    .as_ref()
+                    .and_then(|keys| keys.get(index))
+                    .map(PathBuf::as_path),
+            ]
+        }
+        for job in &state.jobs {
+            for (i, entry) in job.entries.iter().enumerate() {
+                for path in paths(job, i).into_iter().flatten() {
+                    let key = Key {
+                        job: job.id,
+                        index: Some(i),
+                    };
+                    targets.entry(path).or_default().insert(key);
+                    if entry.kind == "directory" {
+                        directories.entry(path).or_default().insert(key);
+                    }
+                }
+            }
+        }
+        let mut pairs = HashSet::new();
+        let mut predecessors: HashMap<Key, HashSet<Key>> = HashMap::new();
+        for job in &state.jobs {
+            for (i, _) in job.entries.iter().enumerate() {
+                let current = Key {
+                    job: job.id,
+                    index: Some(i),
+                };
+                let root = root_of[&current];
+                let mut related = HashSet::new();
+                for path in paths(job, i).into_iter().flatten() {
+                    related.extend(targets.get(path).into_iter().flatten().copied());
+                    for parent in path.ancestors().skip(1) {
+                        related.extend(directories.get(parent).into_iter().flatten().copied());
+                    }
+                }
+                for other in related {
+                    if other.job != job.id {
+                        pairs.insert((job.id.min(other.job), job.id.max(other.job)));
+                    } else {
+                        let other = root_of[&other];
+                        if other != root {
+                            let (early, late) = if root.index < other.index {
+                                (root, other)
+                            } else {
+                                (other, root)
+                            };
+                            predecessors.entry(late).or_default().insert(early);
+                        }
+                    }
+                }
+            }
+        }
+        (pairs, predecessors)
+    }
+    #[test]
+    fn branch_dependencies_match_reference_with_aliases_and_duplicate_targets() {
+        fn next(seed: &mut u64) -> usize {
+            *seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+            (*seed >> 32) as usize
+        }
+        let paths = [
+            "/out",
+            "/out/a",
+            "/out/a/f",
+            "/out/a/deep/f",
+            "/out/b",
+            "/out/b/f",
+            "/alias",
+            "/alias/a",
+            "/alias/a/f",
+        ];
+        let mut seed = 0x6ad12345;
+        for case in 0..500 {
+            let (mut state, _) = fixture(36, case % 2 == 0);
+            if case % 5 == 0 {
+                state.jobs.pop();
+            }
+            let mut roots = HashMap::new();
+            for job in &mut state.jobs {
+                let id = job.id;
+                job.entries.truncate(4 + next(&mut seed) % 33);
+                for (index, entry) in job.entries.iter_mut().enumerate() {
+                    entry.destination = paths[next(&mut seed) % paths.len()].into();
+                    entry.kind = if index < 4 || next(&mut seed) % 4 == 0 {
+                        "directory"
+                    } else {
+                        "file"
+                    }
+                    .into();
+                    let root = if index < 4 {
+                        index
+                    } else {
+                        next(&mut seed) % 4
+                    };
+                    roots.insert(
+                        Key {
+                            job: id,
+                            index: Some(index),
+                        },
+                        Key {
+                            job: id,
+                            index: Some(root),
+                        },
+                    );
+                }
+                job.destination_keys = match case % 4 {
+                    0 => None,
+                    1 => Some(
+                        job.entries
+                            .iter()
+                            .map(|entry| entry.destination.clone())
+                            .collect(),
+                    ),
+                    _ => Some(
+                        (0..job.entries.len().saturating_sub(case % 3))
+                            .map(|_| PathBuf::from(paths[next(&mut seed) % paths.len()]))
+                            .collect(),
+                    ),
+                };
+            }
+            assert_eq!(
+                dependent_pairs(&state, &roots),
+                reference_pairs(&state, &roots),
+                "case {case}"
+            );
+        }
+    }
+    #[test]
+    fn repeated_targets_keep_all_predecessors_between_branches() {
+        let (mut state, _) = fixture(64, false);
+        state.jobs.truncate(1);
+        let mut roots = HashMap::new();
+        for (index, entry) in state.jobs[0].entries.iter_mut().enumerate() {
+            entry.destination = "/out/shared".into();
+            roots.insert(
+                Key {
+                    job: 1,
+                    index: Some(index),
+                },
+                Key {
+                    job: 1,
+                    index: Some(index % 4),
+                },
+            );
+        }
+        let result = dependent_pairs(&state, &roots);
+        assert_eq!(result, reference_pairs(&state, &roots));
+        assert!(result.0.is_empty());
+        for late in 1..4 {
+            let expected = (0..late)
+                .map(|index| Key {
+                    job: 1,
+                    index: Some(index),
+                })
+                .collect::<HashSet<_>>();
+            assert_eq!(
+                result.1[&Key {
+                    job: 1,
+                    index: Some(late)
+                }],
+                expected
+            );
+        }
+    }
+    #[test]
+    #[ignore = "benchmark explicite du graphe de dépendances"]
+    fn benchmark_dependency_graph() {
+        for shared in [false, true] {
+            let (state, roots) = fixture(5000, shared);
+            for trial in 0..3 {
+                let start = std::time::Instant::now();
+                for _ in 0..5 {
+                    std::hint::black_box(dependent_pairs(std::hint::black_box(&state), &roots));
+                }
+                println!(
+                    "dependency_graph shared={shared} trial={trial} elapsed_ms={:.3}",
+                    start.elapsed().as_secs_f64() * 1000.0
+                );
+            }
+        }
+    }
+    #[test]
+    #[ignore = "benchmark explicite de la construction et du cache de l'arbre"]
+    fn benchmark_row_layout() {
+        let (mut state, _) = fixture(5000, false);
+        for trial in 0..3 {
+            let start = std::time::Instant::now();
+            for _ in 0..5 {
+                state.row_layout = None;
+                std::hint::black_box(layout(std::hint::black_box(&mut state)));
+            }
+            println!(
+                "row_layout cold trial={trial} elapsed_ms={:.3}",
+                start.elapsed().as_secs_f64() * 1000.0
+            );
+        }
+        let mut template = state.jobs[0].clone();
+        template.entries.clear();
+        let mut history = State::default();
+        for id in 1..=2000 {
+            let mut job = template.clone();
+            job.id = id;
+            history.jobs.push(job);
+        }
+        layout(&mut history);
+        for trial in 0..3 {
+            let start = std::time::Instant::now();
+            for _ in 0..1000 {
+                std::hint::black_box(layout(std::hint::black_box(&mut history)));
+            }
+            println!(
+                "row_layout cached trial={trial} elapsed_ms={:.3}",
+                start.elapsed().as_secs_f64() * 1000.0
+            );
+        }
+    }
 }

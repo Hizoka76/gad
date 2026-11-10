@@ -35,23 +35,26 @@ pub(super) fn physical(node: &Path, depth: usize) -> Option<BTreeSet<String>> {
 }
 /// Cherche le périphérique d’un chemin ou de son premier parent existant,
 /// notamment lorsque la destination n’a pas encore été créée.
-fn path_device(path: &Path) -> Option<u64> {
-    let mut path = path;
-    loop {
-        match fs::symlink_metadata(path) {
-            Ok(meta) => return Some(meta.dev()),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => path = path.parent()?,
-            Err(_) => return None,
-        }
+fn path_device(path: &Path, cache: &mut std::collections::HashMap<PathBuf, u64>) -> Option<u64> {
+    if let Some(dev) = cache.get(path) {
+        return Some(*dev);
     }
+    let dev = match fs::symlink_metadata(path) {
+        Ok(meta) => meta.dev(),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => path_device(path.parent()?, cache)?,
+        Err(_) => return None,
+    };
+    cache.insert(path.to_owned(), dev);
+    Some(dev)
 }
 /// Réunit les disques des sources et destinations, y compris les montages imbriqués.
 /// Une seule résolution incertaine rend l’ensemble inconnu pour le parallélisme.
 pub(super) fn disks_for_entries(entries: &[Entry]) -> Disks {
     let mut devices = BTreeSet::new();
+    let mut cache = std::collections::HashMap::new();
     for entry in entries {
-        devices.insert(path_device(&entry.source)?);
-        devices.insert(path_device(&entry.destination)?);
+        devices.insert(path_device(&entry.source, &mut cache)?);
+        devices.insert(path_device(&entry.destination, &mut cache)?);
     }
     let mut result = BTreeSet::new();
     for dev in devices {
@@ -171,6 +174,9 @@ impl Engine {
     pub(super) fn release_worker(&self, id: u64) {
         let mut state = self.shared.state.lock().unwrap();
         state.active.remove(&id);
+        if let Some(job) = state.jobs.iter_mut().find(|job| job.id == id) {
+            job.clear_directory_index();
+        }
         self.shared.limiter.lock().unwrap().forget(id);
         drop(state);
         self.shared.wake.notify_all();

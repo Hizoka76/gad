@@ -70,11 +70,10 @@ def main():
             for capture in manifests[guide.language]["captures"]:
                 encoded = base64.b64encode((DOCS / "images" / guide.language / capture["file"]).read_bytes()).decode()
                 assert encoded in html, f"Capture exportée périmée : {capture['file']}"
-        assert (DOCS / "pdf" / (slug + ".pdf")).read_bytes().startswith(b"%PDF")
     if errors:
         raise SystemExit("\n".join(errors))
     capture_count=sum(len(manifest["captures"]) for manifest in manifests.values())
-    print(f"Documentation vérifiée : liens, ancres, {capture_count} captures et {len(GUIDES)*2} exports ({len(LANGUAGES)} langues).")
+    print(f"Documentation vérifiée : liens, ancres, {capture_count} captures et {len(GUIDES)} exports HTML ({len(LANGUAGES)} langues).")
 
 
 if __name__ == "__main__":

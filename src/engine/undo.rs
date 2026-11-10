@@ -41,6 +41,10 @@ impl Stamp {
     pub(super) fn read(path: &Path) -> Result<Self, String> {
         let m = fs::symlink_metadata(path)
             .map_err(|e| format!("{} : {}", path.display(), reconnect::io_error(e)))?;
+        Self::from_metadata(path, &m)
+    }
+    /// Réutilise une capture faite dans la même étape, sans retirer les revalidations suivantes.
+    pub(super) fn from_metadata(path: &Path, m: &fs::Metadata) -> Result<Self, String> {
         Ok(Self {
             dev: m.dev(),
             ino: m.ino(),

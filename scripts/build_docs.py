@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Exporte les guides multilingues en HTML autonome et PDF paginé."""
+"""Exporte les guides multilingues en HTML autonome."""
 import argparse
 import base64
 import html
 import json
 import re
-import shutil
-import subprocess
 from pathlib import Path
 from urllib.parse import urlsplit
 from doc_catalog import GUIDES, LABELS, LANGUAGES, AUDIENCES, peers, runtime_catalog
@@ -69,35 +67,25 @@ def render_body(source, guide):
 
 
 def page_html(guide, body, css):
-    """HTML et navigation localisés ; les PDF américains utilisent le format US Letter."""
+    """HTML autonome et navigation localisés."""
     labels = LABELS[guide.language]
     links = [(item.slug + ".html", item.title) for item in GUIDES if item.language == guide.language]
     links.extend((translated.slug + ".html",LABELS[translated.language]["language"]) for translated in peers(guide))
     nav = ''.join(f'<a href="{href}">{html.escape(label)}</a>' for href, label in links)
     if guide.audience == "quick":
         css += "\n@media print { .cover {min-height:0;padding:0 0 5mm;margin-bottom:5mm;break-after:auto;border-bottom:1px solid #dce6ed;} .cover-icon {width:17mm;height:17mm;float:right;} .cover-meta {display:none;} .cover-subtitle {font-size:12pt;} .cover h1 {font-size:25pt;} .chapter {break-before:auto;margin:0 0 5mm;} h2 {font-size:16pt;margin-top:5mm;} figure img {max-height:65mm;} }\n"
-    if guide.language == "en-US":
-        css += "\n@page { size: Letter; }\n"
     return f'<!doctype html><html lang="{guide.language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="author" content="{labels["project"]}"><title>{html.escape("Gad — " + guide.title)}</title><style>{css}</style></head><body><nav>{nav}</nav><main>{body}</main></body></html>'
 
 
 def main(guides=GUIDES):
     """Exporte les trois guides de chaque langue, sans modifier l’application."""
-    renderer = shutil.which("weasyprint")
-    private_renderer = ROOT / "target/docs-tools/bin/weasyprint"
-    if not renderer and private_renderer.is_file():
-        renderer = str(private_renderer)
-    if not renderer:
-        raise SystemExit("WeasyPrint requis : installer le paquet weasyprint ou suivre docs/README.md.")
     css = (DOCS / "tools/documentation.css").read_text()
-    for directory in (DOCS / "html", DOCS / "pdf"):
-        directory.mkdir(exist_ok=True)
+    (DOCS / "html").mkdir(exist_ok=True)
     for guide in guides:
         body = render_body(DOCS / guide.source, guide)
         output = DOCS / "html" / (guide.slug + ".html")
         output.write_text(page_html(guide, body, css))
-        subprocess.run([renderer, str(output), str(DOCS / "pdf" / (guide.slug + ".pdf"))], check=True)
-        print(f"Export HTML/PDF : {guide.slug}")
+        print(f"Export HTML : {guide.slug}")
     (DOCS / "catalog.json").write_text(json.dumps(runtime_catalog(),ensure_ascii=False,indent=2)+"\n")
 
 

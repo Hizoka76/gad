@@ -1,4 +1,4 @@
-"""Vérifie le rendu multilingue sans installer Markdown, WeasyPrint ni lancer de capture."""
+"""Vérifie le rendu multilingue sans installer Markdown ni lancer de capture."""
 import contextlib
 import io
 import json
@@ -20,7 +20,7 @@ class DocumentationTest(unittest.TestCase):
         version=tomllib.loads((root/'Cargo.toml').read_text())['package']['version']
         locked=tomllib.loads((root/'Cargo.lock').read_text())['package']
         self.assertEqual(next(p['version'] for p in locked if p['name']=='gad'),version)
-        self.assertEqual(CAPTURE_COUNT, 22)
+        self.assertEqual(CAPTURE_COUNT, 23)
         for guide in GUIDES:
             text=(root/'docs'/guide.source).read_text()
             self.assertIn(version,text)
@@ -31,7 +31,7 @@ class DocumentationTest(unittest.TestCase):
                 self.assertIn('{#preparing-transfers}',text)
                 self.assertNotIn('native/window_simulation.cpp',text)
             if guide.audience=='user':
-                for image in ('20-options-fin-de-file.png','21-options-debits.png','22-preparation.png'):
+                for image in ('20-completion-options.png','21-speed-options.png','22-preparation.png','23-exclusions.png'):
                     self.assertIn(f'images/{guide.language}/{image}',text)
 
     def test_catalog_has_both_audiences_in_each_language(self):
@@ -42,13 +42,12 @@ class DocumentationTest(unittest.TestCase):
             self.assertEqual(peer(guide).audience, guide.audience)
             self.assertNotEqual(peer(guide).language, guide.language)
 
-    def test_us_page_has_english_navigation_and_letter_paper(self):
+    def test_us_page_has_english_navigation(self):
         guide = next(g for g in GUIDES if g.language == "en-US" and g.audience == "user")
         page = build_docs.page_html(guide, "<p>Contents</p>", "@page {size:A4;}")
         self.assertIn('lang="en-US"', page)
         self.assertIn('href="developer-guide.en-US.html"', page)
         self.assertIn('href="guide-utilisateur.html">Français', page)
-        self.assertIn("size: Letter", page)
         self.assertIn("Gad — User Guide", page)
 
     def test_french_page_keeps_its_language_and_a4(self):
@@ -137,17 +136,13 @@ class DocumentationTest(unittest.TestCase):
             for guide in GUIDES:
                 (docs / guide.source).write_text("# Guide")
 
-            def render_pdf(arguments, **kwargs):
-                self.assertIsInstance(arguments, list)
-                self.assertEqual(kwargs, {"check": True})
-                Path(arguments[2]).write_bytes(b"%PDF-1.7\n")
-
-            with patch.object(build_docs, "DOCS", docs), patch.object(build_docs, "render_body", return_value="<p>Guide</p>"), patch.object(build_docs.shutil, "which", return_value="/mock/weasyprint"), patch.object(build_docs.subprocess, "run", side_effect=render_pdf) as run, contextlib.redirect_stdout(io.StringIO()):
+            with patch.object(build_docs, "DOCS", docs), patch.object(build_docs, "render_body", return_value="<p>Guide</p>"), patch("subprocess.run") as run, contextlib.redirect_stdout(io.StringIO()):
                 build_docs.main()
-            self.assertEqual(run.call_count, len(GUIDES))
+            run.assert_not_called()
             for guide in GUIDES:
                 self.assertIn(f'lang="{guide.language}"', (docs / "html" / (guide.slug + ".html")).read_text())
-                self.assertTrue((docs / "pdf" / (guide.slug + ".pdf")).read_bytes().startswith(b"%PDF"))
+            self.assertFalse((docs / "pdf").exists())
+
 
 
 if __name__ == "__main__":

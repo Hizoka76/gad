@@ -98,7 +98,7 @@ extern "C" int sc_gui(int argc, char **argv) {
     if (args.size() == 3 && args[1] == "--export-icons") {if(!profile.isNull())return 2;return exportIcons(args[2]);}
     if (args.contains("--help") || args.contains("-h")) {
         std::puts(qPrintable(GAD_TR("Gad copies. — File transfer manager for KDE\n  gad\n  gad --background\n  gad --paste FOLDER\n  gad --copy SOURCE… --to FOLDER\n  gad --move SOURCE… --to FOLDER\n  gad --status\n  gad --smoke-test\n  Add --md5 to verify file contents.")));
-        std::puts("  gad --paste-current\n  gad --paste-context URL...\n  gad --dolphin [URL...]\n  gad --profile NAME [--copy SOURCE... --to FOLDER | --move SOURCE... --to FOLDER | --paste FOLDER]\n  gad --configure [--md5|--no-md5] [--properties|--no-properties]\n    [--verify-fast-move|--no-verify-fast-move] [--verify-space|--no-verify-space] [--keep-history|--no-keep-history]\n    [--resume-interrupted|--no-resume-interrupted] [--include-hidden|--no-include-hidden]\n    [--allow-duplication|--no-allow-duplication] [--autostart|--no-autostart]\n    [--dolphin-ctrl-v|--no-dolphin-ctrl-v]\n    [--krusader-ctrl-v|--no-krusader-ctrl-v]\n    [--konqueror-ctrl-v|--no-konqueror-ctrl-v] [--language LOCALE]\n    [--rate-limit MIB_PER_SECOND] [--request-rate-limit MIB_PER_SECOND] [--exclude-folder PATTERN] [--exclude-file PATTERN]\n    [--completion-action none|notify|quit|suspend|poweroff] [--completion-delay SECONDS] [--clear-exclusions] [--conflict-policy ask|skip|newer|rename]");
+        std::puts("  gad --paste-current\n  gad --paste-context URL...\n  gad --dolphin [URL...]\n  gad --profile NAME [--copy SOURCE... --to FOLDER | --move SOURCE... --to FOLDER | --paste FOLDER]\n  gad --configure [--md5|--no-md5] [--properties|--no-properties]\n    [--verify-fast-move|--no-verify-fast-move] [--verify-space|--no-verify-space] [--keep-history|--no-keep-history]\n    [--progress-message|--no-progress-message]\n    [--resume-interrupted|--no-resume-interrupted] [--include-hidden|--no-include-hidden]\n    [--allow-duplication|--no-allow-duplication] [--autostart|--no-autostart]\n    [--dolphin-ctrl-v|--no-dolphin-ctrl-v]\n    [--krusader-ctrl-v|--no-krusader-ctrl-v]\n    [--konqueror-ctrl-v|--no-konqueror-ctrl-v] [--language LOCALE]\n    [--rate-limit MIB_PER_SECOND] [--request-rate-limit MIB_PER_SECOND] [--exclude-folder PATTERN] [--exclude-file PATTERN]\n    [--completion-action none|notify|quit|suspend|poweroff] [--completion-delay SECONDS] [--clear-exclusions] [--conflict-policy ask|skip|newer|rename]");
         std::printf("  --properties: %s\n",qPrintable(GAD_TR("Verify properties")));return 0;
     }
     const bool smoke = args.size() == 2 && args[1] == "--smoke-test";
@@ -196,7 +196,7 @@ extern "C" int sc_gui(int argc, char **argv) {
     QLocalServer::removeServer(name);
     QLocalServer server; server.setSocketOptions(QLocalServer::UserAccessOption);
     if (!server.listen(name)) { std::fprintf(stderr, "%s\n", qPrintable(server.errorString())); return 1; }
-    Window window;
+    Window window(initial["command"]!=Protocol::Command::Show);
     // Chaque connexion transporte une ligne JSON, avec une limite de taille avant décodage.
     QObject::connect(&server, &QLocalServer::newConnection, &window, [&] {
         while (auto *socket = server.nextPendingConnection()) {

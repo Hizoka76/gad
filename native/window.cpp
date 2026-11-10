@@ -14,7 +14,7 @@
 #endif
 
 /// Construit les contrôles, menus et connexions de signaux ; les choix persistants sont transmis au moteur.
-Window::Window(){
+Window::Window(bool background):deferHiddenTree(background){
     I18n::bindProperty(this,"windowTitle",[]{return GAD_TR("Gad - Advanced Duplication Manager");});
     setWindowIcon(applicationIcon());
     setMinimumSize(1100,600);
@@ -40,35 +40,51 @@ Window::Window(){
     destRow->addWidget(destination, 1);
     auto *browse = I18n::localized(new QPushButton(QIcon::fromTheme("folder-open"),QString()),"text",[=]{return GAD_TR("Browse…");});
     destRow->addWidget(browse);
+    I18n::bindProperty(browse,"toolTip",[]{return GAD_TR("Choose the destination folder.");});
     connect(browse, &QPushButton::clicked, this, [this] {
         const auto path = QFileDialog::getExistingDirectory(this, GAD_TR("Copy destination"), destination->text());
         if (!path.isEmpty()) destination->setText(path);
     });
+    // Un seul bouton expose les trois modes d’ajout ; les actions restent traduites à chaud.
+    auto *addElements=I18n::localized(new QPushButton(QIcon::fromTheme("list-add"),QString()),"text",[]{return GAD_TR("Add items");});
+    addElements->setObjectName("addItemsButton");
+    I18n::bindProperty(addElements,"toolTip",[]{return GAD_TR("Add files, a folder or clipboard files to the transfer list.");});
+    auto *sourceMenu=new QMenu(addElements);sourceMenu->setObjectName("sourceMenu");sourceMenu->setToolTipsVisible(true);
+    addElements->setMenu(sourceMenu);actions->addWidget(addElements);
     auto button = [&](std::function<QString()> text, const QString &icon, auto fn) {
-        auto *b = I18n::localized(new QPushButton(QIcon::fromTheme(icon),QString()),"text",text); actions->addWidget(b); connect(b, &QPushButton::clicked, this, fn); return b;
+        auto *action=I18n::localized(sourceMenu->addAction(QIcon::fromTheme(icon),QString()),"text",text);
+        connect(action,&QAction::triggered,this,fn);return action;
     };
-    button([]{return GAD_TR("Add files…");}, "list-add", [this] {
+    auto *addFiles=button([]{return GAD_TR("Add files…");}, "list-add", [this] {
         const auto files = QFileDialog::getOpenFileNames(this, GAD_TR("Files to copy")); if (!files.isEmpty()) enqueue(files);
     });
-    button([]{return GAD_TR("Add folder…");}, "folder-new", [this] {
+    auto *addFolder=button([]{return GAD_TR("Add folder…");}, "folder-new", [this] {
         const auto dir = QFileDialog::getExistingDirectory(this, GAD_TR("Folder to copy")); if (!dir.isEmpty()) enqueue({dir});
     });
-    auto *paste = button([]{return GAD_TR("Paste here");}, "edit-paste", [this] { pasteInto(destination->text()); });
+    addFiles->setObjectName("addFilesAction");addFiles->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_O));addAction(addFiles);
+    addFolder->setObjectName("addFolderAction");addFolder->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_O));addAction(addFolder);
+    I18n::bindProperty(addFiles,"toolTip",[]{return GAD_TR("Choose files to add to the transfer list.");});
+    I18n::bindProperty(addFolder,"toolTip",[]{return GAD_TR("Add a folder and its contents to the transfer list.");});
+    auto *paste = button([]{return GAD_TR("Clipboard files");}, "edit-paste", [this] { pasteInto(destination->text()); });
+    paste->setObjectName("clipboardFilesAction");
     paste->setShortcut(QKeySequence::Paste);
-    actions->addStretch();
-    panels->addWidget(sourceBox, 1);
+    addAction(paste);
+    I18n::bindProperty(paste,"toolTip",[]{return GAD_TR("Add files copied or cut to the clipboard, using the current destination.");});
+    sourceBox->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Preferred);
+    panels->addWidget(sourceBox);
     panels->addWidget(destinationBox, 1);
     // Une seule boîte persistante conserve les contrôles, les connexions et les réglages immédiats.
     auto *settingsBox=I18n::localized(new QGroupBox,"title",[]{return GAD_TR("Settings");});settingsBox->setObjectName("settingsBox");
     auto *settingsRow=new QHBoxLayout(settingsBox);
     auto *settingsButton=I18n::localized(new QToolButton,"text",[]{return GAD_TR("Options…");});settingsButton->setObjectName("settingsButton");
+    I18n::bindProperty(settingsButton,"toolTip",[]{return GAD_TR("Configure transfer options, shortcuts, speed limits and completion actions.");});
     settingsButton->setIcon(QIcon::fromTheme("configure",style()->standardIcon(QStyle::SP_FileDialogDetailedView)));settingsButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     auto *settingsDialog=I18n::localized(new QDialog(this),"windowTitle",[]{return GAD_TR("Settings");});settingsDialog->setObjectName("settingsDialog");settingsDialog->setWindowModality(Qt::WindowModal);
     auto *dialogLayout=new QVBoxLayout(settingsDialog);dialogLayout->setContentsMargins(16,16,16,16);dialogLayout->setSpacing(12);
     auto *settingsPanel=new QWidget;settingsPanel->setObjectName("settingsPanel");auto *settingsLayout=new QVBoxLayout(settingsPanel);settingsLayout->setSpacing(12);
     auto *settingsScroll=new QScrollArea;settingsScroll->setWidgetResizable(true);settingsScroll->setFrameShape(QFrame::NoFrame);settingsScroll->setWidget(settingsPanel);
     auto *settingsTabs=new QTabWidget;settingsTabs->setObjectName("settingsTabs");settingsTabs->addTab(settingsScroll,QString());
-    I18n::onChange(settingsTabs,"tabs",[settingsTabs]{settingsTabs->setTabText(0,GAD_TR("Settings"));if(settingsTabs->count()>1)settingsTabs->setTabText(1,GAD_TR("Shortcuts"));if(settingsTabs->count()>2)settingsTabs->setTabText(2,GAD_TR("Speed limits"));if(settingsTabs->count()>3)settingsTabs->setTabText(3,GAD_TR("Batch completion"));});
+    I18n::onChange(settingsTabs,"tabs",[settingsTabs]{settingsTabs->setTabText(0,GAD_TR("Settings"));if(settingsTabs->count()>1)settingsTabs->setTabText(1,GAD_TR("Shortcuts"));if(settingsTabs->count()>2)settingsTabs->setTabText(2,GAD_TR("Speed limits"));if(settingsTabs->count()>3)settingsTabs->setTabText(3,GAD_TR("Batch completion"));if(settingsTabs->count()>4)settingsTabs->setTabText(4,GAD_TR("Exclusions"));});
     // Les réglages de débit et de fin de lot disposent chacun d’une page défilante.
     auto *ratesPanel=new QWidget;ratesPanel->setObjectName("ratesPanel");auto *ratesLayout=new QVBoxLayout(ratesPanel);ratesLayout->setSpacing(12);
     auto *ratesScroll=new QScrollArea;ratesScroll->setWidgetResizable(true);ratesScroll->setFrameShape(QFrame::NoFrame);ratesScroll->setWidget(ratesPanel);
@@ -156,6 +172,11 @@ Window::Window(){
     verifyFastMove=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Verify fast moves");});verifyFastMove->setObjectName("verifyFastMove");
     I18n::bindProperty(verifyFastMove,"toolTip",[]{return GAD_TR("After a local rename, checks identity, type, size, modification time, permissions, owner/group, symbolic links, the complete tree and removal of the original path.\nDoes not read file contents; MD5 remains a separate option that uses the copy path.\nA failed check keeps the moved result and its restoration journal.\nApplies to new requests and is saved in profiles.");});
     verifyFastMove->setChecked(QSettings().value("verifyFastMove",false).toBool());checks->addWidget(commandOption(verifyFastMove,"--verify-fast-move / --no-verify-fast-move"),5,0,1,2);
+    progressMessage=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Show transfer progress in KDE");});progressMessage->setObjectName("progressMessage");
+    I18n::bindProperty(progressMessage,"toolTip",[]{return GAD_TR("Shows the KDE progress message, including when Gad is hidden.\nDisabling it hides the message without pausing or canceling transfers.");});
+    progressMessage->setChecked(QSettings().value("progressMessage",true).toBool());checks->addWidget(commandOption(progressMessage,"--progress-message / --no-progress-message"),6,0,1,2);
+    connect(progressMessage,&QCheckBox::toggled,this,[this](bool visible){handle({{"command",Protocol::Command::Configure},{"gui_settings",QJsonObject{{"progressMessage",visible}}}});});
+
     engine({{"command",Protocol::Command::Configure},{"verify_fast_move",verifyFastMove->isChecked()}});
     connect(verifyFastMove,&QCheckBox::toggled,this,[this](bool enabled){const auto result=handle({{"command",Protocol::Command::Configure},{"verify_fast_move",enabled}});if(result.contains("error")){QSignalBlocker blocker(verifyFastMove);verifyFastMove->setChecked(!enabled);error(result["error"].toString());}});
     // Les préférences de sélection sont figées dans chaque requête, avant une éventuelle résolution KIO.
@@ -184,11 +205,7 @@ Window::Window(){
     conflictPolicy->setCurrentIndex(qMax(0,conflictPolicy->findData(QSettings().value("conflictPolicy","ask"))));
     engine({{"command",Protocol::Command::Configure},{"conflict_policy",conflictPolicy->currentData().toString()}});
     connect(conflictPolicy,qOverload<int>(&QComboBox::currentIndexChanged),this,[this]{const auto result=handle({{"command",Protocol::Command::Configure},{"conflict_policy",conflictPolicy->currentData().toString()}});if(result.contains("error")){QSignalBlocker blocker(conflictPolicy);conflictPolicy->setCurrentIndex(qMax(0,conflictPolicy->findData(QSettings().value("conflictPolicy","ask"))));error(result["error"].toString());}});
-    auto *exclusionsButton=I18n::localized(new QPushButton(QIcon::fromTheme("view-filter",style()->standardIcon(QStyle::SP_FileDialogContentsView)),QString()),"text",[]{return GAD_TR("Exclusions…");});exclusionsButton->setObjectName("exclusionsButton");
-    I18n::bindProperty(exclusionsButton,"toolTip",[]{return GAD_TR("Choose folder and file name patterns to exclude.\nExcluded folders are not explored.\nExcluded items stay at the source during moves.");});
-    connect(exclusionsButton,&QPushButton::clicked,this,[this]{showExclusions();});selectionOptions->addWidget(exclusionsButton);
-    selectionOptions->addWidget(commandHint("exclusions","--exclude-folder PATTERN / --exclude-file PATTERN / --clear-exclusions"));
-    exclusionSummary=new QLabel;exclusionSummary->setObjectName("exclusionSummary");exclusionSummary->setTextFormat(Qt::PlainText);selectionOptions->addWidget(exclusionSummary);settingsLayout->addLayout(selectionOptions);
+    exclusionSummary=new QLabel;exclusionSummary->setObjectName("exclusionSummary");exclusionSummary->setTextFormat(Qt::PlainText);settingsLayout->addLayout(selectionOptions);
     I18n::onChange(exclusionSummary,"rules",[this]{updateExclusionSummary();});
     const auto exclusionsConfigured=engine({{"command",Protocol::Command::Configure},{"exclusions",exclusionRules}});
     if(exclusionsConfigured.contains("error")){const auto message=exclusionsConfigured["error"].toString();QTimer::singleShot(0,this,[this,message]{error(message);});}
@@ -302,7 +319,7 @@ Window::Window(){
     connect(rowOpenFolder,&QAction::triggered,this,&Window::openSelectedFolders);
     connect(rowLaunchFile,&QAction::triggered,this,&Window::launchSelectedFile);
     rowMenu->addSeparator();
-    rowSelectRequest=I18n::localized(rowMenu->addAction(QString()),"text",[=]{return GAD_TR("Select entire request");});rowSelectRequest->setObjectName("rowSelectRequest"); rowSelectRequest->setIcon(QIcon::fromTheme("edit-select-all",style()->standardIcon(QStyle::SP_DialogApplyButton)));
+    rowSelectRequest=I18n::localized(rowMenu->addAction(QString()),"text",[=]{return GAD_TR("Select entire batch");});rowSelectRequest->setObjectName("rowSelectRequest"); rowSelectRequest->setIcon(QIcon::fromTheme("edit-select-all",style()->standardIcon(QStyle::SP_DialogApplyButton)));
     connect(rowSelectRequest,&QAction::triggered,this,[this]{
         QSet<qint64> ids;for(auto *item:tree->selectedItems())ids.insert(item->data(0,Qt::UserRole).toLongLong());
         for(const auto id:ids) {
@@ -400,6 +417,7 @@ Window::Window(){
     heading->addWidget(conflictTitle,1);
     auto *locate = I18n::localized(new QPushButton(QIcon::fromTheme("edit-find"),QString()),"text",[=]{return GAD_TR("Show file in list");});
     locate->setObjectName("locateConflict");
+    I18n::bindProperty(locate,"toolTip",[]{return GAD_TR("Select the file awaiting conflict resolution in the list.");});
     connect(locate,&QPushButton::clicked,this,[this] {
         const auto id=conflictJob; const int index=conflictIndex;
         // Changer le filtre peut rafraîchir l’état : retrouver l’item ensuite, par son identifiant stable.
@@ -434,29 +452,14 @@ Window::Window(){
     auto *footer = new QHBoxLayout;
     auto *about = I18n::localized(new QPushButton(QIcon::fromTheme("help-about", style()->standardIcon(QStyle::SP_MessageBoxInformation)),QString()),"text",[=]{return GAD_TR("About");});
     about->setObjectName("aboutButton");
+    I18n::bindProperty(about,"toolTip",[]{return GAD_TR("Show the version, license and documentation.");});
     connect(about, &QPushButton::clicked, this, [this] { showAbout(); });
     auto *errorReport=I18n::localized(new QPushButton(QIcon::fromTheme("dialog-warning"),QString()),"text",[=]{return GAD_TR("Error report…");});errorReport->setObjectName("errorReportButton");
+    I18n::bindProperty(errorReport,"toolTip",[]{return GAD_TR("View transfer errors, retry failed files or export the report.");});
     connect(errorReport,&QPushButton::clicked,this,&Window::showErrorReport);
-    // La préférence ne redémarre jamais le moteur : les transferts continuent normalement.
-    auto *language = new QComboBox;language->setObjectName("languageSelector");
-    I18n::bindProperty(language,"accessibleName",[=]{return GAD_TR("Language");});
-    // Les drapeaux sont embarqués pour rester disponibles sans thème ni fichiers externes.
-    language->setIconSize(QSize(24,24));
-    language->addItem(QIcon::fromTheme("computer",style()->standardIcon(QStyle::SP_ComputerIcon)),GAD_TR("System"),"system");
-    for(const auto &entry:I18n::languages()) {
-        const auto icon=entry.flag.isEmpty()?QIcon::fromTheme("preferences-desktop-locale",style()->standardIcon(QStyle::SP_FileDialogDetailedView)):QIcon(entry.flag);
-        language->addItem(icon,entry.name,entry.locale);
-    }
+    // Le choix est indépendant des widgets des options : profils, CLI et menu partagent cet état.
     const auto savedLanguage=QSettings().value("language","system").toString();
-    language->setCurrentIndex(qMax(0,language->findData(savedLanguage=="system"?savedLanguage:I18n::resolve(savedLanguage))));
-    I18n::bindProperty(language,"toolTip",[=]{return GAD_TR("The language changes immediately without interrupting transfers.");});
-    connect(language,&QComboBox::currentIndexChanged,this,[language](int){
-        const auto choice=language->currentData().toString();QSettings().setValue("language",choice);
-        I18n::initialize(choice);
-    });
-    auto *languageLabel=I18n::localized(new QLabel,"text",[]{return GAD_TR("Language");});languageLabel->setBuddy(language);
-    auto *languageRow=new QHBoxLayout;languageRow->addWidget(languageLabel);languageRow->addWidget(language,1);settingsLayout->addLayout(languageRow);
-    settingsLayout->addWidget(commandHint("language","--language LOCALE (system / fr_FR / en_US / …)"));
+    languageChoice=savedLanguage=="system"?savedLanguage:I18n::resolve(savedLanguage);
     setupCompletion(completionLayout,controls,settingsDialog);
     connect(settingsButton,&QToolButton::clicked,this,[settingsDialog]{settingsDialog->show();settingsDialog->raise();settingsDialog->activateWindow();});
     auto *shortcuts=new QWidget;shortcuts->setObjectName("shortcutsPanel");auto *shortcutOptions=new QVBoxLayout(shortcuts);shortcutOptions->setContentsMargins(16,16,16,16);shortcutOptions->setSpacing(12);settingsTabs->addTab(shortcuts,GAD_TR("Shortcuts"));
@@ -487,7 +490,13 @@ Window::Window(){
     });
     shortcutOptions->addStretch();settingsLayout->addStretch();ratesLayout->addStretch();completionLayout->addStretch();
     settingsTabs->addTab(ratesScroll,GAD_TR("Speed limits"));settingsTabs->addTab(completionScroll,GAD_TR("Batch completion"));
+    auto *exclusionsPanel=new QWidget;exclusionsPanel->setObjectName("exclusionsPanel");
+    auto *exclusionsLayout=new QVBoxLayout(exclusionsPanel);setupExclusions(exclusionsLayout);
+    exclusionsLayout->addWidget(commandHint("exclusions","--exclude-folder PATTERN / --exclude-file PATTERN / --clear-exclusions"));
+    exclusionsLayout->addWidget(exclusionSummary);
+    settingsTabs->addTab(exclusionsPanel,GAD_TR("Exclusions"));
     auto *diagnosticButton=I18n::localized(new QPushButton(QIcon::fromTheme("dialog-information",style()->standardIcon(QStyle::SP_MessageBoxInformation)),QString()),"text",[]{return GAD_TR("Transfer diagnostics…");});diagnosticButton->setObjectName("diagnosticsButton");connect(diagnosticButton,&QPushButton::clicked,this,&Window::showDiagnostics);
+    I18n::bindProperty(diagnosticButton,"toolTip",[]{return GAD_TR("Explain transfer progress and waiting times.");});
     footer->addWidget(about);footer->addWidget(errorReport);footer->addWidget(diagnosticButton);footer->addStretch();footer->addWidget(summary,1);
     layout->addLayout(footer);
     setCentralWidget(body);
@@ -504,6 +513,10 @@ Window::Window(){
     });
     trayMenu->addSeparator();
     auto *quit = I18n::localized(trayMenu->addAction(QString()),"text",[=]{return GAD_TR("Quit Gad");}); quit->setIcon(QIcon::fromTheme("application-exit",style()->standardIcon(QStyle::SP_DialogCloseButton)));
+    quit->setObjectName("quitAction");quit->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q));addAction(quit);
+    // Masquer la fenêtre laisse les transferts actifs, indépendamment de la présence du systray.
+    auto *hideWindow=new QShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_W),this);
+    hideWindow->setObjectName("hideWindowShortcut");connect(hideWindow,&QShortcut::activated,this,&QWidget::hide);
     connect(quit, &QAction::triggered, this, [this] { quitRequested = true; close(); quitRequested = false; });
     tray->setContextMenu(trayMenu);
     connect(tray, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
@@ -516,18 +529,57 @@ Window::Window(){
     desktopTransfers = new TransferNotifications([this](const QString &action) {
         controlDesktopTransfers(action);
     },this,QGuiApplication::platformName()!="offscreen" && QGuiApplication::platformName()!="minimal");
+    desktopTransfers->setObjectName("desktopTransfers");desktopTransfers->setProgressMessage(progressMessage->isChecked());
     auto *timer = new QTimer(this); timer->setInterval(400); connect(timer, &QTimer::timeout, this, [this] { refresh(); }); timer->start();
     connect(tray,&QSystemTrayIcon::messageClicked,this,[this]{showMainWindow();if(auto *dialog=findChild<QDialog *>("completionCountdown")){dialog->show();dialog->raise();dialog->activateWindow();}});
     qApp->installEventFilter(this);
-    I18n::onChange(language,"systemLabel",[language]{QSignalBlocker blocker(language);language->setItemText(0,GAD_TR("System"));},false);
     I18n::onChange(tree,"headers",[transferTree]{transferTree->updateHeaderIndicators();},false);
     setupProfiles(settingsRow);
+    // Le drapeau reste carré et à la hauteur des boutons voisins, sans indicateur supplémentaire.
+    auto *languageButton=new QToolButton;languageButton->setObjectName("languageMenuButton");
+    auto *profilesButton=findChild<QToolButton *>("profilesButton");
+    languageButton->setToolButtonStyle(Qt::ToolButtonIconOnly);languageButton->setPopupMode(QToolButton::InstantPopup);
+    languageButton->setStyleSheet("QToolButton::menu-indicator { image: none; width: 0px; }");
+    auto *languageMenu=new QMenu(languageButton);languageMenu->setObjectName("languageMenu");languageButton->setMenu(languageMenu);settingsRow->addWidget(languageButton);
+    languageActions=new QActionGroup(languageMenu);languageActions->setExclusive(true);
+    auto *systemLanguage=languageMenu->addAction(QIcon::fromTheme("computer",style()->standardIcon(QStyle::SP_ComputerIcon)),QString());
+    systemLanguage->setData("system");systemLanguage->setCheckable(true);languageActions->addAction(systemLanguage);
+    I18n::bindProperty(systemLanguage,"text",[]{return GAD_TR("System");});
+    for(const auto &entry:I18n::languages()) {
+        const auto icon=entry.flag.isEmpty()?QIcon::fromTheme("preferences-desktop-locale",style()->standardIcon(QStyle::SP_FileDialogDetailedView)):QIcon(entry.flag);
+        auto *action=languageMenu->addAction(icon,entry.name);action->setData(entry.locale);action->setCheckable(true);languageActions->addAction(action);
+    }
+    connect(languageActions,&QActionGroup::triggered,this,[this,languageButton](QAction *action){
+        if(languageButton->isEnabled() && !profileApplying && !completionExecuting)setLanguage(action->data().toString());
+    });
+    I18n::onChange(languageButton,"flag",[this,languageButton,profilesButton]{
+        const auto height=profilesButton->sizeHint().height();languageButton->setFixedSize(height,height);
+        const auto extent=qMax(1,qMin(20,height-8));languageButton->setIconSize(QSize(extent,extent));
+        QString label;QIcon icon;
+        for(auto *action:languageActions->actions()){const bool selected=action->data().toString()==languageChoice;action->setChecked(selected);if(selected){label=action->text();icon=action->icon();}}
+        const auto resolved=I18n::resolve(QLocale().name());
+        for(const auto &entry:I18n::languages())if(entry.locale==resolved && !entry.flag.isEmpty()){icon=QIcon(entry.flag);break;}
+        languageButton->setIcon(icon);languageButton->setAccessibleName(GAD_TR("Language"));
+        languageButton->setToolTip(QString("%1: %2\n%3").arg(GAD_TR("Language"),label,GAD_TR("The language changes immediately without interrupting transfers.")));
+    });
     I18n::onChange(this,"refreshLanguage",[this]{
         setLocale(QLocale());for(auto *widget:findChildren<QWidget *>())widget->setLocale(QLocale());
         refresh();
     },false);
     refresh();
     if (QGuiApplication::platformName() != "offscreen" && QGuiApplication::platformName() != "minimal") tray->show();
+}
+
+/// La validation repose sur les langues réellement chargées, indépendamment de la boîte d'options.
+bool Window::languageAvailable(const QString &locale) const {
+    if(!languageActions)return false;
+    for(auto *action:languageActions->actions())if(action->data().toString()==locale)return true;
+    return false;
+}
+/// Point unique de changement de langue pour le menu, les profils et la ligne de commande.
+void Window::setLanguage(const QString &locale) {
+    if(!languageAvailable(locale))return;
+    languageChoice=locale;QSettings().setValue("language",locale);I18n::initialize(locale);
 }
 
 /// Libère les lignes avant leurs métadonnées, qui ne sont plus possédées par le widget arbre.
@@ -555,6 +607,16 @@ void Window::showMainWindow(const QString &token){
     if(!token.isEmpty())KWindowSystem::setCurrentXdgActivationToken(token);
     showNormal();raise();
     if(windowHandle())KWindowSystem::activateWindow(windowHandle());
+}
+
+/// Synchroniser l’arbre différé avant le premier affichage, puis limiter les rendus masqués.
+void Window::showEvent(QShowEvent *event) {
+    QMainWindow::showEvent(event);deferHiddenTree=true;if(treePending)refresh();
+}
+/// Une restauration depuis l’état minimisé ne produit pas toujours un nouvel événement Show.
+void Window::changeEvent(QEvent *event) {
+    QMainWindow::changeEvent(event);
+    if(event->type()==QEvent::WindowStateChange && isVisible() && !isMinimized() && treePending)refresh();
 }
 
 /// Crée une boîte À propos non bloquante, détruite à sa fermeture.

@@ -72,7 +72,7 @@ sudo apt install build-essential pkg-config python3 cargo rustc rustfmt rust-cli
   qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qmake6 libkf6windowsystem-dev dbus fonts-dejavu-core
 ```
 
-他のディストリビューションで対応するパッケージを使用する。`make doctor`は、不足しているツールを識別する。ドキュメントを個別にエクスポートするには、Markdown、Graphviz、およびWeasyPrintが必要である。これらは、7つの標準ドキュメントユニットテストには不要である。[ドキュメントインデックス](docs/README.ja-JP.md#regeneration)を参照のこと。
+他のディストリビューションで対応するパッケージを使用する。`make doctor`は、不足しているツールを識別する。ドキュメントを個別にエクスポートするには、Markdown、Graphviz、およびが必要である。これらは、7つの標準ドキュメントユニットテストには不要である。[ドキュメントインデックス](docs/README.ja-JP.md#regeneration)を参照のこと。
 
 ## 隔離 {#isolation}
 
@@ -200,7 +200,7 @@ make docs-check
 
 ドキュメントのテストでは、6言語と3種類のガイド、言語間の移動、用紙サイズ、図の説明、画像の埋め込みを確認します。クイックスタートのコンパクトな印刷レイアウト、各言語固有の画面画像、コード例が原文から変更されていないことも確認します。
 
-生成処理では、翻訳済みの図と18冊のガイドを作成します。その後、ローカルリンクとアンカー、ライトテーマの84枚の画像の寸法とハッシュ、HTMLの言語指定、埋め込み画像、36件のHTML/PDF出力を検証します。ドキュメント索引に記載された任意の依存関係が必要です。
+生成処理では、翻訳済みの図と18冊のガイドを作成します。その後、ローカルリンクとアンカー、ライトテーマの84枚の画像の寸法とハッシュ、HTMLの言語指定、埋め込み画像、36件のHTML/Markdown出力を検証します。ドキュメント索引に記載された任意の依存関係が必要です。
 
 [Documentation](docs/README.ja-JP.md#regeneration)
 
@@ -240,3 +240,8 @@ Qt テストでは、操作の再作成、実際のタイマー、無効化、�
 make test-dolphin-watchdog
 make test-dolphin-watchdog-real
 ```
+
+
+## 最近の画面テスト
+
+`exclusionsTabCommitsOnFocusLossAndTranslates`と`exclusionsSaveWhenFocusLeavesTheField`はフォーカスを失った際の保存、拒否時の入力保持、入力欄の独立性、設定画面の閉じ方を検証します。`clipboardAdditionKeepsPreparedQueueWaiting`は準備中、一時停止、履歴がある状態でクリップボードの追加が転送を開始しないことを検証します。コピー・切り取り、外部貼り付けの自動開始、Ctrl+O/Ctrl+Shift+O/Ctrl+Q/Ctrl+Alt+W、5つのタブも対象です。

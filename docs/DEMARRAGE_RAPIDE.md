@@ -1,6 +1,6 @@
 # Gad — Démarrage rapide
 
-**Gad, il copie. · Gestionnaire Avancé de Duplication · Version 0.2.0**
+**Gad, il copie. · Gestionnaire Avancé de Duplication · Version 0.3.0**
 
 [Guide utilisateur](GUIDE_UTILISATEUR.md) · [Guide développeur](GUIDE_DEVELOPPEUR.md) · [Toutes les langues](README.md)
 
@@ -32,7 +32,7 @@ Si nécessaire, suivez les [instructions d’installation](GUIDE_UTILISATEUR.md#
 
 ![Préparer les transferts dans la liste principale](images/fr/22-preparation.png)
 
-Choisissez la destination et les options, puis ajoutez vos fichiers dans Gad. Lorsque rien n’est en cours, vérifiez la liste et cliquez sur **Démarrer**. Un collage habituel démarre automatiquement ; les ajouts pendant un transfert rejoignent sa file. **Ctrl+C** copie, **Ctrl+X** déplace. Le glisser-déposer dans Gad prépare toujours une copie.
+Choisissez la destination et les options, puis ajoutez vos fichiers dans Gad. Lorsque rien n’est en cours, vérifiez la liste et cliquez sur **Démarrer**. Un collage externe depuis le gestionnaire de fichiers démarre automatiquement ; les ajouts pendant un transfert rejoignent sa file. **Ctrl+C** copie, **Ctrl+X** déplace. Le glisser-déposer dans Gad prépare toujours une copie.
 
 ## Suivre et piloter les opérations
 
@@ -48,7 +48,7 @@ Choisissez la destination et les options, puis ajoutez vos fichiers dans Gad. Lo
 
 *La boîte des options, ouverte depuis le bloc Paramètres.*
 
-Dans **Paramètres → Options…**, les onglets **Paramètres** et **Raccourcis** regroupent les préférences et les intégrations. Les changements s’appliquent immédiatement ; **Fermer** ou Échap ferme la boîte. Les paramètres de commande sont indiqués en gris. **Exclusions…** accepte des motifs de dossiers comme `__*` et de fichiers comme `*.tmp` ou `*~`. Le bouton de débit des lots sélectionnés se trouve à gauche de la barre d’actions principale.
+Dans **Paramètres → Options… → Exclusions**, saisissez un motif par ligne dans **Dossiers exclus** ou **Fichiers et liens symboliques exclus**. Chaque champ est enregistré dès qu’il perd le focus, sans bouton Appliquer et sans dialogue supplémentaire. Une règle invalide est signalée ; les règles précédentes restent actives et le texte à corriger reste visible. Ces règles concernent les prochains transferts. La case **Inclure les éléments cachés** reste dans l’onglet **Paramètres**.
 
 **Autoriser la duplication dans le même dossier** crée par exemple `photo_copied1.jpg` lorsqu’on recopie un fichier dans son dossier d’origine. Désactivée par défaut, cette option concerne uniquement les copies. Les choix de sélection, vérification et duplication sont figés pour les nouvelles demandes ; les anciennes gardent leurs réglages. Le débit global peut changer pendant les transferts.
 
@@ -62,7 +62,7 @@ Un collage lancé depuis le gestionnaire peut travailler en arrière-plan sans o
 
 ## Résoudre un conflit ou une erreur
 
-![Comparaison des fichiers en conflit](images/fr/08-conflit.png)
+![Comparaison des fichiers en conflit](images/fr/08-conflict.png)
 
 *Comparez la source et le fichier existant avant de décider.*
 
@@ -99,10 +99,16 @@ En ligne de commande, `gad --profile "Mon profil"` applique le profil sans lance
 
 ## Préparer les transferts dans la liste principale
 
-Choisissez la destination et les options, puis ajoutez vos fichiers dans Gad. Lorsque rien n’est en cours, vérifiez la liste et cliquez sur **Démarrer**. Un collage habituel démarre automatiquement ; les ajouts pendant un transfert rejoignent sa file. **Ctrl+C** copie, **Ctrl+X** déplace. Le glisser-déposer dans Gad prépare toujours une copie.
+Choisissez la destination et les options, puis ajoutez vos fichiers dans Gad. Lorsque rien n’est en cours, vérifiez la liste et cliquez sur **Démarrer**. Un collage externe depuis le gestionnaire de fichiers démarre automatiquement ; les ajouts pendant un transfert rejoignent sa file. **Ctrl+C** copie, **Ctrl+X** déplace. Le glisser-déposer dans Gad prépare toujours une copie.
 
 ## Les options
 
 **Paramètres → Options…** ouvre une fenêtre modale : la fenêtre principale reste bloquée jusqu’à sa fermeture, tandis que les transferts continuent. Les réglages s’appliquent immédiatement ; **Fermer** ou Échap ne les annule pas. Les paramètres de commande apparaissent en gris sous les contrôles. Taille minimale : **800 × 740** ; fenêtre principale, bilan des erreurs et diagnostic : **1100 × 600**.
 
-Les quatre onglets sont **Paramètres**, **Raccourcis**, **Débits** et **Fin de lot**. **Débits** contient le plafond global et celui appliqué par défaut aux nouveaux lots. Pour modifier un lot existant, sélectionnez ses lignes puis utilisez **clic droit → Limiter le débit de la demande…**. La limite apparaît dans la cellule **Détail**, y compris sur les dossiers ; la valeur illimitée n’ajoute aucun texte.
+Les cinq onglets sont **Paramètres**, **Raccourcis**, **Débits**, **Fin de lot** et **Exclusions**. Les paramètres de commande sont indiqués en gris. Le débit des lots existants se modifie via le menu contextuel des lignes ; la limite apparaît dans **Détail**.
+
+## Ajout, raccourcis et exclusions
+
+Le menu **Ajouter des éléments** regroupe **Ajouter des fichiers…** (Ctrl+Maj+O), **Ajouter un dossier…** (Ctrl+O) et **Fichiers du presse-papiers** (Ctrl+V). Ce dernier conserve le mode Copier ou Couper. Au repos, tous les ajouts depuis Gad attendent **Démarrer** ; pendant des transferts déjà lancés, ils rejoignent la file. Seul le collage externe depuis le gestionnaire de fichiers démarre automatiquement.
+
+**Ctrl+F** ouvre la recherche. **Ctrl+Q** demande à quitter Gad et refuse la sortie si des transferts sont actifs. **Ctrl+Alt+W** masque la fenêtre sans arrêter les transferts. Le bouton drapeau, à droite de **Profils**, change immédiatement la langue. Les boutons de la fenêtre principale disposent d’infobulles.

@@ -7,126 +7,126 @@
       "kind": "quick",
       "title": "Démarrage rapide",
       "html": "html/demarrage-rapide.html",
-      "pdf": "pdf/demarrage-rapide.pdf"
+      "md": "DEMARRAGE_RAPIDE.md"
     },
     {
       "locale": "fr_FR",
       "kind": "user",
       "title": "Guide utilisateur",
       "html": "html/guide-utilisateur.html",
-      "pdf": "pdf/guide-utilisateur.pdf"
+      "md": "GUIDE_UTILISATEUR.md"
     },
     {
       "locale": "fr_FR",
       "kind": "developer",
       "title": "Guide développeur",
       "html": "html/guide-developpeur.html",
-      "pdf": "pdf/guide-developpeur.pdf"
+      "md": "GUIDE_DEVELOPPEUR.md"
     },
     {
       "locale": "en_US",
       "kind": "quick",
       "title": "Quick Start",
       "html": "html/quick-start.en-US.html",
-      "pdf": "pdf/quick-start.en-US.pdf"
+      "md": "QUICK_START.en-US.md"
     },
     {
       "locale": "en_US",
       "kind": "user",
       "title": "User Guide",
       "html": "html/user-guide.en-US.html",
-      "pdf": "pdf/user-guide.en-US.pdf"
+      "md": "USER_GUIDE.en-US.md"
     },
     {
       "locale": "en_US",
       "kind": "developer",
       "title": "Developer Guide",
       "html": "html/developer-guide.en-US.html",
-      "pdf": "pdf/developer-guide.en-US.pdf"
+      "md": "DEVELOPER_GUIDE.en-US.md"
     },
     {
       "locale": "es_ES",
       "kind": "quick",
       "title": "Inicio rápido",
       "html": "html/quick-start.es-ES.html",
-      "pdf": "pdf/quick-start.es-ES.pdf"
+      "md": "QUICK_START.es-ES.md"
     },
     {
       "locale": "es_ES",
       "kind": "user",
       "title": "Guía de usuario",
       "html": "html/user-guide.es-ES.html",
-      "pdf": "pdf/user-guide.es-ES.pdf"
+      "md": "USER_GUIDE.es-ES.md"
     },
     {
       "locale": "es_ES",
       "kind": "developer",
       "title": "Guía de desarrollo",
       "html": "html/developer-guide.es-ES.html",
-      "pdf": "pdf/developer-guide.es-ES.pdf"
+      "md": "DEVELOPER_GUIDE.es-ES.md"
     },
     {
       "locale": "pt_PT",
       "kind": "quick",
       "title": "Início rápido",
       "html": "html/quick-start.pt-PT.html",
-      "pdf": "pdf/quick-start.pt-PT.pdf"
+      "md": "QUICK_START.pt-PT.md"
     },
     {
       "locale": "pt_PT",
       "kind": "user",
       "title": "Guia do utilizador",
       "html": "html/user-guide.pt-PT.html",
-      "pdf": "pdf/user-guide.pt-PT.pdf"
+      "md": "USER_GUIDE.pt-PT.md"
     },
     {
       "locale": "pt_PT",
       "kind": "developer",
       "title": "Guia de desenvolvimento",
       "html": "html/developer-guide.pt-PT.html",
-      "pdf": "pdf/developer-guide.pt-PT.pdf"
+      "md": "DEVELOPER_GUIDE.pt-PT.md"
     },
     {
       "locale": "de_DE",
       "kind": "quick",
       "title": "Schnellstart",
       "html": "html/quick-start.de-DE.html",
-      "pdf": "pdf/quick-start.de-DE.pdf"
+      "md": "QUICK_START.de-DE.md"
     },
     {
       "locale": "de_DE",
       "kind": "user",
       "title": "Benutzerhandbuch",
       "html": "html/user-guide.de-DE.html",
-      "pdf": "pdf/user-guide.de-DE.pdf"
+      "md": "USER_GUIDE.de-DE.md"
     },
     {
       "locale": "de_DE",
       "kind": "developer",
       "title": "Entwicklerhandbuch",
       "html": "html/developer-guide.de-DE.html",
-      "pdf": "pdf/developer-guide.de-DE.pdf"
+      "md": "DEVELOPER_GUIDE.de-DE.md"
     },
     {
       "locale": "ja_JP",
       "kind": "quick",
       "title": "クイックスタート",
       "html": "html/quick-start.ja-JP.html",
-      "pdf": "pdf/quick-start.ja-JP.pdf"
+      "md": "QUICK_START.ja-JP.md"
     },
     {
       "locale": "ja_JP",
       "kind": "user",
       "title": "ユーザーガイド",
       "html": "html/user-guide.ja-JP.html",
-      "pdf": "pdf/user-guide.ja-JP.pdf"
+      "md": "USER_GUIDE.ja-JP.md"
     },
     {
       "locale": "ja_JP",
       "kind": "developer",
       "title": "開発者ガイド",
       "html": "html/developer-guide.ja-JP.html",
-      "pdf": "pdf/developer-guide.ja-JP.pdf"
+      "md": "DEVELOPER_GUIDE.ja-JP.md"
     }
   ]
 }

@@ -187,7 +187,7 @@ impl Engine {
             {
                 return Ok(None);
             }
-            let stamp = undo::Stamp::read(&entry.source)?;
+            let stamp = undo::Stamp::from_metadata(&entry.source, &meta)?;
             let directory = entry.kind == "directory";
             plan.push((
                 undo::Record {

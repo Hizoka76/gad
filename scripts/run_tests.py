@@ -33,9 +33,10 @@ def plan(group, rust_filter=None):
     watchdog = Step("dolphin-watchdog", (python, "scripts/test_dolphin_watchdog.py"))
     build = Step("integration-build", ("cargo", "build", "--locked"))
     integration = Step("integration", (python, "scripts/test_integration.py"), (build.name,))
+    cli_settings = Step("cli-settings", ("dbus-run-session", "--", python, "scripts/test_cli_settings.py"), (build.name,))
     lint = [Step("rust-format", ("cargo", "fmt", "--check")), Step("rust-clippy", ("cargo", "clippy", "--locked", "--all-targets", "--", "-D", "warnings"))]
-    groups = {"unit": [rust, python_unit], "python": [python_unit], "qt": [qt, watchdog], "integration": [build, integration],
-              "lint": lint, "all": [*lint, rust, python_unit, qt, watchdog, build, integration],
+    groups = {"unit": [rust, python_unit], "python": [python_unit], "qt": [qt, watchdog], "integration": [build, integration, cli_settings],
+              "lint": lint, "all": [*lint, rust, python_unit, qt, watchdog, build, integration, cli_settings],
               "bench": [Step("history-benchmark", ("cargo", "test", "--locked", "benchmark_large_history_polling", "--", "--ignored", "--nocapture"))]}
     return groups[group]
 

@@ -52,7 +52,7 @@ class CleanTests(unittest.TestCase):
 
     def test_preserves_releases_sources_and_notes(self):
         names = ['target/releases/v0.1.0/gad.deb', 'target/releases/cache.pyc',
-                 'src/main.rs', 'TOTO.md', 'private.txt', 'docs/pdf/guide.pdf']
+                 'src/main.rs', 'TOTO.md', 'private.txt', 'docs/html/guide.html']
         paths = [self.file(name) for name in names]
         self.run_clean(True)
         self.assertTrue(all(path.exists() for path in paths))

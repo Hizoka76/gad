@@ -1,6 +1,6 @@
 # Gad — Benutzerhandbuch {#gad-user-guide}
 
-**Gestionnaire Avancé de Duplication · Version 0.2.0**
+**Gestionnaire Avancé de Duplication · Version 0.3.0**
 
 **Gad, il copie.**
 
@@ -54,9 +54,9 @@ Gad lässt sich über **Mit Gad einfügen** und das optionale Strg+V in Dolphin 
 
 ### Die Bildschirmaufnahmen lesen {#reading-the-screenshots}
 
-Die 22 Aufnahmen zeigen die echten Gad-Widgets, Beispieldateien und simulierte Übertragungszustände. Sie verwenden das helle Design und die Oberflächensprache dieser Ausgabe. Persönliche Dateien und der echte Desktop werden nicht aufgenommen. Externe Plasma-Benachrichtigungen werden in diesen Aufnahmen nicht nachgebildet.
+Die 23 Aufnahmen zeigen die echten Gad-Widgets, Beispieldateien und simulierte Übertragungszustände. Sie verwenden das helle Design und die Oberflächensprache dieser Ausgabe. Persönliche Dateien und der echte Desktop werden nicht aufgenommen. Externe Plasma-Benachrichtigungen werden in diesen Aufnahmen nicht nachgebildet.
 
-Gad bietet Französisch, US-Englisch, Spanisch, Portugiesisch, Deutsch und Japanisch. Wählen Sie die Sprache unter **Einstellungen → Optionen…**: Die Änderung gilt sofort, ohne Gad neu zu starten oder Übertragungen zu unterbrechen. Geöffnete Dialoge und aktive Benachrichtigungen werden aktualisiert; Auswahl und Eingaben bleiben erhalten. **System** wählt eine verfügbare Variante der Desktop-Sprache und verwendet andernfalls Französisch oder Englisch. Nicht erfasste technische Diagnosen und Meldungen externer Dienste können in ihrer ursprünglichen Sprache bleiben.
+Gad bietet Französisch, US-Englisch, Spanisch, Portugiesisch, Deutsch und Japanisch. Wählen Sie die Sprache im Flaggenmenü rechts von **Profile**: Die Änderung gilt sofort, ohne Gad neu zu starten oder Übertragungen zu unterbrechen. Geöffnete Dialoge und aktive Benachrichtigungen werden aktualisiert; Auswahl und Eingaben bleiben erhalten. **System** wählt eine verfügbare Variante der Desktop-Sprache und verwendet andernfalls Französisch oder Englisch. Nicht erfasste technische Diagnosen und Meldungen externer Dienste können in ihrer ursprünglichen Sprache bleiben.
 
 ## Installation und Start {#installation-and-startup}
 
@@ -124,7 +124,7 @@ Beenden oder brechen Sie bei einem Update die aktive Arbeit ab und beenden Sie G
 
 ## Das Fenster kennenlernen {#understanding-the-window}
 
-![Hauptfenster, Ordnerbaum und farbige Anfragen](images/de-DE/01-vue-ensemble.png)
+![Hauptfenster, Ordnerbaum und farbige Anfragen](images/de-DE/01-overview.png)
 
 *Die Liste zeigt Dateien direkt an, wobei echte Ordner den Baum bilden. Wunschfarben sorgen dafür, dass einzelne Einreichungen erkennbar bleiben.*
 
@@ -132,7 +132,7 @@ Beenden oder brechen Sie bei einem Update die aktive Arbeit ab und beenden Sie G
 |---|---|
 | **Quelle** | Fügen Sie Dateien hinzu, fügen Sie einen Ordner hinzu oder fügen Sie sie in das ausgewählte Ziel ein. |
 | **Ziel** | Geben Sie einen lokalen Pfad oder eine unterstützte Remote-URL ein oder suchen Sie nach einem Ordner. |
-| **Einstellungen → Optionen…** | Überprüfung, Ausschlüsse, Duplizierung, Verlauf, Start, Sprachen, Geschwindigkeitsbegrenzungen und Verknüpfungen. |
+| **Einstellungen → Optionen…** | Überprüfung, Ausschlüsse, Duplizierung, Verlauf, Start, Geschwindigkeitsbegrenzungen und Verknüpfungen. |
 | Fortschrittsbalken | Kombinierter Fortschritt für die aufgeführten Transferarbeiten. |
 | Filter und Kontrollen | Filtern Sie Zeilen, pausieren Sie die Warteschlange, brechen Sie ab, machen Sie rückgängig oder löschen Sie den abgeschlossenen Verlauf. |
 | Dateiliste | Quelle, Ziel, Status, Fortschritt und detaillierte Nachrichten. |
@@ -145,11 +145,11 @@ Beenden oder brechen Sie bei einem Update die aktive Arbeit ab und beenden Sie G
 
 **Einstellungen → Optionen…** öffnet ein modales Fenster: Das Hauptfenster bleibt bis zum Schließen gesperrt, Übertragungen laufen weiter. Änderungen gelten sofort; **Schließen** oder Escape macht sie nicht rückgängig. Befehlszeilenoptionen stehen grau unter den Bedienelementen. Mindestgröße: **800 × 740**; Hauptfenster, Fehlerbericht und Diagnose: **1100 × 600**.
 
-Die vier Reiter heißen **Einstellungen**, **Tastenkürzel**, **Geschwindigkeitslimits** und **Stapelabschluss**. Die Limits umfassen die globale Grenze und den Standard für neue Aufträge. Bestehende Aufträge ändern Sie über die ausgewählten Zeilen und **Rechtsklick → Geschwindigkeit des Auftrags begrenzen…**. Das Limit steht in **Details**, auch bei Ordnern; bei unbegrenzter Geschwindigkeit entfällt der Zusatz.
+Die fünf Reiter sind Einstellungen, Tastenkürzel, Geschwindigkeitsbegrenzungen, Stapelabschluss und Ausschlüsse. Befehlszeilenparameter erscheinen grau. Das Limit eines bestehenden Stapels wird im Kontextmenü seiner Zeilen geändert und in der Detailspalte angezeigt.
 
-![Einstellungen → Optione](images/de-DE/21-options-debits.png)
+![Einstellungen → Optione](images/de-DE/21-speed-options.png)
 
-![Der Reiter Tastenkürzel steuert die Dateiverwaltungsintegration.](images/de-DE/14-options-raccourcis.png)
+![Der Reiter Tastenkürzel steuert die Dateiverwaltungsintegration.](images/de-DE/14-shortcut-options.png)
 
 *Der Reiter Tastenkürzel steuert die Dateiverwaltungsintegration.*
 
@@ -157,7 +157,7 @@ Die vier Reiter heißen **Einstellungen**, **Tastenkürzel**, **Geschwindigkeits
 
 **Über** zeigt den Anwendungsnamen, Akronym, Slogan, Icon, Version und Build-Datum an. Das Software-Icon ist das Curly-haired-Dokument-Bild, das vom Fenster, Launcher, Über Dialog und Tablet verwendet wird.
 
-![Informationen zum Dialog mit Softwaresymbol und -version](images/de-DE/10-a-propos.png)
+![Informationen zum Dialog mit Softwaresymbol und -version](images/de-DE/10-about.png)
 
 *About identifiziert den aktuell ausgeführten Build.*
 
@@ -189,7 +189,7 @@ Gad kann Dateien von einem anderen Manager empfangen, z. B. Nautilus, Nemo oder 
 
 1. Wählen Sie Dateien in Ihrem Manager aus und verwenden Sie **Strg+C** oder **Strg+X**, um eine Verschiebung anzufordern.
 2. Öffnen Sie Gad und legen Sie den Zielordner in **Ziel** fest.
-3. Klicken Sie auf **Hier einfügen** oder drücken Sie **Ctrl+V in Gad**.
+3. Klicken Sie auf **Zwischenablage-Dateien** oder drücken Sie **Ctrl+V in Gad**.
 4. Überprüfen Sie das in der Liste angezeigte Ziel und den Vorgangstyp.
 
 Der Manager muss eine Dateiliste in einem Zwischenablageformat veröffentlichen, das Gad versteht. Es reicht nicht aus, einen Pfad als Klartext zu kopieren. Für den Verschiebung ist ein anerkannter Schnittmarker erforderlich; Wenn es nicht verfügbar ist, verwenden Sie den unten aufgeführten expliziten Befehl `--move`.
@@ -228,7 +228,7 @@ Andere Manager, die KIO-Servicemenüs unterstützen, bieten möglicherweise auch
 
 ![Quell- und Zielkontrollen und Verifizierungsoptionen](images/de-DE/02-sources-options.png)
 
-Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts läuft, prüfen Sie die Liste und klicken Sie auf **Starten**. Normales Einfügen startet automatisch; während einer Übertragung werden neue Aufträge eingereiht. **Strg+C** kopiert, **Strg+X** verschiebt. Ziehen und Ablegen bereitet immer eine Kopie vor.
+Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts läuft, prüfen Sie die Liste und klicken Sie auf **Starten**. Externes Einfügen aus dem Dateimanager startet automatisch; während einer Übertragung werden neue Aufträge eingereiht. **Strg+C** kopiert, **Strg+X** verschiebt. Ziehen und Ablegen bereitet immer eine Kopie vor.
 
 ### Von Dolphin {#from-dolphin}
 
@@ -241,7 +241,7 @@ Ein externes Einfügen startet im Hintergrund und erzwingt nicht das Öffnen des
 
 ### Von Gad {#from-gad}
 
-Verwenden Sie **Dateien hinzufügen…** (Dateien hinzufügen), **Ordner hinzufügen…** (Ordner hinzufügen) oder **Hier einfügen** (Hier einfügen). Strg+V in Gad wird in das angezeigte Ziel eingefügt. Als „Ausschneiden“ markierter Inhalt der Zwischenablage erzeugt einen Zug; Gewöhnlicher kopierter Inhalt erzeugt eine Kopie.
+Das Menü **Elemente hinzufügen** enthält **Dateien hinzufügen…** (Strg+Umschalt+O), **Ordner hinzufügen…** (Strg+O) und **Zwischenablage-Dateien** (Strg+V). Kopieren oder Ausschneiden bleibt erhalten. Im Leerlauf warten alle Ergänzungen innerhalb von Gad auf **Starten**; bei bereits gestarteten Übertragungen werden sie eingereiht. Nur externes Einfügen aus dem Dateimanager startet automatisch.
 
 Durch das Ablegen von Dateien auf Gad wird immer ein **Kopie: ** erstellt. Eine Dateiliste, die eingefügt wird, während das Zielfeld den Fokus hat, wird weiterhin in die Übertragungswarteschlange aufgenommen. Gewöhnlicher Text behält das normale Verhalten beim Einfügen von Textfeldern bei.
 
@@ -261,7 +261,7 @@ Spezielle Dateien und Pfade außerhalb des unterstützten UTF-8-Vertrags werden 
 
 ## Elemente von Übertragungen ausschließen {#excluding-items-from-transfers}
 
-Verwenden Sie **Ausschlüsse…**, um ein Muster pro Zeile einzugeben, getrennt für Ordner und für Dateien oder symbolische Links. **Versteckte Elemente einschließen** ist auch in **Einstellungen → Optionen…** erhältlich. Es ist standardmäßig aktiviert, ohne dass zunächst Namensausschlüsse konfiguriert sind.
+Unter **Einstellungen → Optionen… → Ausschlüsse** wird je ein Muster pro Zeile für Ordner oder Dateien und symbolische Links eingegeben. Jedes Feld wird beim Fokusverlust gespeichert, ohne Anwenden-Schaltfläche und ohne zusätzlichen Dialog. Ungültige Regeln werden gemeldet; bisherige Regeln bleiben aktiv und der Text bleibt zur Korrektur erhalten. Regeln gelten für neue Übertragungen. Die Option für versteckte Elemente bleibt im Reiter Einstellungen.
 
 | Typ | Beispiel | Wirkung |
 | --- | --- | --- |
@@ -331,7 +331,7 @@ Ein Ordner wird erst dann in Ordnung, wenn die entsprechenden untergeordneten Or
 
 ### Filter {#filters}
 
-![Dateifilter](images/de-DE/06-filtres.png)
+![Dateifilter](images/de-DE/06-filters.png)
 
 *Durch das Filtern ändert sich die Sichtbarkeit, nicht das Übertragungsverhalten.*
 
@@ -363,7 +363,7 @@ Ziehen Sie eine oder mehrere **warten.** Zeilen vor oder nach einer anderen Zeil
 
 Ein Ordner bewegt sich mit seinem Zweig. Dateien innerhalb eines Ordners reorder unter Geschwistern; sie halten ihren eigentlichen Elternteil und Ziel. Verschieben Sie den Elternordner, um den gesamten Zweig neu zu positionieren. Dragging ändert nie das Ziel.
 
-Das Kontextmenü bietet **Als nächstes verarbeiten** (Process next) und **Warteschlange neu anordnen** (Move in queue). Strg und Shift unterstützen mehrere Selektion. **Gesamte Anfrage auswählen** wählt die anderen Wurzeln der gleichen Vorlage aus.
+Das Kontextmenü bietet **Als nächstes verarbeiten** (Process next) und **Warteschlange neu anordnen** (Move in queue). Strg und Shift unterstützen mehrere Selektion. **Gesamten Stapel auswählen** wählt die anderen Wurzeln der gleichen Vorlage aus.
 
 Die Verarbeitung unterbricht die aktuelle Datei nicht oder entfernt eine Pause. Disk-Kompatibilität und Uno-Abhängigkeiten gelten noch. Unsicheres Interleaving von Anträgen, die dieselben Ausgänge ersetzen, wird mit einem Grund abgelehnt. Eine teilweise veröffentlichte Anfrage kann daher die abhängige Arbeit während einer Pause warten lassen.
 
@@ -392,7 +392,7 @@ Die Kappe gilt für kopierte Bytes, einschließlich montierte Remote-Endpunkte. 
 
 ## Konflikte lösen {#resolving-conflicts}
 
-![Quelle und bestehender Zielvergleich unter der Dateiliste](images/de-DE/08-conflit.png)
+![Quelle und bestehender Zielvergleich unter der Dateiliste](images/de-DE/08-conflict.png)
 
 *Die Quelle und das bestehende Ziel werden nebeneinander unter der Dateiliste angezeigt.*
 
@@ -410,7 +410,7 @@ Das Kontrollkästchen wendet die Entscheidung auf spätere Konflikte **in dieser
 
 ## Übertragungen abbrechen oder rückgängig machen {#canceling-or-undoing-transfers}
 
-![Menü für Stornierungen](images/de-DE/04-menu-annulation.png)
+![Menü für Stornierungen](images/de-DE/04-cancellation-menu.png)
 
 *Globale Aktionen bleiben ohne Auswahl verfügbar.*
 
@@ -445,7 +445,7 @@ Eine Ordnerauswahl erstreckt sich auf ihren Inhalt. Die Auswahl einzelner Dateie
 
 ## Das Kontextmenü verwenden {#using-the-context-menu}
 
-![Kontextmenü](images/de-DE/05-menu-contextuel.png)
+![Kontextmenü](images/de-DE/05-context-menu.png)
 
 *Aktionen passen sich an die Auswahl und ihre aktuellen Zustände an.*
 
@@ -453,7 +453,7 @@ Eine Ordnerauswahl erstreckt sich auf ihren Inhalt. Die Auswahl einzelner Dateie
 |---|---|
 | **Öffnen Sie den enthaltenden Ordner** | Öffnen Sie den Stammordner einer Datei oder öffnen Sie den ausgewählten Ordner selbst. |
 | **Datei öffnen** | Öffnen Sie eine Datei mit ihrer Desktop-assoziierten Anwendung. |
-| **Gesamte Anfrage auswählen** | Wählen Sie die anderen Einträge aus der gleichen Vorlage aus. |
+| **Gesamten Stapel auswählen** | Wählen Sie die anderen Einträge aus der gleichen Vorlage aus. |
 | **Traiter ensuite / Déplacer dans la file** | Priorisieren Sie Warteeinträge oder -zweige. |
 | **Abbrechen und abgeschlossene Dateien behalten** | Stoppen Sie ausgewählte Arbeit und behalten Sie die abgeschlossenen Ausgänge. |
 | **Abbrechen und wiederherstellen** | Undo die Auswahl, wenn seine Zeitschrift es erlaubt. |
@@ -470,7 +470,7 @@ Reaktivierung wartet auf die Anforderung, vollendete Nachbarn zu stoppen und zu 
 
 ## Fehlerbericht und gezielte Wiederholungsversuche {#error-reporting-and-targeted-retries}
 
-![Fehlerbericht und ausgewählte Dateidetails](images/de-DE/13-bilan-erreurs.png)
+![Fehlerbericht und ausgewählte Dateidetails](images/de-DE/13-error-report.png)
 
 *Alle sechs Buttons haben Icons: Retry angezeigte Fehler, retry die Auswahl, lokalisieren, exportieren, erfrischen und schließen.*
 
@@ -488,7 +488,7 @@ Ein Vorbereitungsversagen ohne börsennotierte Dateien kann durch eine vollstän
 
 ## Dateiinhalte mit MD5 prüfen {#checking-file-contents-with-md5}
 
-![Unabhängige MD5-Verifikation](images/de-DE/07-verification-md5.png)
+![Unabhängige MD5-Verifikation](images/de-DE/07-md5-verification.png)
 
 Aktivieren Sie **Überprüfen Sie Dateien mit MD5** für neue Einreichungen. Jede reguläre Datei wird kopiert und synchronisiert, dann wird ihr Quell- und temporäres Ziel neu gelesen und verglichen. Gad veröffentlicht die gleiche verifizierte temporäre Datei unter ihrem letzten Namen nur nach erfolgreichen Überprüfungen.
 
@@ -500,7 +500,7 @@ MD5 überprüft die Konsistenz dieses Transferpfades. Es ist keine kryptographis
 
 ## Dateieigenschaften prüfen {#checking-file-properties}
 
-![Sachunterschiede in der Liste](images/de-DE/11-verification-proprietes.png)
+![Sachunterschiede in der Liste](images/de-DE/11-property-verification.png)
 
 **Eigenschaften überprüfen** vergleicht exponierte Eigentümer, Gruppe, Berechtigungsbits, POSIX ACLs und erweiterte Attribute. Es unterscheidet bekannte Unterschiede von nicht verfügbaren Kontrollen. Attributwerte sind nicht in gespeicherten Berichten enthalten; die Reportlisten Unterschiede und nicht verfügbare Überprüfungen.
 
@@ -522,7 +522,7 @@ Die Option wird für neue Anfragen gemerkt; bestehende behalten ihre gefangene W
 
 ## Auf die erneute Verbindung eines Geräts warten {#waiting-for-a-device-to-reconnect}
 
-![Bitte warten auf ein Gerät](images/de-DE/12-reconnexion.png)
+![Bitte warten auf ein Gerät](images/de-DE/12-reconnection.png)
 
 Wenn während einer Übertragung eine bekannte Festplatte oder ein Mount verschwindet, zeigt Gad ZX **Warten auf Gerät**, behält ihre Teildatei und gibt den Arbeiter frei, so dass unabhängige Anfragen ablaufen können. Plasma beschreibt auch das Warten.
 
@@ -558,7 +558,7 @@ Löschen Sie diese privaten Verzeichnisse nicht manuell, während Sie immer noch
 
 ## Infobereich und Sitzungsstart {#system-tray-and-session-startup}
 
-![Menü für den Tablett](images/de-DE/09-menu-zone-notification.png)
+![Menü für den Tablett](images/de-DE/09-tray-menu.png)
 
 Klicken Sie auf das Symbol, um ein sichtbares Fenster zu verstecken oder eine versteckte/minimierte wiederherzustellen. Sein Abzeichen zählt unvollendete Anfragen, einschließlich Analyse und Wartearbeit. Über 99, es zeigt `99+`; der Tooltip hält die genaue Zählung.
 
@@ -650,7 +650,7 @@ Das Plugin stellt auch den aktiven Ordner frei, **In den offenen Ordner mit Gad 
 
 ### Dokumentation im Über-Dialog {#about-documentation}
 
-**Über Gad** enthält Links zu **Schnellstart**, **Benutzerhandbuch** und **Entwicklerhandbuch**, jeweils als HTML und PDF. Die Links folgen der gewählten Sprache, auch wenn sie bei geöffnetem Dialog geändert wird. Die Dokumente werden lokal installiert und benötigen den Projektordner nicht. Fehlt eine Ausgabe, bietet Gad die verfügbare englische Ausgabe an; fehlende Dokumente erzeugen keine ungültigen Links.
+**Über Gad** enthält Links zu **Schnellstart**, **Benutzerhandbuch** und **Entwicklerhandbuch**, jeweils als HTML und Markdown. Die Links folgen der gewählten Sprache, auch wenn sie bei geöffnetem Dialog geändert wird. Die Dokumente werden lokal installiert und benötigen den Projektordner nicht. Fehlt eine Ausgabe, bietet Gad die verfügbare englische Ausgabe an; fehlende Dokumente erzeugen keine ungültigen Links.
 
 ## Konfiguration und Handbuchseiten {#command-settings}
 
@@ -700,7 +700,7 @@ Sprache, globales Limit und andere globale Einstellungen wirken wie üblich sofo
 
 Alte Profile werden automatisch migriert: Das Ziel wird entfernt, und bisher fehlende Optionen werden einmalig mit aktuellen Einstellungen ergänzt. Nutzen Sie danach **Mit aktuellen Einstellungen aktualisieren** für Anpassungen. Quellpfade, Ziele und Passwörter werden nicht gespeichert.
 
-![Verwaltung der Übertragungsprofile](images/de-DE/15-profils.png)
+![Verwaltung der Übertragungsprofile](images/de-DE/15-profiles.png)
 
 In der Befehlszeile übernimmt `gad --profile "Mein Profil"` die Einstellungen ohne Transfer. Zum Kopieren: `gad --profile "Mein Profil" --copy /pfad/quelle --to /pfad/ziel`; auch mit `--move` / `--paste` verwendbar. Gad wartet auf die vollständige Anwendung des Profils. Das Ziel stammt aus dem Befehl; explizite Optionen wie `--md5` haben Vorrang. Bei unbekanntem Namen werden keine Dateien eingereiht. `--configure --profile "Mein Profil"` erlaubt zusätzliche Einstellungen, die anschließend angewendet werden.
 
@@ -720,7 +720,7 @@ Klicken Sie auf **Verlauf durchsuchen** oder drücken Sie **Strg+F**. Geben Sie 
 
 Der Tooltip der Reihenfolgenspalte zeigt das Hinzufügedatum. Alte Vorgänge ohne Datum werden als unbekannt markiert und bleiben ohne Datumsfilter durchsuchbar. Der Verlauf muss gespeichert sein: gelöschte Vorgänge lassen sich nicht mehr finden.
 
-![Gespeicherten Verlauf durchsuchen](images/de-DE/16-recherche-historique.png)
+![Gespeicherten Verlauf durchsuchen](images/de-DE/16-history-search.png)
 
 ## Transferdiagnose {#transfer-diagnostics}
 
@@ -730,7 +730,7 @@ Die Ursachen unterscheiden Pausen, Quellenanalyse, offene Konflikte, nicht verf�
 
 Eine Wartezeit auf das Geschwindigkeitsbudget wird nur gemeldet, wenn der Begrenzer sie in der letzten Sekunde beobachtet hat. Eine konfigurierte Grenze allein beweist keine Verlangsamung. Nach fünf Sekunden ohne Byte-Fortschritt beim Kopieren oder MD5 außerhalb von Begrenzungswartezeiten meldet Gad diesen Stillstand: Datei-E/A oder Abschlussarbeiten könnten warten, ohne einen konkreten Festplatten- oder Netzwerkengpass nachzuweisen. Die Diagnose ist kein Leistungstest und wird nicht im Verlauf gespeichert. Schließen ändert keine Transfers.
 
-![Transferdiagnose](images/de-DE/17-diagnostic-transferts.png)
+![Transferdiagnose](images/de-DE/17-transfer-diagnostics.png)
 
 Geschwindigkeitsgrenzen gelten für kopierte Bytes; MD5-Lesevorgänge und lokale Umbenennungen sind eigene Phasen.
 
@@ -742,7 +742,7 @@ Bei Erfolg erscheint **Schnelle Verschiebung geprüft**. Die Diagnose unterschei
 
 Geprüft werden Metadaten, keine Inhalte; dies ersetzt keinen kryptografischen Vergleich. MD5 bleibt separat und erzwingt Kopieren/Prüfen/Löschen. Normale Kopien erhalten kein falsches Ergebnis einer Schnellprüfung. Alte Profile werden mit deaktivierter Option migriert. Befehl: `gad --configure --verify-fast-move`; deaktivieren: `--no-verify-fast-move`.
 
-![Schnelle Verschiebung geprüft](images/de-DE/18-verification-deplacement-rapide.png)
+![Schnelle Verschiebung geprüft](images/de-DE/18-fast-move-verification.png)
 
 ## Aktionen beim Stapelabschluss {#queue-completion}
 
@@ -754,9 +754,9 @@ Deaktivieren oder Schließen des Countdowns bricht keine Übertragungen ab. Die 
 
 Bereitschaft und Ausschalten verwenden logind und beachten Berechtigungen und Inhibitoren. Eine Benachrichtigung öffnet das ausgeblendete Gad. `gad --configure --completion-action suspend --completion-delay 60` speichert nur Vorgaben; aktivieren Sie die Aktion anschließend in Gad.
 
-![Aktionen beim Stapelabschluss](images/de-DE/19-fin-de-file.png)
+![Aktionen beim Stapelabschluss](images/de-DE/19-batch-completion.png)
 
-![Aktionen beim Stapelabschluss](images/de-DE/20-options-fin-de-file.png)
+![Aktionen beim Stapelabschluss](images/de-DE/20-completion-options.png)
 
 
 ## Übertragungen in der Hauptliste vorbereiten {#preparing-transfers}
@@ -770,3 +770,14 @@ Während des Kopierens erscheint die Teildatei als `datei.ext.part` am Ziel und 
 Fehlerbericht und Übertragungsdiagnose sperren ebenfalls das Hauptfenster. **In Liste anzeigen** schließt den Bericht und deaktiviert Suchvorgänge, die die Zielzeile ausblenden. Der Berichtsfilter folgt der gewählten Sprache.
 
 ![Übertragungen in der Hauptliste vorbereiten](images/de-DE/22-preparation.png)
+
+
+## Sprache und Sitzungsfortschritt
+
+Die Schaltfläche rechts von **Profile** zeigt nur die Flagge der aktuellen Sprache. Ein Klick öffnet die Sprachauswahl. Dieses Menü ersetzt die Auswahl in den Einstellungen. Der globale Balken beginnt beim Öffnen von Gad bei null und zeigt die seitdem verarbeiteten Bytes. Einzelne Zeilen behalten ihren tatsächlichen Fortschritt, auch bei unterbrochenen Übertragungen.
+
+## Elemente hinzufügen, Tastenkürzel und Ausschlüsse
+
+**Strg+F** öffnet die Suche. **Strg+Q** fordert das Beenden an; bei aktiven Übertragungen wird es verweigert. **Strg+Alt+W** blendet das Fenster aus, ohne Übertragungen anzuhalten. Die Flagge neben Profile ändert sofort die Sprache. Hauptfenster-Schaltflächen besitzen Kurzinfos.
+
+![Ausschlüsse](images/de-DE/23-exclusions.png)

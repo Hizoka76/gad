@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 
 ROOT = Path(__file__).resolve().parent.parent
-SUITES = ("clipboard", "notifications", "row_actions", "konqueror")
+SUITES = ("clipboard", "notifications", "row_actions", "konqueror", "ui_interactions")
 
 
 def run_suites(names):

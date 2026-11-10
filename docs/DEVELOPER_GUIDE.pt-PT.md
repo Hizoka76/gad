@@ -1,6 +1,6 @@
 # Gad — Guia de desenvolvimento {#gad-developer-guide}
 
-Versão documentada: **0.2.0**, protocolo **33**, 8 de novembro de 2026.
+Versão documentada: **0.3.0**, protocolo **33**, 8 de novembro de 2026.
 
 Gad significa **Gestionnaire Avancé de Duplication**; o seu slogan é **Gad, il copie.** Este guia descreve a implementação neste repositório. O código permanece oficial para os campos exatos e padrões.
 
@@ -286,7 +286,11 @@ O Qt repete a resolução de URL de origem através do KIO no máximo a cada cin
 
 ## Diário e recuperação após uma falha {#journal-and-crash-recovery}
 
-O diário do utilizador é `$XDG_DATA_HOME/gad/state.json`, padrão para `~/.local/share/gad/state.json`. `save` serializa escritores, escreve um ficheiro de estado temporário, substitui-o atomicamente, e sincroniza conforme necessário. Não segure `state` enquanto o chama.
+O diário persistente é composto por `$XDG_DATA_HOME/gad/state.json` (por predefinição `~/.local/share/gad/state.json`) e `state.json.wal`. `engine/journal.rs` acrescenta apenas os lotes alterados, as definições e os identificadores, com sequência e soma MD5 para detetar danos acidentais. Cada registo é sincronizado antes da operação de ficheiro correspondente. O arranque, o encerramento normal e a compactação publicam primeiro um instantâneo completo atómico e depois esvaziam o WAL. A compactação ocorre ao guardar após 64 registos ou 64 MiB. `_gad_journal_seq` impede a repetição de registos já compactados. A última linha incompleta é ignorada; registos completos corrompidos ou falhas na sequência interrompem o carregamento sem apagar o diário. Os instantâneos antigos continuam legíveis. Feche o Gad antes de copiar ambos os ficheiros e as cópias `.gad-undo-*` associadas. Não mantenha o bloqueio de `state` ao chamar `save`; o bloqueio de escrita vem primeiro. `scripts/journal_reader.py` reconstrói o estado persistente.
+
+A leitura preserva o JSON exato dos lotes alterados, aplica os deltas e descodifica a versão final nos tipos da aplicação. Um buffer de 64 KiB evita carregar todo o WAL. Um estado inalterado não provoca compactação; os instantâneos explícitos no encerramento continuam a ser efetuados. Mantêm-se os bloqueios e as sincronizações antes das operações de ficheiros. A leitura rejeita ligações finais e ficheiros não regulares.
+
+Os novos registos usam `format: 2`, `jobs: null`, `full_jobs` e `patches`. Cada delta substitui um intervalo de bytes UTF-8 do JSON exato do lote e contém o ID, somas MD5 da base e do resultado, `offset`, `remove` e `insert`. As somas detetam danos acidentais, sem autenticação criptográfica. Verificam-se a base, os limites UTF-8, o JSON e a identidade. Não volte a codificar os objetos completos antes de aplicar deltas. A cache admite 16 MiB de texto JSON no total e 8 MiB por lote; lotes maiores ou alterações amplas são gravados por inteiro. Só é atualizada após fsync bem-sucedido e é esvaziada na compactação: a base seguinte é gravada por inteiro. Os WAL antigos continuam legíveis; os leitores antigos rejeitam v2 devido a `jobs: null`. Feche normalmente a versão nova para publicar um instantâneo completo e esvaziar o WAL antes de regressar a uma versão anterior.
 
 `undo::Record` captura estadiamento próprio, resultados, backups / selos originais, remoção de origem, preparação de fonte restaurada e etapas de recuperação completas. Destinos substituídos ao vivo em diretórios privados `.gad-undo-*` em seu sistema de ficheiros. Mantenha o diário antes de efeitos que precisam de recuperação; não trate um caminho de exibição como evidência de propriedade.
 
@@ -449,7 +453,7 @@ Depois de adicionar strings de exibição, execute `make translations` para sinc
 
 A raiz do README é um ponto de entrada curto; guias detalhados são mantidos aqui. A documentação abrange seis idiomas. Cada edição inclui Início Rápido, Guia do utilizador, Guia do Desenvolvedor e 20 capturas de ecrã de sua própria interface no tema de luz. Os diagramas de arquitetura e ciclo de vida têm etiquetas localizadas.
 
-O `doc_catalog.py` identifica a língua e o público de cada fonte. O `build_docs.py` gera capas corretas para o idioma, switches de linguagem de mesma audiência, links/fragmentos relativos e imagens incorporadas offline. O inglês PDFs usa a Carta dos EUA; outros PDFs usam o A4. O `check_docs.py` valida todos os links README/testing/guide, captura, metadados de linguagem e todas as 36 exportações HTML/PDF.
+O `doc_catalog.py` identifica a língua e o público de cada fonte. O `build_docs.py` gera capas corretas para o idioma, switches de linguagem de mesma audiência, links/fragmentos relativos e imagens incorporadas offline. O `check_docs.py` valida todos os links README/testing/guide, captura, metadados de linguagem e todas as 36 exportações HTML/Markdown.
 
 ```bash
 make docs-captures
@@ -477,7 +481,7 @@ O `TransferTree` possui os menus de cabeçalho, as revisões de exibição/filtr
 
 Ordenar as teclas forma uma lista ordenada de pares de colunas/direções. O Cabeçalho de Transferência lê Ctrl do evento real de lançamento do mouse; Ctrl+clique em anexar ou reverter uma tecla, enquanto um clique normal substitui a lista. Os marcadores de cabeçalho mantêm as prioridades- chaves entre as traduções. Limpar uma chave de ordenação preserva o resto. A combinação global redundante e o seu predicado foram removidos. Novos ícones de menus têm as falhas do Qt quando um tema não as possui.
 
-A coluna de ordem é a coluna lógica 5 e a coluna visual 0; `setTreePosition(0)` mantém os branches no Source. As funções existentes nas colunas e as referências de ação mantêm o seu significado. Os números vêm do `row_order`, com um backback derivado de instantâneos quando não é fornecida nenhuma disposição. Um delta apenas de layout força todas as linhas a atualizar, incluindo as tarefas omitidas desse delta. As dicas das células mostram IDs de lote imutáveis. A ordenação de pedidos usa filas numéricas, e a sexta coluna suporta filtros e a ordenação com Ctrl+clique. Os acentos de cores da solicitação são desenhados na primeira coluna visual.
+A coluna de ordem é a coluna lógica 5 e a coluna visual 0; `setTreePosition(0)` mantém os branches no Source. As funções existentes nas colunas e as referências de ação mantêm o seu significado. Os números vêm do `row_order`, com um backback derivado de instantâneos quando não é fornecida nenhuma disposição. Uma alteração apenas da disposição atualiza os números e as posições, incluindo os lotes omitidos nesse delta, sem recalcular a apresentação detalhada. As dicas das células mostram IDs de lote imutáveis. A ordenação de pedidos usa filas numéricas, e a sexta coluna suporta filtros e a ordenação com Ctrl+clique. Os acentos de cores da solicitação são desenhados na primeira coluna visual.
 
 As quebras de sentenças de dicas são novas linhas explícitas nos literais de origem em Inglês e catálogo francês. Nenhuma substituição de pontuação de execução toca caminhos, URLs ou texto de erro externo. As dicas de fonte mantêm as opções de localização e operação; a identificação de lote permanece na coluna Ordem. A regressão em live- language inclui um nome de ficheiro contendo um período, um espaço e caracteres HTML.
 
@@ -521,15 +525,15 @@ O `native/konqueror/paste_filter.h` lida apenas com Ctrl+V numa vista com uma UR
 
 **Definições → Opções…** abre uma janela modal que bloqueia a janela principal enquanto as transferências continuam. As alterações aplicam-se imediatamente; **Fechar** ou Esc não as anula. Os parâmetros de comando aparecem a cinzento. Tamanho mínimo: **800 × 740**; janela principal, relatório de erros e diagnóstico: **1100 × 600**.
 
-Os quatro separadores são **Definições**, **Atalhos**, **Limites de velocidade** e **Fim do lote**. Os limites incluem o global e o predefinido para novos pedidos. Para alterar um pedido existente, selecione as linhas e utilize **botão direito → Limitar a velocidade da solicitação…**. O limite aparece em **Detalhe**, incluindo nas pastas; sem limite não é acrescentado texto.
+As cinco abas são configurações, atalhos, limites de velocidade, conclusão do lote e exclusões. Os parâmetros de linha de comando aparecem em cinza. O limite de um lote existente é alterado pelo menu de contexto das linhas e aparece na coluna de detalhes.
 
-`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`. `rowRateLimit` → `Window::showRateLimit`.
+`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`, `exclusionsPanel`. `rowRateLimit` → `Window::showRateLimit`.
 
 Os comandos e a caixa do Dolphin partilham `Window::configureDolphin`. Executa o componente privado `gad/integration/dolphin_shortcut.py` com Python e QProcess sem bloquear transferências. O registo permanece em `gad/dolphin-paste.json`. O prazo máximo é de oito segundos; uma falha repõe a caixa e devolve um erro ao cliente. `Window::handleAsync` aguarda o resultado antes de responder por IPC. O Konqueror mantém `konquerorCtrlV`, lido pelo módulo em cada Ctrl+V. Não é instalado nenhum comando público separado.
 
 ### Documentação na caixa Sobre {#about-documentation}
 
-`docs/catalog.json` é gerado por `doc_catalog.runtime_catalog()` e instalado com as exportações por `scripts/install_docs.py`, sem ferramentas de renderização. `native/documentation.h` procura `gad/docs/catalog.json` nos diretórios XDG e depois em localizações portáteis ou de desenvolvimento. Os campos `locale`, `kind`, `title`, `html` e `pdf` identificam os ficheiros. A seleção privilegia a variante regional exata, outra variante do mesmo idioma e depois o inglês. Os caminhos são verificados em relação à raiz canónica para rejeitar travessias e ligações simbólicas externas. As ligações são atualizadas quando o idioma muda e abertas através de `QDesktopServices`.
+`docs/catalog.json` é gerado por `doc_catalog.runtime_catalog()` e instalado com as exportações por `scripts/install_docs.py`, sem ferramentas de renderização. `native/documentation.h` procura `gad/docs/catalog.json` nos diretórios XDG e depois em localizações portáteis ou de desenvolvimento. Os campos `locale`, `kind`, `title`, `html` e `md` identificam os ficheiros. A seleção privilegia a variante regional exata, outra variante do mesmo idioma e depois o inglês. Os caminhos são verificados em relação à raiz canónica para rejeitar travessias e ligações simbólicas externas. As ligações são atualizadas quando o idioma muda e abertas através de `QDesktopServices`.
 
 ## Configuração e páginas de manual {#command-settings}
 
@@ -619,3 +623,28 @@ Preferência passiva: `gad --configure --completion-action suspend --completion-
 ## Preparar transferências na lista principal {#preparing-transfers}
 
 O protocolo atual é **33**. `Job.start_required` é persistido; `prepare_only` distingue a preparação manual dos pedidos externos. O escalonador ignora preparações não validadas. O controlo único envia `pause` com `paused=false` para iniciar ou retomar. `staging.rs` cria temporários visíveis; `resume.rs` verifica identidade e prefixo. Os comandos de simulação só de leitura permanecem internos, sem janela própria.
+
+
+## Índice temporário de diretórios
+
+`engine/directories.rs` reutiliza as relações entre diretórios e descendentes enquanto os caminhos, tipos e posições permanecerem iguais. Os estados são recalculados em cada chamada. A cache está limitada a 16 384 entradas e cerca de 8 MiB por tarefa ativa; tarefas maiores usam um índice temporário. Não é copiada nem serializada e é libertada quando o trabalhador termina, sem alterar a revisão da tarefa.
+
+
+## Cache das definições do diário
+
+`engine/journal/settings.rs` guarda as definições persistentes tipadas e o respetivo JSON exato. Cada gravação compara os valores atuais, incluindo a ordem completa das linhas. O progresso reutiliza o JSON sem reconstruir a árvore. Alterações às definições ou à ordem recriam a cache, publicada apenas após uma escrita duradoura bem-sucedida. Cada registo WAL 2 continua a incluir o cabeçalho completo; o formato e os fsync não mudam.
+
+
+## Leitura e codificação do diário
+
+`engine/journal/snapshot_reader.rs` descodifica o estado e extrai `_gad_journal_seq` numa única passagem. Os instantâneos continuam a exigir `jobs`. O leitor WAL usa o JSON das definições e tarefas da linha atual; apenas copia as tarefas conservadas. Cada cabeçalho diferente é descodificado diretamente em `State`, sem uma árvore JSON intermédia. Chaves de definições duplicadas são recusadas. A codificação reserva o prefixo da soma de verificação e usa o mesmo buffer escrito no disco. O formato WAL 2 e as sincronizações não mudam. O último cabeçalho validado é reutilizado se os bytes forem idênticos. Esta cache está limitada a 1 MiB, é invalidada por um cabeçalho maior e é libertada no fim do carregamento.
+
+## Adicionar itens, atalhos e exclusões
+
+O menu **Adicionar itens** reúne **Adicionar arquivos…** (Ctrl+Shift+O), **Adicionar pasta…** (Ctrl+O) e **Arquivos da área de transferência** (Ctrl+V). Mantém o modo Copiar ou Recortar. Quando Gad está inativo, todos os itens adicionados dentro do aplicativo aguardam **Iniciar**; durante transferências já iniciadas, entram na fila. Apenas a colagem externa pelo gerenciador de arquivos inicia automaticamente.
+
+**Ctrl+F** abre a pesquisa. **Ctrl+Q** solicita sair e impede a saída com transferências ativas. **Ctrl+Alt+W** oculta a janela sem interrompê-las. O botão com a bandeira junto a Perfis altera o idioma imediatamente. Os botões principais têm dicas de ferramenta.
+
+Em **Configurações → Opções… → Exclusões**, insira um padrão por linha para pastas ou arquivos e links simbólicos. Cada campo é salvo ao perder o foco, sem botão Aplicar nem diálogo adicional. Uma regra inválida gera um aviso; as regras anteriores continuam ativas e o texto permanece para correção. As regras valem para novas transferências. A opção de incluir itens ocultos permanece na aba de configurações.
+
+`Window::setupExclusions` cria dois widgets `ExclusionEdit`, derivados de `QPlainTextEdit`, em `exclusionsPanel`. `focusOutEvent` valida apenas o campo alterado por `Window::handle(configure)`; valores iguais não geram alterações. O motor valida antes de gravar QSettings. Uma rejeição mantém o rascunho. A sincronização CLI/perfil substitui apenas as listas alteradas. `manualAdditionWaits` compartilha a preparação entre `enqueue` e `pasteInto(background=false)`; a colagem externa usa `background=true`.

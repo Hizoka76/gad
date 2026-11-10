@@ -258,7 +258,7 @@ impl Plan {
                         return Ok(());
                     }
                 };
-            children.sort_by_key(|e| e.file_name());
+            sort_children(&mut children);
             for child in children {
                 self.scan(
                     &child.path(),

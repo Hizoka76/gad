@@ -8,6 +8,7 @@ import socket
 import subprocess
 import tempfile
 import time
+from journal_reader import read_journal
 
 
 def main():
@@ -22,7 +23,7 @@ def main():
         env = dict(os.environ, HOME=str(base / "home"), QT_QPA_PLATFORM="offscreen",
                    XDG_RUNTIME_DIR=str(runtime), XDG_CONFIG_HOME=str(base / "config"),
                    XDG_DATA_HOME=str(base / "data"))
-        source = base / "source.bin"
+        source = base / 'source é😀 "\n.bin'
         destination = base / "destination"
         destination.mkdir()
         with source.open("wb") as output:
@@ -74,8 +75,8 @@ def main():
                 assert "id" in result, result
                 # Attendre une sauvegarde au milieu du fichier, puis arrêter sans nettoyage ni sauvegarde finale.
                 def saved_prefix(_state):
-                    """L’état en mémoire précède le fsync du journal : attendre le JSON publié sur disque."""
-                    saved_state = json.loads((base / "data/gad/state.json").read_text())
+                    """L’état en mémoire précède le fsync du journal : attendre un point complet du journal sur disque."""
+                    saved_state = read_journal(base / "data/gad/state.json")
                     return any(
                         0 < ((entry.get("undo") or {}).get("resume") or {}).get("bytes", 0) < source.stat().st_size
                         for job in saved_state["jobs"] for entry in job["entries"])
@@ -88,7 +89,7 @@ def main():
                 inode = partial.stat().st_ino
                 process.kill()
                 process.wait(timeout=10)
-                frozen = json.loads((base / "data/gad/state.json").read_text())
+                frozen = read_journal(base / "data/gad/state.json")
                 saved = frozen["jobs"][0]["entries"][0]["undo"]["resume"]["bytes"]
                 assert 0 < saved < source.stat().st_size
                 process = launch()

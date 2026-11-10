@@ -1,3 +1,31 @@
+gad (0.3.0a-0~resolute) resolute; urgency=medium
+
+  * Version 0.3.0 : accélérer le journal, les transferts et les déplacements rapides.
+  * Simplifier les ajouts, les langues et les exclusions enregistrées à la perte de focus.
+  * Corriger la préparation des fichiers du presse-papiers et la progression initiale.
+  * Ajouter les raccourcis, infobulles et tests de régression de l’interface.
+  * Actualiser les guides, traductions et captures dans six langues ; retirer les PDF.
+  * Release 0.3.0: optimize journaling, transfers and fast moves.
+  * Streamline additions, languages and exclusions saved on focus loss.
+  * Fix clipboard preparation and initial progress; add shortcuts and tooltips.
+  * Extend regression tests and refresh guides, translations and screenshots.
+  * Publish Debian test revision 0.3.0a; retain HTML and Markdown documentation.
+
+ -- Terence Belleguic <hizo@free.fr>  Tue, 10 Nov 2026 18:12:20 +0100
+
+gad (0.2.0b-0~resolute) resolute; urgency=medium
+
+  * Corriger le test du diagnostic sur les disques identifiés par Launchpad.
+  * Tester les réservations inconnues, partagées et distinctes explicitement.
+  * Ajouter les parcours de tests automatiques de l’interface et de la CLI.
+  * Ajouter progressMessage, les profils associés et les options de commande.
+  * Fix scheduler diagnostics tests on Launchpad block-backed build hosts.
+  * Exercise unknown, shared and disjoint resource reservations explicitly.
+  * Add automated interface scenarios and command-line settings tests.
+  * Add the progressMessage preference, profiles and command-line options.
+
+ -- Terence Belleguic <hizo@free.fr>  Mon, 09 Nov 2026 09:13:51 +0100
+
 gad (0.2.0-0~resolute) resolute; urgency=medium
 
   * Version 0.2.0 : préparation manuelle, reprise partielle et temporaires visibles.

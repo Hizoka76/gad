@@ -208,6 +208,22 @@ int main(int argc,char **argv){
     QTRY_VERIFY_WITH_TIMEOUT(closedView->updates>0,2000);delete closing;
     QTRY_VERIFY_WITH_TIMEOUT(closedView->terminated,2000);
     check(closedView->errorText.contains("gad://show"),"La fermeture du suivi garde le lien");
+    // Le choix utilisateur masque le suivi, sans commande de pause ni annulation métier.
+    QString hiddenCommand;TransferNotifications hidden([&](const QString &action){hiddenCommand=action;});
+    const int beforeHidden=jobs.requests;const auto hiddenState=QJsonObject{{"jobs",QJsonArray{job(501)}},{"paused",false}};
+    check(hidden.setProperty("progressMessage",false),"Propriété progressMessage modifiable");hidden.sync(hiddenState,true);QTest::qWait(50);check(jobs.requests==beforeHidden,"Aucune vue KDE lorsque le suivi est désactivé");
+    hidden.setProperty("progressMessage",true);hidden.sync(hiddenState,true);QTRY_COMPARE_WITH_TIMEOUT(jobs.requests,beforeHidden+1,2000);auto *hiddenView=jobs.views.last();QTRY_VERIFY_WITH_TIMEOUT(hiddenView->updates>0,2000);
+    hidden.setProperty("progressMessage",false);QTRY_VERIFY_WITH_TIMEOUT(hiddenView->terminated,2000);check(hiddenCommand.isEmpty(),"Masquer ne commande pas les transferts");
+    Q_EMIT hiddenView->cancelRequested();QTest::qWait(20);check(hiddenCommand.isEmpty(),"Une vue masquée ne peut plus annuler le lot");
+    hidden.setProperty("progressMessage",true);hidden.sync(hiddenState,false);QTRY_COMPARE_WITH_TIMEOUT(jobs.requests,beforeHidden+2,2000);auto *reopened=jobs.views.last();QTRY_VERIFY_WITH_TIMEOUT(reopened->updates>0,2000);hidden.setProperty("progressMessage",false);QTRY_VERIFY_WITH_TIMEOUT(reopened->terminated,2000);
+    // La désactivation avant la réponse D-Bus ferme également la vue obtenue tardivement.
+    TransferNotifications pending([](const QString &){});const int beforePending=jobs.requests;pending.sync(QJsonObject{{"jobs",QJsonArray{job(502)}},{"paused",false}},true);pending.setProperty("progressMessage",false);
+    QTRY_COMPARE_WITH_TIMEOUT(jobs.requests,beforePending+1,2000);QTRY_VERIFY_WITH_TIMEOUT(jobs.views.last()->terminated,2000);
+    // Un basculement rapide ne doit fermer que l’ancienne réponse, jamais la nouvelle vue.
+    TransferNotifications rapid([](const QString &){});const int beforeRapid=jobs.requests;const auto rapidState=QJsonObject{{"jobs",QJsonArray{job(503)}},{"paused",false}};
+    rapid.sync(rapidState,true);rapid.setProgressMessage(false);rapid.setProgressMessage(true);rapid.sync(rapidState,true);
+    QTRY_COMPARE_WITH_TIMEOUT(jobs.requests,beforeRapid+2,2000);auto *obsolete=jobs.views[jobs.views.size()-2];auto *current=jobs.views.last();
+    QTRY_VERIFY_WITH_TIMEOUT(obsolete->terminated,2000);QTRY_VERIFY_WITH_TIMEOUT(current->updates>0,2000);check(!current->terminated,"La nouvelle vue reste active après une ancienne réponse");rapid.setProgressMessage(false);QTRY_VERIFY_WITH_TIMEOUT(current->terminated,2000);
     for(const auto *published:jobs.views) {
         check(published->properties["infoMessage"].toString().count("gad://show")==1,"Chaque état du suivi possède exactement un lien");
         if(published->terminated)check(published->errorText.count("gad://show")==1,"Chaque bilan final possède exactement un lien");

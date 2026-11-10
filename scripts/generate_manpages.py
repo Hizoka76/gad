@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Les options techniques internes et les alias historiques ne constituent pas l’interface publique.
 GAD_OPTIONS = [
+ ('--progress-message, --no-progress-message', 'With --configure, show or hide the KDE transfer progress message immediately. Enabled by default. Hiding it does not pause or cancel transfers. Saved in transfer profiles.', 'Avec --configure, afficher ou masquer immédiatement le message de progression KDE. Activé par défaut. Masquer le message ne met pas en pause et n’annule pas les transferts. Enregistré dans les profils.'),
  ('--completion-action ACTION', 'With --configure, save none, notify, quit, suspend or poweroff as the batch-completion action. This only saves a preference. In Options > Batch completion, click Activate for this batch to enable it once. Profiles never activate actions.', 'Avec --configure, enregistrer none, notify, quit, suspend ou poweroff comme action de fin de lot. Seule la préférence est enregistrée. Dans Options > Fin de lot, cliquer sur Activer pour ce lot pour une activation unique. Les profils n’activent jamais une action.'),
  ('--completion-delay SECONDS', 'With --configure, save a cancelable countdown from 5 to 3600 whole seconds (default 30). New work restarts the full countdown after completion; errors, cancellations and removed requests cancel the action.', 'Avec --configure, enregistrer un compte à rebours annulable de 5 à 3600 secondes entières (30 par défaut). Une nouvelle demande relance le délai entier après sa fin ; les erreurs, annulations et demandes supprimées annulent l’action.'),
  ('--verify-fast-move, --no-verify-fast-move', 'With --configure, enable or disable post-rename verification for new fast moves. Checks identity, type, metadata, symbolic links, the complete tree and absence of the original path without reading file contents. A failed check keeps the moved result and its restoration journal. Saved in profiles. MD5 remains separate and forces the copy path.', 'Avec --configure, activer ou désactiver la vérification après renommage pour les nouveaux déplacements rapides. Contrôle l’identité, le type, les métadonnées, les liens symboliques, l’arborescence complète et l’absence du chemin source, sans lire le contenu. Un échec conserve le résultat déplacé et son journal de restauration. Enregistré dans les profils. Le MD5 reste distinct et impose le parcours de copie.'),
@@ -67,7 +68,7 @@ MAN_TEXT = {'en': {'title': 'Queued file transfer manager for KDE',
                     'settings. New transfers use saved preferences unless explicitly overridden. '
                     'Not all settings apply retroactively to existing transfers. Configure Ctrl+V '
                     'in Dolphin with --configure --dolphin-ctrl-v or --no-dolphin-ctrl-v.',
-        'files': 'HTML and PDF guides in the supported languages.'},
+        'files': 'HTML and Markdown guides in the supported languages.'},
  'fr': {'title': 'Gestionnaire de transferts de fichiers pour KDE',
         'description': 'Gad gère les copies et déplacements avec file d’attente, pause, reprise, '
                        'vérification et restauration. Sans argument, il affiche la fenêtre '
@@ -82,7 +83,7 @@ MAN_TEXT = {'en': {'title': 'Queued file transfer manager for KDE',
                     'enregistrées, sauf surcharge explicite. Les réglages ne sont pas tous '
                     'rétroactifs aux transferts existants. Configurer Ctrl+V dans Dolphin avec '
                     '--configure --dolphin-ctrl-v ou --no-dolphin-ctrl-v.',
-        'files': 'Guides HTML et PDF dans les langues disponibles.'}}
+        'files': 'Guides HTML et Markdown dans les langues disponibles.'}}
 
 
 def base_render(name, french=False):

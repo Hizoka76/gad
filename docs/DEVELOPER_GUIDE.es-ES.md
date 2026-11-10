@@ -1,6 +1,6 @@
 # Gad — Guía de desarrollo {#gad-developer-guide}
 
-Versión documentada: **0.2.0**, protocolo **33**, 8 de noviembre de 2026.
+Versión documentada: **0.3.0**, protocolo **33**, 8 de noviembre de 2026.
 
 Gad significa **Gestionnaire Avancé de Duplication**; su lema es **Gad, il copie.** Esta guía describe la implementación en este repositorio. El código sigue teniendo autoridad para los campos exactos y los valores predeterminados.
 
@@ -286,7 +286,11 @@ Qt vuelve a intentar la resolución de la URL de origen a través de KIO como m�
 
 ## Diario y recuperación tras un fallo {#journal-and-crash-recovery}
 
-El diario del usuario es `$XDG_DATA_HOME/gad/state.json`, el valor predeterminado es `~/.local/share/gad/state.json`. `save` serializa escritores, escribe un archivo de estado temporal, lo reemplaza atómicamente y sincroniza según sea necesario. No mantenga presionado `state` mientras lo llama.
+El diario persistente consta de `$XDG_DATA_HOME/gad/state.json` (por defecto `~/.local/share/gad/state.json`) y `state.json.wal`. `engine/journal.rs` añade solo los lotes modificados, los ajustes y los identificadores, con secuencia y suma MD5 para detectar daños accidentales. Cada registro se sincroniza antes de la operación de archivo correspondiente. El inicio, el cierre normal y la compactación publican primero una instantánea completa atómica y después vacían el WAL. La compactación se realiza al guardar después de 64 registros o 64 MiB. `_gad_journal_seq` evita reproducir registros ya compactados. Se ignora una última línea incompleta; los registros completos dañados o los saltos de secuencia detienen la carga sin borrar el diario. Las instantáneas antiguas siguen siendo legibles. Cierre Gad antes de copiar ambos archivos y las copias `.gad-undo-*` asociadas. No mantenga el bloqueo de `state` al llamar a `save`; primero se toma el bloqueo del escritor. `scripts/journal_reader.py` reconstruye el estado persistente.
+
+La lectura conserva el JSON exacto de los lotes modificados, aplica los deltas y decodifica su versión final en los tipos de la aplicación. Un búfer de 64 KiB evita cargar todo el WAL. No se compacta un estado sin cambios; las instantáneas explícitas al cerrar siguen ejecutándose. Se conservan los bloqueos y sincronizaciones antes de las operaciones de archivo. La lectura rechaza enlaces finales y archivos no regulares.
+
+Los registros nuevos usan `format: 2`, `jobs: null`, `full_jobs` y `patches`. Cada delta reemplaza un intervalo de bytes UTF-8 del JSON exacto del lote y contiene su ID, sumas MD5 de base y resultado, `offset`, `remove` e `insert`. Las sumas detectan daños accidentales, sin autenticar los datos. Se comprueban la base, los límites UTF-8, el JSON y la identidad. No vuelva a codificar los objetos completos antes de aplicar deltas. La caché admite 16 MiB de texto JSON en total y 8 MiB por lote; los lotes mayores o cambios amplios se guardan completos. Solo se actualiza tras fsync correcto y se vacía al compactar: la siguiente base se escribe completa. Se leen los WAL antiguos; los lectores antiguos rechazan v2 por `jobs: null`. Cierre normalmente la versión nueva para publicar una instantánea completa y vaciar el WAL antes de volver a una versión anterior.
 
 `undo::Record` captura la puesta en escena propia, los resultados, las copias de seguridad/sellos originales, la eliminación de la fuente, la preparación de la fuente restaurada y los pasos de recuperación completados. Los destinos reemplazados se encuentran en directorios privados `.gad-undo-*` en su sistema de archivos. Mantenga el diario antes de los efectos que necesitan recuperación; no trate una ruta de visualización como evidencia de propiedad.
 
@@ -449,7 +453,7 @@ Después de agregar cadenas de visualización, ejecute `make translations` para 
 
 El archivo README raíz es un punto de entrada breve; Aquí se mantienen guías detalladas. La documentación cubre seis idiomas. Cada edición incluye Inicio rápido, Guía del usuario, Guía del desarrollador y 20 capturas de pantalla de su propia interfaz en el tema ligero. Los diagramas de arquitectura y ciclo de vida tienen etiquetas localizadas.
 
-`doc_catalog.py` identifica el idioma y la audiencia de cada fuente. `build_docs.py` genera portadas con lenguaje correcto, cambios de idioma para la misma audiencia, enlaces/fragmentos relativos e imágenes incrustadas sin conexión. Los PDF en inglés utilizan Carta estadounidense; otros archivos PDF usan A4. `check_docs.py` valida todos los enlaces README/pruebas/guía, capturas, metadatos de idioma y las 36 exportaciones HTML/PDF.
+`doc_catalog.py` identifica el idioma y la audiencia de cada fuente. `build_docs.py` genera portadas con lenguaje correcto, cambios de idioma para la misma audiencia, enlaces/fragmentos relativos e imágenes incrustadas sin conexión. `check_docs.py` valida todos los enlaces README/pruebas/guía, capturas, metadatos de idioma y las 36 exportaciones HTML/Markdown.
 
 ```bash
 make docs-captures
@@ -459,7 +463,7 @@ make docs-check
 
 El código de captura vincula los widgets reales a un puente C de demostración, utiliza archivos temporales y sesiones aisladas y aplica Breeze Light en su configuración privada, preservando la configuración de fuente del escritorio. El manifiesto registra dimensiones, versión y hashes. Nunca controla el proceso o el portapapeles Gad real. La representación nativa de bandeja/progreso fuera de la captura del widget no se simula como una captura de pantalla de escritorio real.
 
-Las pruebas de documentación de Python cubren la selección de configuración regional, la navegación, el tamaño del papel, los enlaces relativos, los títulos, la incrustación de imágenes, los encabezados faltantes y la invocación completa de la exportación sin necesidad de Markdown o WeasyPrint en el entorno de prueba de rutina. Consulte [índice de documentación](README.es-ES.md) para conocer las dependencias de exportación opcionales.
+Las pruebas de documentación de Python cubren la selección de configuración regional, la navegación, el tamaño del papel, los enlaces relativos, los títulos, la incrustación de imágenes, los encabezados faltantes y la invocación completa de la exportación sin necesidad de Markdown o en el entorno de prueba de rutina. Consulte [índice de documentación](README.es-ES.md) para conocer las dependencias de exportación opcionales.
 
 ## Limitaciones conocidas {#explicit-limitations}
 
@@ -477,7 +481,7 @@ Mantenga estos límites visibles en las decisiones de diseño y los mensajes de 
 
 Las claves de clasificación forman una lista ordenada de pares de columna/dirección. TransferHeader lee Ctrl del evento real de liberación del mouse; Ctrl+clic agrega o invierte una clave, mientras que un clic normal reemplaza la lista. Los marcadores de encabezado conservan prioridades clave en toda la traducción. Borrar una clave de clasificación conserva el resto. Se eliminaron el combo global redundante y su predicado. Los nuevos íconos de menú tienen respaldos Qt cuando un tema carece de ellos.
 
-La columna de orden es la columna lógica 5 y la columna visual 0; `setTreePosition(0)` mantiene sucursales en la fuente. Los roles de columna existentes y las referencias de acciones mantienen su significado. Los números provienen de `row_order`, con un respaldo derivado de una instantánea cuando no se proporciona ningún diseño. Un delta de solo diseño obliga a que todas las filas se actualicen, incluidos los trabajos omitidos en ese delta. La información sobre herramientas de las celdas muestra ID de lotes inmutables. La clasificación de pedidos utiliza clasificaciones de cola numéricas y la sexta columna admite filtros y clasificación Ctrl+clic. Los acentos de color solicitados se dibujan en la primera columna visual.
+La columna de orden es la columna lógica 5 y la columna visual 0; `setTreePosition(0)` mantiene sucursales en la fuente. Los roles de columna existentes y las referencias de acciones mantienen su significado. Los números provienen de `row_order`, con un respaldo derivado de una instantánea cuando no se proporciona ningún diseño. Un delta de solo diseño actualiza los números y rangos, incluidos los lotes omitidos en ese delta, sin recalcular su presentación detallada. La información sobre herramientas de las celdas muestra ID de lotes inmutables. La clasificación de pedidos utiliza clasificaciones de cola numéricas y la sexta columna admite filtros y clasificación Ctrl+clic. Los acentos de color solicitados se dibujan en la primera columna visual.
 
 Los saltos de oración de información sobre herramientas son nuevas líneas explícitas en los literales de origen en inglés y en el catálogo en francés. Ningún reemplazo de puntuación en tiempo de ejecución afecta rutas, URL o texto de error externo. La información sobre herramientas de origen conserva la ruta y las opciones de operación; La identificación del lote permanece en la columna Pedido. La regresión del lenguaje en vivo incluye un nombre de archivo que contiene un punto, un espacio y caracteres similares a HTML.
 
@@ -523,13 +527,13 @@ El complemento también expone la carpeta activa a **Pegue en la carpeta abierta
 
 Los cuatro apartados son **Ajustes**, **Atajos**, **Límites de velocidad** y **Fin del lote**. Los límites incluyen el global y el predeterminado para nuevas solicitudes. Para modificar una existente, seleccione sus filas y utilice **clic derecho → Limitar la velocidad de la solicitud…**. El límite aparece en **Detalle**, también en carpetas; sin límite no se añade texto.
 
-`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`. `rowRateLimit` → `Window::showRateLimit`.
+`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`, `exclusionsPanel`. `rowRateLimit` → `Window::showRateLimit`.
 
 Los comandos y la casilla de Dolphin comparten `Window::configureDolphin`. Ejecuta el componente privado `gad/integration/dolphin_shortcut.py` con Python y QProcess sin bloquear los traslados. El registro permanece en `gad/dolphin-paste.json`. El plazo máximo es de ocho segundos; un fallo restaura la casilla y devuelve un error al cliente. `Window::handleAsync` espera el resultado antes de responder por IPC. Konqueror conserva `konquerorCtrlV`, que su módulo lee en cada Ctrl+V. No se instala ningún comando público separado.
 
 ### Documentación desde Acerca de {#about-documentation}
 
-`docs/catalog.json` se genera mediante `doc_catalog.runtime_catalog()` y se instala con las exportaciones mediante `scripts/install_docs.py`, sin herramientas de renderizado. `native/documentation.h` busca `gad/docs/catalog.json` en los directorios XDG y después en ubicaciones portátiles o de desarrollo. Los campos `locale`, `kind`, `title`, `html` y `pdf` identifican los archivos. Se priorizan la configuración regional exacta, otra variante del mismo idioma y después el inglés. Las rutas se verifican contra la raíz canónica para rechazar recorridos y enlaces simbólicos externos. Los enlaces se actualizan al cambiar de idioma y se abren mediante `QDesktopServices`.
+`docs/catalog.json` se genera mediante `doc_catalog.runtime_catalog()` y se instala con las exportaciones mediante `scripts/install_docs.py`, sin herramientas de renderizado. `native/documentation.h` busca `gad/docs/catalog.json` en los directorios XDG y después en ubicaciones portátiles o de desarrollo. Los campos `locale`, `kind`, `title`, `html` y `md` identifican los archivos. Se priorizan la configuración regional exacta, otra variante del mismo idioma y después el inglés. Las rutas se verifican contra la raíz canónica para rechazar recorridos y enlaces simbólicos externos. Los enlaces se actualizan al cambiar de idioma y se abren mediante `QDesktopServices`.
 
 ## Configuración y páginas de manual {#command-settings}
 
@@ -617,3 +621,30 @@ Suspender y apagar utilizan logind y respetan sus permisos e inhibidores. Una no
 ## Preparar transferencias en la lista principal {#preparing-transfers}
 
 El protocolo actual es **33**. Se persiste `Job.start_required`; `prepare_only` distingue la preparación manual de las solicitudes externas. El planificador omite las preparaciones sin validar. El control único envía `pause` con `paused=false` para iniciar o reanudar. `staging.rs` crea temporales visibles; `resume.rs` verifica su identidad y prefijo. Las órdenes de simulación de solo lectura permanecen internas, sin ventana propia.
+
+
+## Índice temporal de directorios
+
+`engine/directories.rs` reutiliza las relaciones entre directorios y descendientes mientras no cambien las rutas, los tipos ni las posiciones. Los estados se recalculan en cada llamada. La caché se limita a 16 384 entradas y unos 8 MiB por tarea activa; las tareas mayores utilizan un índice temporal. No se copia ni se serializa, y se libera al terminar el trabajador sin cambiar la revisión de la tarea.
+
+
+## Caché de ajustes del diario
+
+`engine/journal/settings.rs` conserva los ajustes persistentes tipados y su JSON exacto. Cada guardado compara los valores actuales, incluido el orden completo de las filas. El progreso reutiliza el JSON sin reconstruir su árbol. Los cambios de ajustes u orden regeneran la caché, que se publica solo después de una escritura duradera correcta. Cada registro WAL 2 sigue incluyendo la cabecera completa; el formato y los fsync no cambian.
+
+
+## Lectura y codificación del diario
+
+`engine/journal/snapshot_reader.rs` decodifica el estado y extrae `_gad_journal_seq` en una sola pasada. Los instantáneos siguen requiriendo `jobs`. El lector WAL toma prestado el JSON de ajustes y tareas de la línea actual; solo copia las tareas conservadas. Cada cabecera distinta se decodifica directamente en `State`, sin un árbol JSON intermedio. Se rechazan claves de ajustes duplicadas. La codificación reserva el prefijo de suma de comprobación y usa el mismo búfer que se escribe en disco. El formato WAL 2 y las sincronizaciones no cambian. Se reutiliza la última cabecera validada si los bytes son idénticos. Esta caché se limita a 1 MiB, se invalida con una cabecera mayor y se libera al terminar la carga.
+
+## Añadir elementos, atajos y exclusiones
+
+El menú **Añadir elementos** incluye **Añadir archivos…** (Ctrl+Mayús+O), **Añadir carpeta…** (Ctrl+O) y **Archivos del portapapeles** (Ctrl+V). Conserva el modo Copiar o Cortar. Si Gad está inactivo, los elementos añadidos dentro de Gad esperan a **Iniciar**; si hay transferencias iniciadas, se incorporan a la cola. Solo el pegado externo desde el gestor de archivos inicia automáticamente.
+
+**Ctrl+F** abre la búsqueda. **Ctrl+Q** solicita salir y lo impide si hay transferencias activas. **Ctrl+Alt+W** oculta la ventana sin detenerlas. El botón de bandera junto a Perfiles cambia el idioma inmediatamente. Los botones principales muestran información emergente.
+
+Hay cinco pestañas: configuración, atajos, límites de velocidad, fin del lote y exclusiones. Los parámetros de línea de comandos aparecen en gris. El límite de un lote existente se cambia en el menú contextual de sus filas y aparece en la columna de detalle.
+
+En **Configuración → Opciones… → Exclusiones**, introduzca un patrón por línea para carpetas o archivos y enlaces simbólicos. Cada campo se guarda al perder el foco, sin botón Aplicar ni diálogo adicional. Si una regla es inválida, se indica el error, las reglas anteriores siguen activas y el texto permanece para corregirlo. Se aplica a nuevas transferencias. La opción de incluir elementos ocultos permanece en la pestaña de configuración.
+
+`Window::setupExclusions` crea dos widgets `ExclusionEdit`, derivados de `QPlainTextEdit`, en `exclusionsPanel`. `focusOutEvent` valida el campo modificado mediante `Window::handle(configure)`; los valores idénticos no generan cambios. El motor valida antes de guardar QSettings. Un rechazo conserva el borrador. La sincronización CLI/perfil sustituye solo las listas modificadas. `manualAdditionWaits` comparte la preparación entre `enqueue` y `pasteInto(background=false)`; el pegado externo usa `background=true`.

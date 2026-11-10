@@ -17,7 +17,7 @@ Gad bringt Dateikopien und -verschiebungen in ein natives KDE Plasma-Fenster. Se
 - Lokale und entfernte Quellen und Ziele über KIO Fuse: KDE Connect, FTP, SFTP und SMB.
 
 
-**0.2.0** — Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts läuft, prüfen Sie die Liste und klicken Sie auf **Starten**. Normales Einfügen startet automatisch; während einer Übertragung werden neue Aufträge eingereiht. **Strg+C** kopiert, **Strg+X** verschiebt. Ziehen und Ablegen bereitet immer eine Kopie vor.
+**0.3.0** — Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts läuft, prüfen Sie die Liste und klicken Sie auf **Starten**. Externes Einfügen aus dem Dateimanager startet automatisch; während einer Übertragung werden neue Aufträge eingereiht. **Strg+C** kopiert, **Strg+X** verschiebt. Ziehen und Ablegen bereitet immer eine Kopie vor.
 
 ## Dokumentation {#documentation}
 
@@ -29,7 +29,7 @@ Diese README-Datei ist ein Ausgangspunkt. Die Anleitungen beschreiben das vollst
 | Entwickler | [Architektur und Protokoll](docs/DEVELOPER_GUIDE.de-DE.md) | [Architektur und Protokoll](docs/GUIDE_DEVELOPPEUR.md) |
 | Testen | [Validierung](TESTING.de-DE.md) | [Tests](TESTING.md) |
 
-[Alle HTML- und PDF-Editionen](docs/README.de-DE.md)
+[Alle HTML- und Markdown-Editionen](docs/README.de-DE.md)
 
 ## Installation {#installation}
 

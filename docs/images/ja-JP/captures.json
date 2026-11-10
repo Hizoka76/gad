@@ -1,136 +1,142 @@
 {
   "captures": [
     {
-      "file": "01-vue-ensemble.png",
+      "file": "01-overview.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "48a666d7e64b8045e93701e750552305adfd64eccade9804222ca99423d4dd83"
+      "sha256": "5dacdfcd531e8a46756934142710fa9107c520cfbf2ab1ffc0dd668d3af6dda0"
     },
     {
       "file": "02-sources-options.png",
       "height": 1480,
       "width": 1600,
-      "sha256": "3b2d299fb722c755362ebc4f0c63d2dbfc4e9fd063079fd2c281bac6b12976a0"
+      "sha256": "77bc6ce3f7aac1497708efa6623a9b736d0ddc43ad19711abf93be2b65a032e0"
     },
     {
-      "file": "14-options-raccourcis.png",
+      "file": "14-shortcut-options.png",
       "height": 1480,
       "width": 1600,
-      "sha256": "349b2d185ef8ae34479d750e96c3be3fb3820766a22d48a4ebdfbc115f6c59ae"
+      "sha256": "a882b3685ed565e9ed02e4e106f810c9fbdad6f013ea965055db98b57f4b0134"
     },
     {
       "file": "03-pause.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "a8d4efd5ce616cb6fcfd687c56dbe134d7eafa5dd265e809f40b2f1a51a17d31"
+      "sha256": "45b03ceef5d87c75d970d19668c3a5584f7b6e6fee7bf7e2de4f37e430d0ae53"
     },
     {
-      "file": "04-menu-annulation.png",
+      "file": "04-cancellation-menu.png",
       "height": 264,
       "width": 522,
       "sha256": "40d022042a1a9c7da36f66279f98252880c6f70d9b5122dc50626384eafde435"
     },
     {
-      "file": "05-menu-contextuel.png",
+      "file": "05-context-menu.png",
       "height": 868,
       "width": 640,
-      "sha256": "c00cb130141a4fad559f2de4dba47f19a52e2c449254c6e1fbf0db3019465f45"
+      "sha256": "1adb51341a21dce734cc6d77182260e7a6a986ef7c4c98864007105c031b43d7"
     },
     {
-      "file": "06-filtres.png",
+      "file": "06-filters.png",
       "height": 548,
       "width": 536,
       "sha256": "2c7ea668c2dc65c3db1406f4fed84784d734d17fc2821e3e4c2599d0e1f3331c"
     },
     {
-      "file": "07-verification-md5.png",
+      "file": "07-md5-verification.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "ea3a48d7305548b9545558f46c03463ed5e35645bd2daa35b97484459dbb40ad"
+      "sha256": "c9c3f89ca4103ceede40be76af8572095df53d11a108815a70c854008ba84b83"
     },
     {
-      "file": "08-conflit.png",
+      "file": "08-conflict.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "632be3d5c8c2dfb0d33c9819e3a19dc2189577587f942f48fb87f1281768a64b"
+      "sha256": "c7aad884dbec9ea816520286efd89ba7ed2445d38b3f4dc215543f127e265f0e"
     },
     {
-      "file": "09-menu-zone-notification.png",
+      "file": "09-tray-menu.png",
       "height": 200,
-      "width": 352,
-      "sha256": "80c0472b8b9785ef2389f00a4551cdb06f4d99aa643745eef4757a4ec5fb8111"
+      "width": 430,
+      "sha256": "bb27dd7e9ffaced3b6b2951b46fbf19f826758bd20a12222639993938e597d0d"
     },
     {
-      "file": "10-a-propos.png",
+      "file": "10-about.png",
       "height": 632,
       "width": 804,
-      "sha256": "6e4a78798780e678e6e7b1df593bf3a4edbba7abbb4e28ed50d58a53e45105ea"
+      "sha256": "13719e6bbd1273f1e62adaa5ce84df6af70a8661de9a166b79f97b65e351a72c"
     },
     {
-      "file": "11-verification-proprietes.png",
+      "file": "11-property-verification.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "84fd5b59da7d086e0ace62267e8bf5fc27961f2fe0a01f8724d8a1f042470313"
+      "sha256": "a9ccc88d3d82d88dff723d53fe37dbae05794f412046024ce8e1d846eba4b0ee"
     },
     {
-      "file": "12-reconnexion.png",
+      "file": "12-reconnection.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "eb31f8f82cda421a0447af79f261f4bf5d820dc58f09adb0ae5404f7a8a852bd"
+      "sha256": "b869d503aa2cb49628aed33620f093ecd9ae00a68a735f81f6203d0ad880e4b4"
     },
     {
-      "file": "13-bilan-erreurs.png",
+      "file": "13-error-report.png",
       "height": 1300,
       "width": 2640,
-      "sha256": "b1b72462a027a7c894d84f652eeea045d65d5c7a52eddcef1aa43d4ebdb299a7"
+      "sha256": "74c282aaf76c63c4e88ecf9287294db1a24fb5b9d18f1d7918663d7012960d47"
     },
     {
-      "file": "15-profils.png",
+      "file": "15-profiles.png",
       "height": 1500,
       "width": 2000,
-      "sha256": "0b9623399334884a68276559d8a2caf68b34f1dc2c79083c03befa60f3867f98"
+      "sha256": "1c0696d8fd24026371f8cf7ef26c438c6c75c4c6f0cfa05b8d0d4f27bbef8ede"
     },
     {
-      "file": "16-recherche-historique.png",
+      "file": "16-history-search.png",
       "height": 1400,
       "width": 2480,
-      "sha256": "4e9dcc895fa406ee2aaec9d697f36205738559f20f104b292f67d82605d54c74"
+      "sha256": "a17201831fc0148fc1275248c2fafdedfd8309c476237f3e9f80ee497b3e1f6f"
     },
     {
-      "file": "17-diagnostic-transferts.png",
+      "file": "17-transfer-diagnostics.png",
       "height": 1500,
       "width": 2900,
       "sha256": "342f1e560f92c3ac4b2690f9c41974e3b3585ffa6aca44784413afa943191724"
     },
     {
-      "file": "18-verification-deplacement-rapide.png",
+      "file": "18-fast-move-verification.png",
       "height": 1400,
       "width": 2480,
-      "sha256": "1673b46e78acccebc312170baf8b5dc8e37c5b7c39f4c3a42525632a6f99a9c7"
+      "sha256": "f4842d12369b6c9a839028e07a88913ceb20a9b65a22a2412fd91e39d3cb4eb8"
     },
     {
-      "file": "19-fin-de-file.png",
+      "file": "19-batch-completion.png",
       "height": 480,
       "width": 1100,
       "sha256": "31fe2e9bb5a1aa7c70ea09ce7a001741f36156e0c58619dd4f7b54db1d47072d"
     },
     {
-      "file": "20-options-fin-de-file.png",
+      "file": "20-completion-options.png",
       "height": 1480,
       "width": 1600,
-      "sha256": "22fce7f2a57bb92f7fbc83c14abcd68110bb6e9926515fedbf322f109c51b64e"
+      "sha256": "6ffe19b2307278cbc198290628cd72e68b93b0237c631507e94d1e48e490679c"
     },
     {
-      "file": "21-options-debits.png",
+      "file": "21-speed-options.png",
       "height": 1480,
       "width": 1600,
-      "sha256": "e1c293912d8ea1d5bf238c123b75b7500bfe4db2dbe674719c2a0749608c8bff"
+      "sha256": "bf85e62606d0a31cde6765aa0668be6a727bcc6bfd0e060c402ddec8e8e1dca0"
     },
     {
       "file": "22-preparation.png",
       "height": 1400,
       "width": 2480,
-      "sha256": "b052f65390aaafe60132a3fa7581d816a1ef68fd07954a0043f21c206b3ee0e6"
+      "sha256": "741f3fd759921c4047d5d65b21e921c893b52f1aaf20af703f891ae980425836"
+    },
+    {
+      "file": "23-exclusions.png",
+      "height": 1480,
+      "width": 1600,
+      "sha256": "0d576056ac99425c47f0ac52c4bc0d99ee84ae00f4e13746b889923f0e969088"
     }
   ],
   "demo": true,
@@ -143,7 +149,7 @@
   "style": "breeze",
   "theme": "light",
   "window_color": "#eff0f1",
-  "version": "0.2.0",
-  "generated_at": "2026-11-08",
+  "version": "0.3.0",
+  "generated_at": "2026-11-10",
   "language": "ja-JP"
 }

@@ -43,11 +43,36 @@ pub(super) fn descriptor_is_kio_fuse(file: &fs::File) -> bool {
     let Some(id) = descriptor_mount_id(file) else {
         return false;
     };
-    fs::read_to_string("/proc/self/mountinfo").is_ok_and(|text| {
-        parse_mounts(&text)
-            .iter()
-            .any(|mount| mount.id == id && mount.kind == "fuse.kio-fuse")
-    })
+    fs::read_to_string("/proc/self/mountinfo").is_ok_and(|text| is_kio_fuse_mount(&text, id))
+}
+
+/// Lecture ciblée du type du montage ; la table est toujours fournie par la lecture courante.
+fn is_kio_fuse_mount(text: &str, id: u64) -> bool {
+    if !text.contains("fuse.kio-fuse") {
+        return false;
+    }
+    text.lines()
+        .filter(|line| {
+            line.split_whitespace()
+                .next()
+                .and_then(|field| field.parse::<u64>().ok())
+                == Some(id)
+        })
+        .any(|line| {
+            let mut fields = line.split_whitespace();
+            // Un montage local n'a besoin d'aucune allocation, même si un autre montage est KIO.
+            if fields
+                .find(|field| *field == "-")
+                .and_then(|_| fields.next())
+                != Some("fuse.kio-fuse")
+            {
+                return false;
+            }
+            // Conserver exactement la validation des enregistrements du parseur complet.
+            parse_mounts(line)
+                .iter()
+                .any(|mount| mount.id == id && mount.kind == "fuse.kio-fuse")
+        })
 }
 
 /// Description d’un montage dans l’espace de noms du processus.
@@ -179,6 +204,16 @@ fn rename_route_using(
 ) -> Option<(PathBuf, PathBuf)> {
     let source_id = mount_id(source)?;
     let destination_id = mount_id(destination)?;
+    rename_route_ids(source, destination, mounts, source_id, destination_id)
+}
+/// Réutilise les identifiants déjà sondés pendant une seule préparation.
+fn rename_route_ids(
+    source: &Path,
+    destination: &Path,
+    mounts: &[Mount],
+    source_id: u64,
+    destination_id: u64,
+) -> Option<(PathBuf, PathBuf)> {
     if !local_mount(source_id, mounts) || !local_mount(destination_id, mounts) {
         return None;
     }
@@ -317,6 +352,45 @@ pub(super) fn invalid_alias(source: &Path, destination: &Path, directory: bool) 
     source == destination || (directory && destination.starts_with(&source))
 }
 
+/// Cache éphémère des parents source ; les contrôles de publication restent indépendants.
+fn preparation_parents(
+    path: &Path,
+    checked: &mut std::collections::HashSet<PathBuf>,
+) -> Result<(), String> {
+    let mut fresh = Vec::new();
+    for parent in path.ancestors().skip(1) {
+        if checked.contains(parent) {
+            break;
+        }
+        let meta = fs::symlink_metadata(parent).map_err(reconnect::io_error)?;
+        if !meta.is_dir() || meta.file_type().is_symlink() {
+            return Err("Unsafe source parent".into());
+        }
+        fresh.push(parent.to_owned());
+    }
+    checked.extend(fresh);
+    Ok(())
+}
+/// Une destination absente reprend le montage de son premier parent existant.
+/// Les liens et chemins existants restent sondés directement, notamment les montages de fichiers.
+fn preparation_mount(
+    path: &Path,
+    cache: &mut std::collections::HashMap<PathBuf, u64>,
+) -> Option<u64> {
+    if let Some(id) = cache.get(path) {
+        return Some(*id);
+    }
+    let id = match fs::symlink_metadata(path) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            preparation_mount(path.parent()?, cache)?
+        }
+        Err(_) => return None,
+        Ok(_) => mount_id(path)?,
+    };
+    cache.insert(path.to_owned(), id);
+    Some(id)
+}
+
 /// Tous les parents, y compris les montages imbriqués, doivent permettre un déplacement local.
 /// Une preuve absente laisse le lot dans le parcours classique, sans modifier les garanties MD5.
 pub(super) fn eligible(entries: &[Entry], moving: bool, verify_md5: bool) -> bool {
@@ -328,6 +402,8 @@ pub(super) fn eligible(entries: &[Entry], moving: bool, verify_md5: bool) -> boo
     };
     let mounts = parse_mounts(&mounts);
     let mut checked = std::collections::BTreeSet::new();
+    let mut parents = std::collections::HashSet::new();
+    let mut mount_cache = std::collections::HashMap::new();
     let mut targets = std::collections::BTreeSet::new();
     for entry in entries {
         if entry.hidden
@@ -345,7 +421,7 @@ pub(super) fn eligible(entries: &[Entry], moving: bool, verify_md5: bool) -> boo
             return false;
         }
         // Le parcours rapide exige des parents stables sans alias symbolique.
-        if safe_parents(&entry.source).is_err() {
+        if preparation_parents(&entry.source, &mut parents).is_err() {
             return false;
         }
         // Le renommage d’un autre lien physique changerait aussi le ctime du résultat suivi.
@@ -359,12 +435,23 @@ pub(super) fn eligible(entries: &[Entry], moving: bool, verify_md5: bool) -> boo
         if fs::symlink_metadata(&entry.destination).is_ok() || !targets.insert(&entry.destination) {
             return false;
         }
-        if rename_route_using(&entry.source, &entry.destination, &mounts).is_none() {
-            return false;
-        }
-        let Some(source) = mount_id(&entry.source) else {
+        let Some(source) = preparation_mount(&entry.source, &mut mount_cache) else {
             return false;
         };
+        let Some(destination) = preparation_mount(&entry.destination, &mut mount_cache) else {
+            return false;
+        };
+        if rename_route_ids(
+            &entry.source,
+            &entry.destination,
+            &mounts,
+            source,
+            destination,
+        )
+        .is_none()
+        {
+            return false;
+        }
         if checked.insert(source) && !local_mount(source, &mounts) {
             return false;
         }
@@ -669,6 +756,71 @@ mod tests {
     use super::*;
 
     #[test]
+    fn targeted_kio_detection_matches_full_parser_including_malformed_lines() {
+        let valid = "42 0 8:1 / /phone rw,relatime - fuse.kio-fuse source rw";
+        let mut samples = vec![
+            String::new(),
+            valid.to_owned(),
+            valid.replace(' ', "\t"),
+            valid.replace("fuse.kio-fuse", "fuse.kio-fuse-extra"),
+            valid.replace("fuse.kio-fuse", "fuse.sshfs"),
+            valid.replace("42 ", "4200 "),
+            valid.replace("42 ", "invalid "),
+        ];
+        let local = "42 0 8:1 / /fuse.kio-fuse rw - ext4 source rw";
+        samples.push(local.to_owned());
+        samples.push(format!("{local}\n{valid}\n"));
+        samples.push(format!("{valid}\n{local}\n"));
+        let fields = valid.split_whitespace().collect::<Vec<_>>();
+        for removed in 0..fields.len() {
+            samples.push(
+                fields
+                    .iter()
+                    .enumerate()
+                    .filter(|(index, _)| *index != removed)
+                    .map(|(_, value)| *value)
+                    .collect::<Vec<_>>()
+                    .join(" "),
+            );
+        }
+        for text in samples {
+            for id in [0, 1, 42, 128, 4200, u64::MAX] {
+                let expected = parse_mounts(&text)
+                    .iter()
+                    .any(|mount| mount.id == id && mount.kind == "fuse.kio-fuse");
+                assert_eq!(is_kio_fuse_mount(&text, id), expected, "id={id} {text:?}");
+            }
+        }
+    }
+    #[test]
+    #[ignore = "benchmark explicite de l'identification KIO Fuse"]
+    fn benchmark_kio_mount_detection() {
+        for scenario in ["local", "local-with-fuse", "kio"] {
+            let text = (1..=128)
+                .map(|id| {
+                    let kind = if id == 128 && scenario != "local" {
+                        "fuse.kio-fuse"
+                    } else {
+                        "ext4"
+                    };
+                    format!("{id} 0 8:1 / /mount/{id} rw,relatime - {kind} /dev/example rw\n")
+                })
+                .collect::<String>();
+            let id = if scenario == "kio" { 128 } else { 3 };
+            assert_eq!(is_kio_fuse_mount(&text, id), scenario == "kio");
+            for trial in 0..3 {
+                let start = std::time::Instant::now();
+                for _ in 0..1000 {
+                    std::hint::black_box(is_kio_fuse_mount(std::hint::black_box(&text), id));
+                }
+                println!(
+                    "kio_mount_detection scenario={scenario} trial={trial} elapsed_ms={:.3}",
+                    start.elapsed().as_secs_f64() * 1000.0
+                );
+            }
+        }
+    }
+    #[test]
     /// Les montages locaux restent admissibles ; FUSE, réseau, overlay et identifiants inconnus sont refusés.
     fn fast_mount_rejects_network_fuse_overlay_and_unknown_ids() {
         let local = "10 1 8:2 / /data rw - ext4 /dev/sda2 rw\n";
@@ -790,5 +942,44 @@ mod tests {
             assert!(!tree_without_mounts(&source, &routed, &mounts));
             mounts.clear();
         }
+    }
+}
+
+#[cfg(test)]
+mod preparation_tests {
+    use super::*;
+    /// Les parents absents partagent la résolution ; une nouvelle préparation relit les changements.
+    #[test]
+    fn mount_cache_is_scoped_and_handles_missing_paths_and_links() {
+        struct Cleanup(PathBuf);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                let _ = fs::remove_dir_all(&self.0);
+            }
+        }
+        let f = Cleanup(std::env::temp_dir().join(format!(
+            "gad-probe-{}-{}",
+            std::process::id(),
+            snapshot::touch()
+        )));
+        fs::create_dir_all(f.0.join("source/sub")).unwrap();
+        fs::create_dir(f.0.join("dest")).unwrap();
+        let mut cache = std::collections::HashMap::new();
+        let missing = f.0.join("dest/new/sub/file");
+        assert_eq!(preparation_mount(&missing, &mut cache), mount_id(&missing));
+        assert!(cache.contains_key(&f.0.join("dest")));
+        symlink(f.0.join("source"), f.0.join("dest/link")).unwrap();
+        let link = f.0.join("dest/link");
+        assert_eq!(preparation_mount(&link, &mut cache), mount_id(&link));
+        let mut parents = std::collections::HashSet::new();
+        assert!(preparation_parents(&f.0.join("source/sub/child"), &mut parents).is_ok());
+        assert!(preparation_parents(&link.join("child"), &mut parents).is_err());
+        fs::rename(f.0.join("source/sub"), f.0.join("source/old")).unwrap();
+        symlink("old", f.0.join("source/sub")).unwrap();
+        assert!(preparation_parents(
+            &f.0.join("source/sub/child"),
+            &mut std::collections::HashSet::new()
+        )
+        .is_err());
     }
 }

@@ -2978,7 +2978,10 @@ fn fast_tree_partial_restore_then_full_restore_preserves_neighbors() {
         )
         .unwrap();
     wait(&engine, |s| {
+        // La feuille peut être restaurée avant le nettoyage et la finalisation du lot.
         s["jobs"][0]["entries"][file]["state"] == "undone"
+            && s["jobs"][0]["undo_requested"] == false
+            && s["queue_guard"]["idle"] == true
     });
     assert_eq!(
         fs::read(f.0.join("source/sub/neighbor.txt")).unwrap(),
@@ -3205,9 +3208,10 @@ impl ResumeFixture {
         }
     }
     fn edit_journal(&self, edit: impl FnOnce(&mut Value)) {
-        let mut value: Value = serde_json::from_slice(&fs::read(&self.journal).unwrap()).unwrap();
+        let mut value = serde_json::to_value(journal::load(&self.journal).unwrap().0).unwrap();
         edit(&mut value);
         fs::write(&self.journal, serde_json::to_vec(&value).unwrap()).unwrap();
+        fs::write(journal::log_path(&self.journal), b"").unwrap();
     }
 }
 
@@ -5979,7 +5983,7 @@ fn exclusions_are_frozen_and_persisted_with_defaults() {
     assert_eq!(state["jobs"][0]["exclusions"]["include_hidden"], false);
     assert_eq!(state["jobs"][0]["exclusions"]["files"], json!(["*.tmp"]));
     drop(engine);
-    let loaded: State = serde_json::from_slice(&fs::read(journal).unwrap()).unwrap();
+    let loaded = journal::load(&journal).unwrap().0;
     assert!(!loaded.jobs[0].exclusions.include_hidden);
     assert!(loaded.exclusions.include_hidden);
 }
@@ -6513,12 +6517,24 @@ fn diagnostic_scheduler_reasons_match_resource_reservations() {
         state.paused = false;
         state.active.insert(ids[0], None);
         state.jobs[0].state = TransferState::Running;
-        let view = diagnostics::snapshot(&mut state, &limiter);
-        assert_eq!(
-            view[ids[1].to_string()]["queue_reason"],
-            "resources_unknown"
-        );
-        assert_eq!(view[ids[1].to_string()]["blockers"], json!([ids[0]]));
+        // La découverte réelle de /tmp dépend de l’hôte (overlay, tmpfs ou disque
+        // identifié sur Launchpad). Injecter les réservations testées au lieu de
+        // supposer que le montage du constructeur reste inconnu.
+        let disk_a = Some(std::collections::BTreeSet::from(["disk-a".into()]));
+        for job in &mut state.jobs {
+            job.disks = None;
+        }
+        for (active, waiting) in [(None, None), (disk_a.clone(), None), (None, disk_a.clone())] {
+            state.jobs[0].disks = active;
+            state.jobs[1].disks = waiting;
+            let view = diagnostics::snapshot(&mut state, &limiter);
+            assert_eq!(
+                view[ids[1].to_string()]["queue_reason"],
+                "resources_unknown"
+            );
+            assert_eq!(view[ids[1].to_string()]["blockers"], json!([ids[0]]));
+            assert_eq!(scheduling::next(&mut state), None);
+        }
         for job in &mut state.jobs {
             job.disks = Some(std::collections::BTreeSet::from(["disk-a".into()]));
         }
@@ -6526,6 +6542,15 @@ fn diagnostic_scheduler_reasons_match_resource_reservations() {
             diagnostics::snapshot(&mut state, &limiter)[ids[1].to_string()]["queue_reason"],
             "shared_resources"
         );
+        assert_eq!(scheduling::next(&mut state), None);
+        // Des disques identifiés et distincts autorisent réellement le second lot.
+        state.jobs[1].disks = Some(std::collections::BTreeSet::from(["disk-b".into()]));
+        assert_eq!(
+            diagnostics::snapshot(&mut state, &limiter)[ids[1].to_string()]["queue_reason"],
+            "scheduler"
+        );
+        assert_eq!(scheduling::next(&mut state), Some((ids[1], false)));
+        state.jobs[1].disks = disk_a;
         state.active.insert(ids[2], None);
         state.jobs[2].state = TransferState::Running;
         assert_eq!(
@@ -7581,5 +7606,547 @@ fn staging_visible_files_resume_with_the_same_inode_and_content() {
         assert_eq!(fs::read(&f.target).unwrap(), f.data);
         assert!(!visible.exists());
         engine.request(r#"{"command":"shutdown"}"#).unwrap();
+    }
+}
+
+#[test]
+/// Compare l’agrégation indexée à l’algorithme de référence sur des branches mélangées et des doublons.
+fn directory_aggregation_matches_reference_for_unordered_branches() {
+    fn reference(job: &mut Job) {
+        for index in (0..job.entries.len()).rev() {
+            if job.entries[index].kind != "directory"
+            || job.entries[index].state == TransferState::Waiting
+            || job.entries[index].state == TransferState::Undone
+            // Conserver l’échec propre au dossier ; ses enfants ne peuvent pas l’annuler.
+            || job.entries[index].state == TransferState::Error
+            {
+                continue;
+            }
+            if job.entries[index].cancel {
+                job.entries[index].state = TransferState::Cancelled;
+                continue;
+            }
+            let root = job.entries[index].source.clone();
+            let target = job.entries[index].destination.clone();
+            let children = job
+                .entries
+                .iter()
+                .enumerate()
+                .filter(|(i, e)| {
+                    *i != index && e.source.starts_with(&root) && e.destination.starts_with(&target)
+                })
+                .map(|(_, e)| e.state)
+                .collect::<Vec<_>>();
+            let state = if children.contains(&TransferState::Error) {
+                TransferState::Error
+            } else if children.iter().any(|s| {
+                ![
+                    TransferState::Done,
+                    TransferState::Skipped,
+                    TransferState::Cancelled,
+                ]
+                .contains(s)
+            }) {
+                TransferState::Running
+            } else if children.contains(&TransferState::Cancelled) {
+                TransferState::Cancelled
+            } else {
+                TransferState::Done
+            };
+            job.entries[index].state = state;
+        }
+    }
+
+    let f = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    f.enqueue(&engine);
+    wait(&engine, |s| s["jobs"][0]["state"] == "waiting");
+    let template = engine.shared.state.lock().unwrap().jobs[0].snapshot();
+    let mut seed = 17u64;
+    let mut next = || {
+        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+        seed >> 32
+    };
+    let states = [
+        TransferState::Waiting,
+        TransferState::Running,
+        TransferState::Done,
+        TransferState::Error,
+        TransferState::Cancelled,
+        TransferState::Undone,
+        TransferState::Skipped,
+        TransferState::Verifying,
+    ];
+    for case in 0..500 {
+        let mut actual = template.clone();
+        actual.entries.clear();
+        for _ in 0..40 {
+            let mut entry = template.entries[0].clone();
+            let paths = ["/a", "/a/b", "/a/b/c", "/a/b/c/d", "/a/z", "/other"];
+            entry.source = paths[next() as usize % paths.len()].into();
+            entry.destination = paths[next() as usize % paths.len()].into();
+            entry.state = states[next() as usize % states.len()];
+            entry.cancel = next() % 7 == 0;
+            entry.kind = if next() % 3 == 0 { "directory" } else { "file" }.into();
+            actual.entries.push(entry);
+        }
+        let mut expected = actual.clone();
+        reference(&mut expected);
+        finish_directories(&mut actual);
+        assert_eq!(
+            actual.entries.iter().map(|e| e.state).collect::<Vec<_>>(),
+            expected.entries.iter().map(|e| e.state).collect::<Vec<_>>(),
+            "case {case}"
+        );
+        // Réutiliser le cache puis modifier sa structure, comme après conflit ou reprise.
+        for change in 0..8 {
+            for entry in &mut actual.entries {
+                if entry.kind == "directory" {
+                    entry.state = TransferState::Running;
+                    entry.cancel = false;
+                }
+            }
+            let i = next() as usize % actual.entries.len();
+            match change {
+                0 => {
+                    actual.entries[i].state = states[next() as usize % states.len()];
+                    actual.entries[i].cancel = true;
+                }
+                1 => actual.entries[i].source = "/a/b/new-source".into(),
+                2 => actual.entries[i].destination = "/other/target".into(),
+                3 => {
+                    actual.entries[i].kind = if actual.entries[i].kind == "directory" {
+                        "file"
+                    } else {
+                        "directory"
+                    }
+                    .into()
+                }
+                4 => actual.entries.push(actual.entries[i].clone()),
+                5 => actual.entries.swap(0, i),
+                6 => {
+                    actual.entries.remove(i);
+                }
+                _ => {
+                    for entry in &mut actual.entries {
+                        entry.kind = "file".into();
+                    }
+                }
+            }
+            let mut expected = actual.clone();
+            reference(&mut expected);
+            finish_directories(&mut actual);
+            assert_eq!(
+                actual.entries.iter().map(|e| e.state).collect::<Vec<_>>(),
+                expected.entries.iter().map(|e| e.state).collect::<Vec<_>>(),
+                "case {case}, change {change}"
+            );
+        }
+    }
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "cancelled");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+/// Ajouter un transfert et lever une pause ne doivent pas invalider ni rejournaliser l’historique inchangé.
+fn enqueue_preserves_completed_job_revision() {
+    let f = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"configure","keep_history":true}"#)
+        .unwrap();
+    f.enqueue(&engine);
+    wait(&engine, |s| {
+        s["jobs"][0]["state"] == "done" && s["queue_guard"]["idle"] == true
+    });
+    let revision = engine.shared.state.lock().unwrap().jobs[0].revision();
+    engine
+        .request(r#"{"command":"pause","paused":false}"#)
+        .unwrap();
+    assert_eq!(
+        engine.shared.state.lock().unwrap().jobs[0].revision(),
+        revision
+    );
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    let since = engine.request(r#"{"command":"poll"}"#).unwrap()["revision"]
+        .as_u64()
+        .unwrap();
+    f.enqueue_distinct(&engine, 2);
+    wait(&engine, |s| {
+        s["jobs"][1]["state"] == "waiting" && engine.shared.state.lock().unwrap().preparing == 0
+    });
+    assert_eq!(
+        engine.shared.state.lock().unwrap().jobs[0].revision(),
+        revision
+    );
+    let delta = engine
+        .request(&json!({"command":"poll","since":since}).to_string())
+        .unwrap();
+    assert_eq!(
+        delta["jobs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|j| j["id"].as_u64().unwrap())
+            .collect::<Vec<_>>(),
+        vec![2]
+    );
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    wait(&engine, |s| s["jobs"][1]["state"] == "cancelled");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+#[ignore = "Mesure volontaire du coût CPU de la finalisation des dossiers"]
+fn benchmark_directory_completion() {
+    let base = json!({"source":"/benchmark/deep/tree/source","destination":"/benchmark/deep/tree/destination","kind":"directory","size":0,"copied":0,"verified":0,"md5_source":null,"md5_destination":null,"state":"running","error":""});
+    let root: Entry = serde_json::from_value(base).unwrap();
+    let mut entries = vec![root.clone()];
+    for directory in 0..100 {
+        let mut folder = root.clone();
+        folder.source.push(format!("d{directory}"));
+        folder.destination.push(format!("d{directory}"));
+        entries.push(folder.clone());
+        for file in 0..50 {
+            let mut leaf = folder.clone();
+            leaf.source.push(format!("f{file}"));
+            leaf.destination.push(format!("f{file}"));
+            leaf.kind = "file".into();
+            leaf.state = TransferState::Done;
+            entries.push(leaf);
+        }
+    }
+    entries.last_mut().unwrap().state = TransferState::Waiting;
+    let template:Job=serde_json::from_value(json!({"id":1,"sources":[],"destination":"/benchmark/deep/tree/destination","mode":"copy","verify_md5":false,"state":"running","entries":entries,"error":"","cancel":false,"policy":"ask"})).unwrap();
+    for trial in 0..3 {
+        let mut job = template.clone();
+        let start = std::time::Instant::now();
+        for step in 0..200 {
+            job.entries[2].state = if step % 2 == 0 {
+                TransferState::Running
+            } else {
+                TransferState::Done
+            };
+            finish_directories(std::hint::black_box(&mut job));
+        }
+        println!(
+            "directory_completion trial={trial} entries={} steps=200 elapsed_ms={:.3}",
+            job.entries.len(),
+            start.elapsed().as_secs_f64() * 1000.0
+        );
+        assert_eq!(job.entries[0].state, TransferState::Running);
+    }
+}
+
+#[test]
+/// Un index de travail ne doit ni fuir dans les clones/journaux, ni invalider la vue à sa libération.
+fn directory_index_is_transient_and_release_preserves_job_revision() {
+    let f = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"pause","paused":true}"#)
+        .unwrap();
+    f.enqueue(&engine);
+    wait(&engine, |s| s["jobs"][0]["state"] == "waiting");
+    engine.update(1, |job| {
+        for entry in &mut job.entries {
+            entry.state = TransferState::Running;
+        }
+        finish_directories(job);
+    });
+    let revision = {
+        let mut state = engine.shared.state.lock().unwrap();
+        assert!(state.jobs[0].directory_index.populated());
+        assert!(!state.jobs[0].snapshot().directory_index.populated());
+        assert!(serde_json::to_value(&state.jobs[0])
+            .unwrap()
+            .get("directory_index")
+            .is_none());
+        let revision = state.jobs[0].revision();
+        state.active.insert(1, None);
+        revision
+    };
+    engine.release_worker(1);
+    {
+        let state = engine.shared.state.lock().unwrap();
+        assert!(!state.jobs[0].directory_index.populated());
+        assert_eq!(state.jobs[0].revision(), revision);
+        assert!(!state.active.contains_key(&1));
+    }
+    engine.request(r#"{"command":"cancel_all"}"#).unwrap();
+    wait(&engine, |s| s["jobs"][0]["state"] == "cancelled");
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn completed_history_does_not_retain_directory_indexes() {
+    let f = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"configure","keep_history":true}"#)
+        .unwrap();
+    f.enqueue(&engine);
+    wait(&engine, |s| {
+        s["jobs"][0]["state"] == "done" && s["queue_guard"]["idle"] == true
+    });
+    assert!(!engine.shared.state.lock().unwrap().jobs[0]
+        .directory_index
+        .populated());
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+#[ignore = "benchmark explicite des réservations de temporaires"]
+fn benchmark_staging_reservations() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    let entries = (0..5000).map(|index| json!({"source":format!("/source/f{index}"),"destination":fixture.0.join(format!("dest/f{index}")),"kind":"file","size":0,"copied":0,"verified":0,"state":"waiting","error":""})).collect::<Vec<_>>();
+    let job = serde_json::from_value(json!({"id":1,"sources":[],"destination":fixture.0.join("dest"),"mode":"copy","verify_md5":false,"state":"waiting","error":"","cancel":false,"policy":"ask","entries":entries})).unwrap();
+    {
+        let mut state = engine.shared.state.lock().unwrap();
+        state.paused = true;
+        state.jobs.push(job);
+    }
+    let target = fixture.0.join("dest/next.bin");
+    for trial in 0..3 {
+        let start = std::time::Instant::now();
+        for _ in 0..100 {
+            let (path, file) = engine.create_staging(1, 0, &target).unwrap();
+            drop(file);
+            fs::remove_file(path).unwrap();
+        }
+        println!(
+            "staging_reservations trial={trial} elapsed_ms={:.3}",
+            start.elapsed().as_secs_f64() * 1000.0
+        );
+    }
+    engine.shared.state.lock().unwrap().jobs.clear();
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+
+#[test]
+#[ignore = "benchmark explicite du tri des noms de dossiers"]
+fn benchmark_directory_sort() {
+    let fixture = Fixture::new();
+    let root = fixture.0.join("sorting");
+    fs::create_dir(&root).unwrap();
+    for index in 0..5000 {
+        fs::write(root.join(format!("{:05}-é😀.txt", 5000 - index)), b"").unwrap();
+    }
+    for order in ["sorted", "reversed", "shuffled"] {
+        for trial in 0..3 {
+            let mut elapsed = Duration::ZERO;
+            for _ in 0..10 {
+                let mut entries = fs::read_dir(&root)
+                    .unwrap()
+                    .collect::<Result<Vec<_>, _>>()
+                    .unwrap();
+                entries.sort_by_key(|entry| entry.file_name());
+                if order == "reversed" {
+                    entries.reverse();
+                }
+                if order == "shuffled" {
+                    let mut seed = 0x6ad12345_u64;
+                    for index in (1..entries.len()).rev() {
+                        seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1);
+                        entries.swap(index, (seed >> 32) as usize % (index + 1));
+                    }
+                }
+                let start = std::time::Instant::now();
+                sort_children(std::hint::black_box(&mut entries));
+                elapsed += start.elapsed();
+                assert!(entries
+                    .windows(2)
+                    .all(|pair| pair[0].file_name() <= pair[1].file_name()));
+            }
+            println!(
+                "directory_sort order={order} trial={trial} elapsed_ms={:.3}",
+                elapsed.as_secs_f64() * 1000.0
+            );
+        }
+    }
+}
+
+#[test]
+fn directory_sort_keeps_equal_names_stable() {
+    let fixture = Fixture::new();
+    let mut entries = Vec::new();
+    let mut paths = Vec::new();
+    for (index, name) in ["z", "z", "a"].into_iter().enumerate() {
+        let directory = fixture.0.join(format!("equal-{index}"));
+        fs::create_dir(&directory).unwrap();
+        let path = directory.join(name);
+        fs::write(&path, b"").unwrap();
+        paths.push(path);
+        entries.push(fs::read_dir(directory).unwrap().next().unwrap().unwrap());
+    }
+    sort_children(&mut entries);
+    assert_eq!(
+        entries.iter().map(fs::DirEntry::path).collect::<Vec<_>>(),
+        vec![paths[2].clone(), paths[0].clone(), paths[1].clone()]
+    );
+}
+
+/// Historique synthétique, sans instance ni fichiers, pour les contrôles de progression.
+fn checkpoint_fixture(count: u64) -> State {
+    let template: snapshot::TrackedJob = serde_json::from_value(json!({"id":1,"sources":[],"destination":"/out","mode":"copy","verify_md5":false,"state":"waiting","error":"","cancel":false,"policy":"ask","entries":[{"source":"/source/f","destination":"/out/f","kind":"file","size":0,"copied":0,"verified":0,"state":"waiting","error":""}]})).unwrap();
+    let jobs = (1..=count)
+        .map(|id| {
+            let mut job = template.clone();
+            job.id = id;
+            job
+        })
+        .collect();
+    State {
+        jobs,
+        ..State::default()
+    }
+}
+#[test]
+#[ignore = "benchmark explicite des contrôles avec historique"]
+fn benchmark_checkpoint_history() {
+    let state = checkpoint_fixture(5000);
+    for trial in 0..3 {
+        let start = std::time::Instant::now();
+        for _ in 0..1000 {
+            assert!(checkpoint_ready(std::hint::black_box(&state), 5000, Some(0)).unwrap());
+        }
+        println!(
+            "checkpoint_history trial={trial} elapsed_ms={:.3}",
+            start.elapsed().as_secs_f64() * 1000.0
+        );
+    }
+}
+#[test]
+#[ignore = "benchmark explicite de l'allocation des tampons"]
+fn benchmark_copy_buffer() {
+    for remaining in [0, 9, 65536, 67108864] {
+        for trial in 0..3 {
+            let start = std::time::Instant::now();
+            for _ in 0..10_000 {
+                std::hint::black_box(copy_buffer(std::hint::black_box(remaining)));
+            }
+            println!(
+                "copy_buffer remaining={remaining} trial={trial} elapsed_ms={:.3}",
+                start.elapsed().as_secs_f64() * 1000.0
+            );
+        }
+    }
+}
+
+#[test]
+fn checkpoint_cancellation_precedes_every_pause_combination() {
+    let mut state = checkpoint_fixture(1);
+    for flags in 0..32 {
+        state.paused = flags & 1 != 0;
+        state.jobs[0].paused = flags & 2 != 0;
+        state.jobs[0].entries[0].paused = flags & 4 != 0;
+        state.jobs[0].cancel = flags & 8 != 0;
+        state.jobs[0].entries[0].cancel = flags & 16 != 0;
+        let expected = if flags & 24 != 0 {
+            Err("Canceled".to_owned())
+        } else {
+            Ok(flags & 7 == 0)
+        };
+        assert_eq!(
+            checkpoint_ready(&state, 1, Some(0)),
+            expected,
+            "flags={flags}"
+        );
+        let expected = if flags & 8 != 0 {
+            Err("Canceled".to_owned())
+        } else {
+            Ok(flags & 3 == 0)
+        };
+        assert_eq!(
+            checkpoint_ready(&state, 1, None),
+            expected,
+            "batch flags={flags}"
+        );
+        assert!(checkpoint_ready(&state, 2, None).is_err());
+        assert!(checkpoint_ready(&state, 1, Some(1)).is_err());
+    }
+}
+
+#[test]
+#[ignore = "benchmark explicite du MD5 des petits fichiers"]
+fn benchmark_small_file_md5() {
+    let fixture = Fixture::new();
+    let path = fixture.0.join("md5-tiny");
+    fs::write(&path, b"benchmark").unwrap();
+    let expected = format!("{:x}", md5::compute(b"benchmark"));
+    assert_eq!(md5_file(&path, None, |_| Ok(())).unwrap(), expected);
+    for trial in 0..3 {
+        let start = std::time::Instant::now();
+        for _ in 0..1000 {
+            std::hint::black_box(md5_file(std::hint::black_box(&path), None, |_| Ok(())).unwrap());
+        }
+        println!(
+            "small_file_md5 trial={trial} elapsed_ms={:.3}",
+            start.elapsed().as_secs_f64() * 1000.0
+        );
+    }
+}
+
+#[test]
+fn adaptive_buffers_copy_empty_and_chunk_boundary_files_with_md5() {
+    let fixture = Fixture::new();
+    let engine = Engine::new();
+    engine
+        .request(r#"{"command":"configure","keep_history":true}"#)
+        .unwrap();
+    for size in [0, 1, 63, 65535, 65536, 65537] {
+        let name = format!("buffer-{size}");
+        let source = fixture.0.join("source").join(&name);
+        let data = (0..size)
+            .map(|index| (index % 251) as u8)
+            .collect::<Vec<_>>();
+        fs::write(&source, &data).unwrap();
+        let id = engine.request(&json!({"command":"enqueue","sources":[source],"destination":fixture.0.join("dest"),"verify_md5":true}).to_string()).unwrap()["id"].as_u64().unwrap();
+        let state = wait(&engine, |state| {
+            state["jobs"].as_array().unwrap().iter().any(|job| {
+                job["id"] == id && ["done", "error"].contains(&job["state"].as_str().unwrap_or(""))
+            })
+        });
+        let job = state["jobs"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|job| job["id"] == id)
+            .unwrap();
+        assert_eq!(job["state"], "done", "{job}");
+        let digest = format!("{:x}", md5::compute(&data));
+        assert_eq!(job["entries"][0]["md5_source"], digest);
+        assert_eq!(job["entries"][0]["md5_destination"], digest);
+        assert_eq!(fs::read(fixture.0.join("dest").join(name)).unwrap(), data);
+    }
+    engine.request(r#"{"command":"shutdown"}"#).unwrap();
+}
+#[test]
+fn md5_refuses_growth_from_empty_and_small_files() {
+    let fixture = Fixture::new();
+    for data in [b"".as_slice(), b"benchmark".as_slice()] {
+        let path = fixture.0.join("growing-md5");
+        fs::write(&path, data).unwrap();
+        let result = md5_file(&path, None, |read| {
+            if read == 0 {
+                OpenOptions::new()
+                    .append(true)
+                    .open(&path)
+                    .unwrap()
+                    .write_all(b"extra")
+                    .unwrap();
+            }
+            Ok(())
+        });
+        assert!(result.unwrap_err().contains("changed"));
+        let mut expected = data.to_vec();
+        expected.extend_from_slice(b"extra");
+        assert_eq!(fs::read(&path).unwrap(), expected);
     }
 }

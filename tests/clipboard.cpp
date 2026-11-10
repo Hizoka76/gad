@@ -211,8 +211,13 @@ int main(int argc, char **argv) {
     QTest::keyClick(destination, Qt::Key_V, Qt::ControlModifier);
     check(received.isEmpty() && destination->text() == "/tmp/nouvelle-destination", "Ctrl+V texte doit rester utilisable dans le champ Destination");
     putFiles(false); received.clear();
-    for (auto *button : window.findChildren<QPushButton *>()) if (button->text() == "Coller ici") QTest::mouseClick(button, Qt::LeftButton);
-    check(received.size() == 1 && received.last()["mode"] == "copy", "Bouton Coller ici");
+    auto *addItems = window.findChild<QPushButton *>("addItemsButton");
+    check(addItems && addItems->menu() && addItems->menu()->actions().size() == 3, "Menu source : trois modes d’ajout");
+    auto *clipboardButton = window.findChild<QAction *>("clipboardFilesAction");
+    check(clipboardButton && !clipboardButton->toolTip().isEmpty(), "Bouton presse-papiers et infobulle");
+    clipboardButton->trigger();
+    check(received.size() == 1 && received.last()["mode"] == "copy", "Bouton fichiers du presse-papiers");
+    check(received.last()["prepare_only"].toBool(), "Ajout du presse-papiers : attendre Démarrer lorsque Gad est au repos");
     // L’option MD5 doit être mémorisée et transmise aux requêtes de la fenêtre comme de Dolphin.
     auto *spaceCheck=window.findChild<QCheckBox *>("verifySpace");
     check(spaceCheck && !spaceCheck->isChecked(),"La vérification d’espace est facultative et désactivée par défaut");

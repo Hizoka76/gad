@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Tester la CLI dans un compte temporaire ; lancer sous dbus-run-session."""
-import json,os,subprocess,tempfile,signal,time
+import json,os,subprocess,tempfile,signal,time,re
 from pathlib import Path
-binary=str(Path('target/release/gad').resolve())
+project=Path(__file__).resolve().parent.parent
+binary=str(Path(os.environ.get('GAD_TEST_BINARY',project/'target/debug/gad')).resolve())
+protocol=int(re.search(r'GAD_PROTOCOL_VERSION\((\d+)\)',(project/'native/protocol.def').read_text())[1])
 with tempfile.TemporaryDirectory(prefix='gad-cli-test-') as temporary:
  root=Path(temporary);runtime=root/'runtime';runtime.mkdir(mode=0o700)
  env=dict(os.environ,QT_QPA_PLATFORM='offscreen',HOME=str(root),XDG_RUNTIME_DIR=str(runtime),XDG_CONFIG_HOME=str(root/'config'),XDG_DATA_HOME=str(root/'data'),XDG_CACHE_HOME=str(root/'cache'),XDG_DATA_DIRS='/usr/share')
@@ -23,8 +25,11 @@ with tempfile.TemporaryDirectory(prefix='gad-cli-test-') as temporary:
   assert cli('--profile','CLI profile')['ok']
   result=cli('--configure','--dolphin-ctrl-v','--md5','--properties','--verify-space','--no-include-hidden','--allow-duplication','--keep-history','--resume-interrupted','--rate-limit','2.5','--completion-action','notify','--completion-delay','45','--verify-fast-move','--conflict-policy','newer','--exclude-folder','__*','--exclude-file','*.tmp')
   assert result['ok'],result
+  cli('--configure','--no-progress-message');assert 'progressMessage=false' in config.read_text()
+  cli('--configure','--progress-message');assert 'progressMessage=true' in config.read_text()
+  cli('--configure','--no-progress-message')
   receipt=root/'data/gad/dolphin-paste.json';assert json.loads(receipt.read_text())['files']
-  state=cli('--status');assert state['protocol_version']==31,state
+  state=cli('--status');assert state['protocol_version']==protocol,state
   assert 'completionAction=notify' in config.read_text() and 'completionDelay=45' in config.read_text()
   assert state['queue_guard']['claimed'] is False
   assert state['verify_md5'] and state['verify_properties'] and state['verify_space'] and state['allow_duplication'],state

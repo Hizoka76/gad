@@ -46,6 +46,21 @@ cargo test --locked engine::tests::copies_tree_and_symlink_without_following_it
 
 Le filtre du lanceur s’applique aux tests Rust ; les tests Python restent exécutés. Le benchmark est ignoré dans la validation normale. Les anciens scripts `test_clipboard.py`, `test_notifications.py` et `test_integration.py` restent utilisables.
 
+## Mesurer les déplacements rapides
+
+```bash
+cargo build --release --locked
+dbus-run-session -- python3 scripts/benchmark_rename.py --binary target/release/gad --label essai-
+```
+
+Le script crée uniquement ses propres fichiers, préférences, socket et journal sous `target/rename-performance/`. Trois essais par taille comparent le renommage POSIX, un nouveau processus KIO et Gad. Les résultats JSON séparent le changement physique de chemin de la fin observée par IPC. L’historique est conservé ; les vérifications facultatives sont désactivées. `--visible` garde la fenêtre Qt affichée sur le backend hors écran ; `--trace` produit une trace système de 1 000 fichiers et nécessite `strace`. Ne pas utiliser les durées sous trace pour comparer les performances. Le démarrage de `kioclient` ne représente pas exactement un geste dans Dolphin déjà ouvert.
+
+[Bilan des optimisations et mesures locales](docs/PERFORMANCE.md).
+
+Le redémarrage après un journal volumineux se mesure avec `dbus-run-session -- python3 scripts/benchmark_startup.py --binary target/release/gad --records 35`. Les lots synthétiques sont terminés, sans fichiers à transférer ni restauration à lancer. Le script relève la durée de démarrage et le pic RSS Linux ; les résultats vont sous `target/perf-pass2/`.
+
+Les copies de nombreux petits fichiers se mesurent avec `dbus-run-session -- python3 scripts/benchmark_copy.py --binary target/release/gad --files 100`. Ajouter `--compare /chemin/ancien/gad` alterne les deux binaires sur trois essais privés. Le script vérifie chaque contenu et la conservation des sources. Le champ `wal_segment_bytes` mesure seulement le segment présent en fin de transfert, pas toutes les écritures cumulées ; les résultats vont sous `target/copy-performance/`.
+
 ## Rapports
 
 Chaque exécution du lanceur écrit dans `target/test-results/` :
@@ -197,7 +212,7 @@ Les tests `errors_` vérifient le rapport en lecture seule, les erreurs d’anal
 
 ## Documentation multilingue
 
-Les cas de `tests/python/test_documentation.py` utilisent seulement la bibliothèque standard : catalogue complet des six langues et des trois types de guide, navigation et bascule de langue par public, papier A4/US Letter, liens relatifs et fragments, couverture/légendes localisées, images embarquées, titre absent et génération des 18 guides. Markdown et WeasyPrint sont simulés pour ces tests.
+Les cas de `tests/python/test_documentation.py` utilisent seulement la bibliothèque standard : catalogue complet des six langues et des trois types de guide, navigation et bascule de langue par public, papier A4/US Letter, liens relatifs et fragments, couverture/légendes localisées, images embarquées, titre absent et génération des 18 guides. Markdown sont simulés pour ces tests.
 
 `make docs` effectue le rendu réel, renouvelle les schémas modifiés et vérifie les liens des README/guides/tests, les 84 captures, les langues HTML et les 36 exports. Les dépendances facultatives sont indiquées dans [l’index documentaire](docs/README.md). Le test Qt du bilan vérifie aussi les icônes des six boutons avec un thème volontairement absent pour contrôler leur repli standard.
 
@@ -222,7 +237,7 @@ python3 scripts/test_qt.py --suite row_actions
 
 ## Boîte des paramètres {#menu-parametres}
 
-Les tests Qt contrôlent les minima des fenêtres, les deux onglets, Fermer et Échap, la conservation des widgets, la traduction à chaud et le bouton de débit dans la barre d’actions. La CLI est testée pour les valeurs invalides, les options opposées, les exclusions partielles et la synchronisation des préférences. Les tests Python vérifient les six manpages, la couverture des six langues, leur installation et le refus des traductions manquantes.
+Les tests Qt contrôlent les minima des fenêtres, les cinq onglets, Fermer et Échap, la conservation des widgets, la traduction à chaud et le bouton de débit dans la barre d’actions. La CLI est testée pour les valeurs invalides, les options opposées, les exclusions partielles et la synchronisation des préférences. Les tests Python vérifient les six manpages, la couverture des six langues, leur installation et le refus des traductions manquantes.
 
 ```sh
 make manpages-check
@@ -237,3 +252,74 @@ Les tests Qt du module couvrent la recréation des actions, le minuteur réel, l
 make test-dolphin-watchdog
 make test-dolphin-watchdog-real
 ```
+
+## Parcours automatisés de l’interface
+
+`python3 scripts/test_qt.py --suite ui_interactions` teste les clics et le clavier
+sur les vrais widgets : Démarrer/Pause/Reprendre, onglets, Échap, changement de
+langue, blocage modal de la fenêtre principale, sélection multiple et Ctrl+F.
+La préférence `progressMessage` est vérifiée via la case, la propriété Qt,
+la CLI, les profils et une réouverture. Les tests des notifications vérifient
+également la fermeture des vues KDE en cours et des réponses D-Bus tardives.
+
+Cette suite fait automatiquement partie de `make test`, `make test-qt` et de la CI.
+Elle utilise un moteur simulé, un bus privé, des répertoires XDG temporaires et
+le rendu hors écran : aucun transfert ni raccourci du bureau réel n’est modifié.
+
+
+Le benchmark isolé du recalcul des dossiers s’exécute avec la commande ci-dessous. Le benchmark de copie accepte aussi `--folders 20` pour répartir les fichiers entre plusieurs dossiers, y compris lorsque le nombre de fichiers n’est pas divisible par celui des dossiers.
+
+```bash
+cargo test --release --locked benchmark_directory_completion -- --ignored --nocapture
+```
+
+
+Le calcul des deltas du journal possède aussi un benchmark isolé : il compare deux JSON de 4 Mio, après mémorisation de leurs empreintes. Il mesure le coût de comparaison, sans E/S disque.
+
+```bash
+cargo test --release --locked benchmark_delta_comparison -- --ignored --nocapture
+```
+
+
+Le benchmark suivant mesure 100 sauvegardes sans mutation avec un ordre personnalisé de 10 000 lignes. Le benchmark de copie accepte aussi `--reorder` pour personnaliser l’ordre avant de démarrer le transfert et vérifier le chemin actif.
+
+```bash
+cargo test --release --locked benchmark_unchanged_header -- --ignored --nocapture
+```
+
+
+Le benchmark du graphe de dépendances reconstruit cinq fois les relations de deux lots de 5 001 entrées, avec destinations distinctes puis partagées. La création des données reste hors chronométrage. Les tests comparent aussi le graphe optimisé à l’algorithme précédent sur 500 configurations reproductibles avec alias, destinations répétées et plusieurs branches.
+
+```bash
+cargo test --release --locked benchmark_dependency_graph -- --ignored --nocapture
+```
+
+
+Les passes suivantes ont leurs benchmarks ignorés par défaut : réservations de temporaires (100 créations, 5 000 fichiers planifiés), tri de 5 000 noms selon trois ordres, exclusions (100 000 comparaisons), cache de l’arborescence, contrôles avec 5 000 lots d’historique, allocation des tampons, MD5 de petits fichiers et détection KIO Fuse. La simulation des montages ne modifie aucun montage réel. Le benchmark de copie accepte désormais `--verify-md5` et contrôle les empreintes produites.
+
+```bash
+cargo test --release --locked benchmark_staging_reservations -- --ignored --nocapture
+cargo test --release --locked benchmark_directory_sort -- --ignored --nocapture
+cargo test --release --locked benchmark_exclusion_matching -- --ignored --nocapture
+cargo test --release --locked benchmark_row_layout -- --ignored --nocapture
+cargo test --release --locked benchmark_checkpoint_history -- --ignored --nocapture
+cargo test --release --locked benchmark_copy_buffer -- --ignored --nocapture
+cargo test --release --locked benchmark_small_file_md5 -- --ignored --nocapture
+cargo test --release --locked benchmark_kio_mount_detection -- --ignored --nocapture
+```
+
+
+Les benchmarks du journal isolent le chargement de 10 000 entrées, le rejeu de deltas, l’encodage d’enregistrements de 256 octets ou 4 Mio et la lecture de 30 en-têtes contenant chacun un ordre de 10 000 lignes. Le benchmark de démarrage accepte désormais `--records 0`, `--wal-format delta`, `--custom-order` et `--compare`, avec ordre de passage contrebalancé.
+
+```bash
+cargo test --release --locked benchmark_snapshot_load -- --ignored --nocapture
+cargo test --release --locked benchmark_delta_replay -- --ignored --nocapture
+cargo test --release --locked benchmark_record_encoding -- --ignored --nocapture
+cargo test --release --locked benchmark_wal_headers -- --ignored --nocapture
+dbus-run-session -- python3 scripts/benchmark_startup.py --binary target/release/gad --records 32 --wal-format delta --custom-order
+```
+
+
+## Vérifications de l’interface récente
+
+Les scénarios `exclusionsTabCommitsOnFocusLossAndTranslates` et `exclusionsSaveWhenFocusLeavesTheField` vérifient la sauvegarde à la perte de focus, le refus sans perte du texte, les champs indépendants et la fermeture des paramètres. `clipboardAdditionKeepsPreparedQueueWaiting` contrôle que les ajouts du presse-papiers ne démarrent pas un lot prêt, en pause ou historique. Les tests existants couvrent Copier/Couper, le collage externe automatique, les raccourcis Ctrl+O/Ctrl+Maj+O/Ctrl+Q/Ctrl+Alt+W et les cinq onglets.

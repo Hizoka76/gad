@@ -3,7 +3,6 @@
 //! une récupération après interruption ; le chargement ne relance jamais une copie.
 
 use super::*;
-use std::os::unix::fs::DirBuilderExt;
 
 impl Engine {
     /// Résout le dossier XDG du journal Gad.
@@ -25,13 +24,7 @@ impl Engine {
     /// Charge les opérations et transforme celles interrompues en erreurs récupérables.
     /// Nettoie l’historique non conservé uniquement si ses sauvegardes peuvent être libérées.
     pub(super) fn persistent(path: PathBuf) -> Result<Self, String> {
-        let mut state: State = match fs::read(&path) {
-            Ok(bytes) => serde_json::from_slice(&bytes).map_err(|e| {
-                format!("Journal illisible, conservé dans {} : {e}", path.display())
-            })?,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => State::default(),
-            Err(e) => return Err(format!("Lecture du journal impossible : {e}")),
-        };
+        let (mut state, sequence) = journal::load(&path)?;
         let mut kept = vec![];
         let mut resume_ids = Vec::new();
         for mut job in state.jobs {
@@ -107,6 +100,7 @@ impl Engine {
             .next_id
             .max(state.jobs.iter().map(|j| j.id).max().unwrap_or(0));
         let engine = Self::start(state, Some(path));
+        engine.shared.writer.lock().unwrap().sequence = sequence;
         engine.save()?;
         for id in resume_ids {
             if let Err(error) = engine.resume_interrupted(&[id]) {
@@ -117,50 +111,29 @@ impl Engine {
         }
         Ok(engine)
     }
-    /// Sérialise les écritures du journal, synchronise un fichier temporaire, le renomme
-    /// puis synchronise son dossier. Ne pas appeler en conservant le verrou state.
+    /// Persiste seulement les lots modifiés, sans réduire les frontières de durabilité.
     pub(super) fn save(&self) -> Result<(), String> {
+        self.persist(false)
+    }
+    /// La fermeture produit aussi un instantané autonome, après l’arrêt des travailleurs.
+    pub(super) fn checkpoint_history(&self) -> Result<(), String> {
+        self.persist(true)
+    }
+    fn persist(&self, checkpoint: bool) -> Result<(), String> {
         let Some(path) = &self.shared.history_path else {
             return Ok(());
         };
-        // Un seul écrivain utilise le fichier .tmp ; la capture de state a lieu après ce verrou.
-        let _writer = self
+        let mut writer = self
             .shared
             .writer
             .lock()
             .map_err(|_| "Verrou du journal indisponible")?;
-        let bytes = {
-            let state = self
-                .shared
-                .state
-                .lock()
-                .map_err(|_| "Engine state unavailable")?;
-            serde_json::to_vec(&*state).map_err(|e| e.to_string())?
-        };
-        let parent = path.parent().ok_or("Dossier du journal absent")?;
-        fs::DirBuilder::new()
-            .recursive(true)
-            .mode(0o700)
-            .create(parent)
-            .map_err(|e| e.to_string())?;
-        let temp = path.with_extension("json.tmp");
-        let mut output = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600)
-            .custom_flags(0x20000)
-            .open(&temp)
-            .map_err(|e| format!("Écriture du journal impossible : {e}"))?;
-        output
-            .write_all(&bytes)
-            .and_then(|_| output.sync_all())
-            .map_err(|e| e.to_string())?;
-        // Le renommage évite de laisser un journal JSON tronqué ; sync_all du parent rend le nom durable.
-        fs::rename(&temp, path).map_err(|e| e.to_string())?;
-        fs::File::open(parent)
-            .and_then(|f| f.sync_all())
-            .map_err(|e| e.to_string())
+        let state = self
+            .shared
+            .state
+            .lock()
+            .map_err(|_| "Engine state unavailable")?;
+        writer.save(path, &state, checkpoint)
     }
     /// Remplace une entrée à son indice stable et persiste immédiatement sa nouvelle étape.
     pub(super) fn store_entry(&self, id: u64, index: usize, entry: Entry) -> Result<(), String> {

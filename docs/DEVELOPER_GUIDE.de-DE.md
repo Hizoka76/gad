@@ -1,6 +1,6 @@
 # Gad — Entwicklerhandbuch {#gad-developer-guide}
 
-Dokumentierte Version: **0.2.0**, Protokoll **33**, 8. November 2026.
+Dokumentierte Version: **0.3.0**, Protokoll **33**, 8. November 2026.
 
 Gad bedeutet **Gestionnaire Avancé de Duplication**; Sein Slogan lautet **Gad, il copie.**. Dieser Leitfaden beschreibt die Implementierung in diesem Repository. Der Code bleibt maßgeblich für die genauen Felder und Standardeinstellungen.
 
@@ -286,7 +286,11 @@ Qt retries Ursprungs-URL-Auflösung durch KIO maximal alle fünf Sekunden ohne `
 
 ## Journal und Wiederherstellung nach einem Absturz {#journal-and-crash-recovery}
 
-Die Benutzerzeitschrift ist `$XDG_DATA_HOME/gad/state.json`, die auf `~/.local/share/gad/state.json` Standard ist. `save` serialisiert Schriftsteller, schreibt eine temporäre Zustandsdatei, ersetzt sie atomar und synchronisiert nach Bedarf. Halten Sie `state` nicht während des Aufrufs.
+Das dauerhafte Journal besteht aus `$XDG_DATA_HOME/gad/state.json` (Standard: `~/.local/share/gad/state.json`) und `state.json.wal`. `engine/journal.rs` speichert nur geänderte Aufträge, Einstellungen und Auftragskennungen mit Sequenznummer und MD5-Prüfsumme zur Erkennung unbeabsichtigter Beschädigungen. Jeder Eintrag wird vor der zugehörigen Dateioperation synchronisiert. Start, reguläres Beenden und Kompaktierung veröffentlichen zuerst einen atomaren vollständigen Snapshot und setzen danach das WAL zurück. Die Kompaktierung erfolgt beim Speichern nach 64 Einträgen oder 64 MiB. `_gad_journal_seq` verhindert eine doppelte Wiedergabe. Eine unvollständige letzte Zeile wird ignoriert; beschädigte vollständige Einträge oder Sequenzlücken stoppen das Laden und bleiben erhalten. Alte Snapshots bleiben lesbar. Gad vor dem Kopieren beider Journaldateien und der zugehörigen `.gad-undo-*`-Sicherungen beenden. Beim Aufruf von `save` darf `state` nicht gesperrt sein; die Schreibsperre kommt zuerst. `scripts/journal_reader.py` rekonstruiert den dauerhaften Zustand.
+
+Die Wiedergabe bewahrt das exakte JSON geänderter Aufträge, wendet Deltas an und dekodiert die endgültige Fassung in Anwendungstypen. Ein 64-KiB-Puffer vermeidet das Laden des gesamten WAL. Ein unveränderter Zustand löst keine Kompaktierung aus; explizite Snapshots beim Beenden bleiben erhalten. Sperren und Synchronisierung vor Dateioperationen bleiben bestehen. Abschließende symbolische Links und nicht reguläre Dateien werden beim Lesen abgelehnt.
+
+Neue WAL-Einträge verwenden `format: 2`, `jobs: null`, `full_jobs` und `patches`. Ein Delta ersetzt einen UTF-8-Bytebereich im exakten Auftrags-JSON und enthält ID, MD5-Prüfsummen von Basis und Ergebnis, `offset`, `remove` und `insert`. Die Prüfsummen erkennen unbeabsichtigte Beschädigungen, authentifizieren die Daten aber nicht. Basis, UTF-8-Grenzen, JSON und Identität werden geprüft. Vollständige Objekte vor der Delta-Anwendung niemals neu kodieren. Der Cache ist auf 16 MiB JSON-Text insgesamt und 8 MiB je Auftrag begrenzt; größere Aufträge und umfassende Änderungen werden vollständig geschrieben. Aktualisierung erst nach erfolgreichem fsync; Kompaktierung leert den Cache, sodass die nächste Basis vollständig geschrieben wird. Alte WAL-Dateien bleiben lesbar; alte Leser lehnen v2 wegen `jobs: null` ab. Vor einem Downgrade die neue Version regulär beenden, um einen vollständigen Snapshot zu schreiben und das WAL zu leeren.
 
 `undo::Record` erfasst eigene Staging, Ergebnisse, Backups/Originalstempel, Quellentfernung, Restaurierung von Ressourcen und abgeschlossene Wiederherstellungsschritte. Ersetzte Ziele leben in privaten `.gad-undo-*` Verzeichnissen auf ihrem Dateisystem. Halten Sie das Journal vor Auswirkungen, die Wiederherstellung benötigen; behandeln Sie keinen Anzeigepfad als Eigentumsbeweis.
 
@@ -449,7 +453,7 @@ Nach dem Hinzufügen von Display-Strings laufen `make translations` um Quellen z
 
 Die Root-README ist ein kurzer Einstiegspunkt; detaillierte Anleitungen werden hier beibehalten. Die Dokumentation umfasst sechs Sprachen. Jede Ausgabe beinhaltet Quick Start, User Guide, Developer Guide und 15 Screenshots seiner eigenen Schnittstelle im Lichtthema. Architektur und Lifecycle-Diagramme haben lokalisierte Labels.
 
-`doc_catalog.py` identifiziert die Sprache und das Publikum der jeweiligen Quelle. `build_docs.py` generiert sprachkorrigierte Cover, Sprachschalter, relative Links/Fragen und Offline-Einbettbilder. Englische PDFs verwenden US Letter; andere PDFs verwenden A4. `check_docs.py` validiert alle LEADME/Testing/guide-Links, Erfassungen, SprachmetadatenPDF und alle 36 HTML/
+`doc_catalog.py` identifiziert die Sprache und das Publikum der jeweiligen Quelle. `build_docs.py` generiert sprachkorrigierte Cover, Sprachschalter, relative Links/Fragen und Offline-Einbettbilder. `check_docs.py` validiert alle LEADME/Testing/guide-Links, Erfassungen, Sprachmetadaten und alle 18 HTML-Ausgaben.
 
 ```bash
 make docs-captures
@@ -459,7 +463,7 @@ make docs-check
 
 Capture-Code verknüpft die tatsächlichen Widgets zu einer Demo C-Brücke, verwendet temporäre Dateien und isolierte Sitzungen, und wendet Breeze Light in seiner privaten Konfiguration an, die die Schrifteinstellungen des Desktops bewahrt. Die manifesten Datensätze, Version und Hashes. Es steuert nie den realen Gad-Prozess oder Clipboard. Natives Tablett/Progress Rendering außerhalb der Widget-Erfassung wird nicht als echte Desktop-Screens simuliert.
 
-Dokumentation Python-Tests umfassen lokale Auswahl, Navigation, Papiergröße, relative Links, Beschriftungen, Bildeinbettung, fehlende Überschriften und vollständige Exportberufung ohne Markdown oder WeasyPrint in der Routine-Testumgebung. Siehe [Dokumentationsindex](README.de-DE.md) für optionale Exportabhängigkeiten.
+Dokumentation Python-Tests umfassen lokale Auswahl, Navigation, Papiergröße, relative Links, Beschriftungen, Bildeinbettung, fehlende Überschriften und vollständige Exportberufung ohne Markdown oder in der Routine-Testumgebung. Siehe [Dokumentationsindex](README.de-DE.md) für optionale Exportabhängigkeiten.
 
 ## Bekannte Einschränkungen {#explicit-limitations}
 
@@ -521,15 +525,15 @@ Das Plugin stellt auch den aktiven Ordner frei, **In den offenen Ordner mit Gad 
 
 **Einstellungen → Optionen…** öffnet ein modales Fenster: Das Hauptfenster bleibt bis zum Schließen gesperrt, Übertragungen laufen weiter. Änderungen gelten sofort; **Schließen** oder Escape macht sie nicht rückgängig. Befehlszeilenoptionen stehen grau unter den Bedienelementen. Mindestgröße: **800 × 740**; Hauptfenster, Fehlerbericht und Diagnose: **1100 × 600**.
 
-Die vier Reiter heißen **Einstellungen**, **Tastenkürzel**, **Geschwindigkeitslimits** und **Stapelabschluss**. Die Limits umfassen die globale Grenze und den Standard für neue Aufträge. Bestehende Aufträge ändern Sie über die ausgewählten Zeilen und **Rechtsklick → Geschwindigkeit des Auftrags begrenzen…**. Das Limit steht in **Details**, auch bei Ordnern; bei unbegrenzter Geschwindigkeit entfällt der Zusatz.
+Die fünf Reiter sind Einstellungen, Tastenkürzel, Geschwindigkeitsbegrenzungen, Stapelabschluss und Ausschlüsse. Befehlszeilenparameter erscheinen grau. Das Limit eines bestehenden Stapels wird im Kontextmenü seiner Zeilen geändert und in der Detailspalte angezeigt.
 
-`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`. `rowRateLimit` → `Window::showRateLimit`.
+`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`, `exclusionsPanel`. `rowRateLimit` → `Window::showRateLimit`.
 
 Dolphin-Befehle und Kontrollkästchen verwenden gemeinsam `Window::configureDolphin`. Die Methode führt die private Komponente `gad/integration/dolphin_shortcut.py` mit Python und QProcess aus, ohne Übertragungen zu blockieren. Der Nachweis bleibt in `gad/dolphin-paste.json`. Nach spätestens acht Sekunden wird abgebrochen; Fehler stellen das Kontrollkästchen wieder her und werden dem Client gemeldet. `Window::handleAsync` antwortet erst nach Abschluss über IPC. Konqueror behält `konquerorCtrlV`, das sein Modul bei jedem Ctrl+V liest. Es wird kein separater öffentlicher Befehl installiert.
 
 ### Dokumentation im Über-Dialog {#about-documentation}
 
-`docs/catalog.json` wird von `doc_catalog.runtime_catalog()` erzeugt und mit den Ausgaben durch `scripts/install_docs.py` installiert; Renderwerkzeuge sind bei der Installation nicht erforderlich. `native/documentation.h` sucht in XDG-Datenverzeichnissen nach `gad/docs/catalog.json`, danach in portablen und Entwicklungsverzeichnissen. Die Felder `locale`, `kind`, `title`, `html` und `pdf` bestimmen die Dateien. Vorrang haben die genaue Sprachvariante, eine Variante derselben Sprache und anschließend Englisch. Pfade werden gegen das kanonische Dokumentverzeichnis geprüft, um Verzeichniswechsel und herausführende symbolische Links abzulehnen. Die Links werden beim Sprachwechsel aktualisiert und über `QDesktopServices` geöffnet.
+`docs/catalog.json` wird von `doc_catalog.runtime_catalog()` erzeugt und mit den Ausgaben durch `scripts/install_docs.py` installiert; Renderwerkzeuge sind bei der Installation nicht erforderlich. `native/documentation.h` sucht in XDG-Datenverzeichnissen nach `gad/docs/catalog.json`, danach in portablen und Entwicklungsverzeichnissen. Die Felder `locale`, `kind`, `title`, `html` und `md` bestimmen die Dateien. Vorrang haben die genaue Sprachvariante, eine Variante derselben Sprache und anschließend Englisch. Pfade werden gegen das kanonische Dokumentverzeichnis geprüft, um Verzeichniswechsel und herausführende symbolische Links abzulehnen. Die Links werden beim Sprachwechsel aktualisiert und über `QDesktopServices` geöffnet.
 
 ## Konfiguration und Handbuchseiten {#command-settings}
 
@@ -619,3 +623,28 @@ Passive Vorgabe: `gad --configure --completion-action suspend --completion-delay
 ## Übertragungen in der Hauptliste vorbereiten {#preparing-transfers}
 
 Das aktuelle Protokoll ist **33**. `Job.start_required` wird gespeichert; `prepare_only` unterscheidet manuelle Vorbereitung von externen Anforderungen. Die Planung überspringt unbestätigte Vorbereitungen. Die einzelne Steuerung sendet `pause` mit `paused=false` zum Starten oder Fortsetzen. `staging.rs` erstellt sichtbare Teildateien; `resume.rs` prüft Identität und Präfix. Schreibgeschützte Simulationsbefehle bleiben intern, ohne eigenes Fenster.
+
+
+## Temporärer Verzeichnisindex
+
+`engine/directories.rs` verwendet Beziehungen zwischen Verzeichnissen und Nachfahren erneut, solange Pfade, Typen und Positionen gleich bleiben. Zustände werden bei jedem Aufruf neu berechnet. Der Cache ist auf 16.384 Einträge und ungefähr 8 MiB je aktivem Auftrag begrenzt; größere Aufträge verwenden einen temporären Index. Klone und Serialisierung schließen den Cache aus. Beim Freigeben des Workers wird er ohne Änderung der Auftragsrevision gelöscht.
+
+
+## Cache der Journaleinstellungen
+
+`engine/journal/settings.rs` speichert typisierte dauerhafte Einstellungen und deren exaktes JSON. Jeder Speichervorgang vergleicht die aktuellen Werte einschließlich der vollständigen Zeilenreihenfolge. Fortschrittsänderungen verwenden das JSON erneut. Änderungen an Einstellungen oder Reihenfolge erneuern den Cache, der erst nach erfolgreichem dauerhaftem Schreiben veröffentlicht wird. Jeder WAL-2-Eintrag enthält weiterhin den vollständigen Kopf; Format und fsync-Grenzen bleiben gleich.
+
+
+## Journal lesen und codieren
+
+`engine/journal/snapshot_reader.rs` decodiert Zustand und `_gad_journal_seq` in einem Durchlauf. Snapshots benötigen weiterhin `jobs`. WAL-Einträge leihen das JSON von Einstellungen und Aufträgen aus der aktuellen Zeile; nur übernommene Aufträge werden kopiert. Jeder geänderte Kopf wird direkt in `State` ohne JSON-Zwischenbaum decodiert. Doppelte Einstellungsschlüssel werden abgewiesen. Der Encoder reserviert den Prüfsummenpräfix und serialisiert in denselben Puffer, der auf den Datenträger geschrieben wird. WAL-Format 2 und Synchronisationsgrenzen bleiben gleich. Bei identischen Bytes wird der zuletzt validierte Kopf wiederverwendet. Dieser Cache ist auf 1 MiB begrenzt, wird durch einen größeren Kopf ungültig und nach dem Laden freigegeben.
+
+## Elemente hinzufügen, Tastenkürzel und Ausschlüsse
+
+Das Menü **Elemente hinzufügen** enthält **Dateien hinzufügen…** (Strg+Umschalt+O), **Ordner hinzufügen…** (Strg+O) und **Zwischenablage-Dateien** (Strg+V). Kopieren oder Ausschneiden bleibt erhalten. Im Leerlauf warten alle Ergänzungen innerhalb von Gad auf **Starten**; bei bereits gestarteten Übertragungen werden sie eingereiht. Nur externes Einfügen aus dem Dateimanager startet automatisch.
+
+**Strg+F** öffnet die Suche. **Strg+Q** fordert das Beenden an; bei aktiven Übertragungen wird es verweigert. **Strg+Alt+W** blendet das Fenster aus, ohne Übertragungen anzuhalten. Die Flagge neben Profile ändert sofort die Sprache. Hauptfenster-Schaltflächen besitzen Kurzinfos.
+
+Unter **Einstellungen → Optionen… → Ausschlüsse** wird je ein Muster pro Zeile für Ordner oder Dateien und symbolische Links eingegeben. Jedes Feld wird beim Fokusverlust gespeichert, ohne Anwenden-Schaltfläche und ohne zusätzlichen Dialog. Ungültige Regeln werden gemeldet; bisherige Regeln bleiben aktiv und der Text bleibt zur Korrektur erhalten. Regeln gelten für neue Übertragungen. Die Option für versteckte Elemente bleibt im Reiter Einstellungen.
+
+`Window::setupExclusions` erstellt zwei von `QPlainTextEdit` abgeleitete `ExclusionEdit`-Widgets in `exclusionsPanel`. `focusOutEvent` validiert nur das geänderte Feld über `Window::handle(configure)`; identische Werte lösen keine Änderung aus. Der Motor validiert vor dem Speichern in QSettings. Bei Ablehnung bleibt der Entwurf erhalten. CLI/Profil-Synchronisierung ersetzt nur geänderte Listen. `manualAdditionWaits` teilt die Vorbereitungsregeln zwischen `enqueue` und `pasteInto(background=false)`; externes Einfügen verwendet `background=true`.

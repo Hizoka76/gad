@@ -1,6 +1,6 @@
 # Gad — Início rápido {#gad-quick-start}
 
-**Gad, il copie. · Gestor avançado de duplicação · Versão 0.2.0**
+**Gad, il copie. · Gestor avançado de duplicação · Versão 0.3.0**
 
 [Guia do utilizador](USER_GUIDE.pt-PT.md) · [Guia do desenvolvedor](DEVELOPER_GUIDE.pt-PT.md) · [Todos os idiomas](README.pt-PT.md)
 
@@ -32,7 +32,7 @@ Caso ainda não esteja instalado, siga o [instruções de instalação](USER_GUI
 
 ![Preparar transferências na lista principal](images/pt-PT/22-preparation.png)
 
-Escolha destino e opções e adicione os ficheiros no Gad. Sem trabalho ativo, reveja a lista e clique em **Iniciar**. A colagem habitual inicia automaticamente; novos elementos durante uma transferência entram na fila. **Ctrl+C** copia e **Ctrl+X** move. Arrastar e largar prepara sempre uma cópia.
+Escolha destino e opções e adicione os ficheiros no Gad. Sem trabalho ativo, reveja a lista e clique em **Iniciar**. A colagem externa pelo gerenciador de arquivos inicia automaticamente; novos elementos durante uma transferência entram na fila. **Ctrl+C** copia e **Ctrl+X** move. Arrastar e largar prepara sempre uma cópia.
 
 ## Acompanhar e controlar as transferências {#read-and-control-transfers}
 
@@ -48,7 +48,7 @@ Escolha destino e opções e adicione os ficheiros no Gad. Sem trabalho ativo, r
 
 *O diálogo de opções abre-se a partir do bloco Definições.*
 
-Em **Definições → Opções…**, os separadores **Definições** e **Atalhos** agrupam preferências e integrações. As alterações aplicam-se imediatamente; **Fechar** ou Esc fecha o diálogo. Os parâmetros de comando aparecem a cinzento. **Exclusões…** aceita padrões de pastas como `__*` e de ficheiros como `*.tmp` ou `*~`. O botão de velocidade dos pedidos selecionados está à esquerda da barra de ações principal.
+Em **Configurações → Opções… → Exclusões**, insira um padrão por linha para pastas ou arquivos e links simbólicos. Cada campo é salvo ao perder o foco, sem botão Aplicar nem diálogo adicional. Uma regra inválida gera um aviso; as regras anteriores continuam ativas e o texto permanece para correção. As regras valem para novas transferências. A opção de incluir itens ocultos permanece na aba de configurações.
 
 **Permitir duplicação na mesma pasta** cria nomes como `photo_copied1.jpg` ao copiar de volta para a pasta original. Está desativado por defeito e aplica-se apenas a cópias. As opções de seleção, verificação e duplicação são capturadas para novos pedidos; as solicitações existentes mantêm as suas definições. O limite global de velocidade pode mudar durante as transferências.
 
@@ -62,7 +62,7 @@ Uma colagem iniciada a partir de um gestor de ficheiros pode ser executada em se
 
 ## Resolver um conflito ou um erro {#resolve-a-conflict-or-an-error}
 
-![Comparação de conflitos de ficheiros](images/pt-PT/08-conflit.png)
+![Comparação de conflitos de ficheiros](images/pt-PT/08-conflict.png)
 
 *Compare a origem e o destino existente antes de escolher uma ação.*
 
@@ -99,10 +99,16 @@ Na linha de comandos, `gad --profile "Meu perfil"` aplica as definições sem in
 
 ## Preparar transferências na lista principal
 
-Escolha destino e opções e adicione os ficheiros no Gad. Sem trabalho ativo, reveja a lista e clique em **Iniciar**. A colagem habitual inicia automaticamente; novos elementos durante uma transferência entram na fila. **Ctrl+C** copia e **Ctrl+X** move. Arrastar e largar prepara sempre uma cópia.
+Escolha destino e opções e adicione os ficheiros no Gad. Sem trabalho ativo, reveja a lista e clique em **Iniciar**. A colagem externa pelo gerenciador de arquivos inicia automaticamente; novos elementos durante uma transferência entram na fila. **Ctrl+C** copia e **Ctrl+X** move. Arrastar e largar prepara sempre uma cópia.
 
 ## Opções
 
 **Definições → Opções…** abre uma janela modal que bloqueia a janela principal enquanto as transferências continuam. As alterações aplicam-se imediatamente; **Fechar** ou Esc não as anula. Os parâmetros de comando aparecem a cinzento. Tamanho mínimo: **800 × 740**; janela principal, relatório de erros e diagnóstico: **1100 × 600**.
 
-Os quatro separadores são **Definições**, **Atalhos**, **Limites de velocidade** e **Fim do lote**. Os limites incluem o global e o predefinido para novos pedidos. Para alterar um pedido existente, selecione as linhas e utilize **botão direito → Limitar a velocidade da solicitação…**. O limite aparece em **Detalhe**, incluindo nas pastas; sem limite não é acrescentado texto.
+As cinco abas são configurações, atalhos, limites de velocidade, conclusão do lote e exclusões. Os parâmetros de linha de comando aparecem em cinza. O limite de um lote existente é alterado pelo menu de contexto das linhas e aparece na coluna de detalhes.
+
+## Adicionar itens, atalhos e exclusões
+
+O menu **Adicionar itens** reúne **Adicionar arquivos…** (Ctrl+Shift+O), **Adicionar pasta…** (Ctrl+O) e **Arquivos da área de transferência** (Ctrl+V). Mantém o modo Copiar ou Recortar. Quando Gad está inativo, todos os itens adicionados dentro do aplicativo aguardam **Iniciar**; durante transferências já iniciadas, entram na fila. Apenas a colagem externa pelo gerenciador de arquivos inicia automaticamente.
+
+**Ctrl+F** abre a pesquisa. **Ctrl+Q** solicita sair e impede a saída com transferências ativas. **Ctrl+Alt+W** oculta a janela sem interrompê-las. O botão com a bandeira junto a Perfis altera o idioma imediatamente. Os botões principais têm dicas de ferramenta.

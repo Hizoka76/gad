@@ -3,7 +3,7 @@
 #include "i18n.h"
 
 namespace Documentation {
-struct Link {QString kind,title;QUrl html,pdf;};
+struct Link {QString kind,title;QUrl html,markdown;};
 /// Autoriser uniquement un fichier de documentation situé dans sa racine, même à travers un lien symbolique.
 inline QUrl localFile(const QString &root,const QString &relative,const QString &extension) {
     if(relative.isEmpty() || QDir::isAbsolutePath(relative) || QFileInfo(relative).suffix()!=extension)return {};
@@ -37,9 +37,9 @@ inline QList<Link> links(const QLocale &locale=QLocale()) {
             const auto language=entry["locale"].toString();const QLocale candidate(language);
             const int rank=language==locale.name()?0:candidate.language()==locale.language()?1:language=="en_US"?2:3;
             if(rank>=bestRank || rank==3)continue;
-            const auto html=localFile(record.first,entry["html"].toString(),"html"),pdf=localFile(record.first,entry["pdf"].toString(),"pdf");
-            if(html.isEmpty() && pdf.isEmpty())continue;
-            best={kind,entry["title"].toString(),html,pdf};bestRank=rank;
+            const auto html=localFile(record.first,entry["html"].toString(),"html"),markdown=localFile(record.first,entry["md"].toString(),"md");
+            if(html.isEmpty() && markdown.isEmpty())continue;
+            best={kind,entry["title"].toString(),html,markdown};bestRank=rank;
         }
         if(bestRank<3)result.append(best);
     }
@@ -51,9 +51,9 @@ inline QString html() {
     if(available.isEmpty())return "<p>"+GAD_TR("Documentation is not installed.").toHtmlEscaped()+"</p>";
     QStringList lines;
     for(const auto &entry:available) {
-        const auto primary=entry.html.isEmpty()?entry.pdf:entry.html;
+        const auto primary=entry.html.isEmpty()?entry.markdown:entry.html;
         auto line=QString("<a href=\"%1\">%2</a>").arg(primary.toString(QUrl::FullyEncoded).toHtmlEscaped(),entry.title.toHtmlEscaped());
-        if(!entry.html.isEmpty() && !entry.pdf.isEmpty())line+=QString(" · <a href=\"%1\">PDF</a>").arg(entry.pdf.toString(QUrl::FullyEncoded).toHtmlEscaped());
+        if(!entry.html.isEmpty() && !entry.markdown.isEmpty())line+=QString(" · <a href=\"%1\">Markdown</a>").arg(entry.markdown.toString(QUrl::FullyEncoded).toHtmlEscaped());
         lines.append(line);
     }
     return "<p><b>"+GAD_TR("Documentation").toHtmlEscaped()+"</b><br>"+lines.join("<br>")+"</p>";

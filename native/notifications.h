@@ -13,6 +13,7 @@
 /// Contrôleur du suivi natif ; son parent Qt possède sa durée de vie.
 class TransferNotifications : public QObject {
     Q_OBJECT
+    Q_PROPERTY(bool progressMessage READ progressMessage WRITE setProgressMessage)
     // Identifiants de la session actuelle, conservés jusqu’à sa clôture native.
     QSet<qint64> tracked;
     // Chronomètre monotone entre deux mesures, indépendant de l’horloge civile.
@@ -29,6 +30,7 @@ class TransferNotifications : public QObject {
     // Dernier état complet à renvoyer aussi si KDE demande une actualisation.
     QVariantMap latest;
     // État de la session et de la demande distante ; enabled désactive les publications dans certains tests.
+    bool showProgress=true;
     bool enabled, requesting = false, complete = false, announced = false;
     // Code natif : zéro en réussite, un pour l’annulation, autre valeur pour l’erreur.
     uint finishCode = 0;
@@ -66,12 +68,20 @@ class TransferNotifications : public QObject {
     void requestView() {
         requesting=true;viewRetryClock.start();
         const auto generation=viewGeneration;
+        // Les réponses optimisées vers un service du même processus peuvent omettre leur émetteur.
+        auto *interface=QDBusConnection::sessionBus().interface();
+        const auto requestedOwner=interface?interface->serviceOwner("org.kde.JobViewServer").value():QString();
         // La vue native affiche immédiatement les compteurs déjà connus, même si l’analyse continue.
         auto hints=latest;hints["immediate"]=true;
         auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(method("org.kde.JobViewServer","/JobViewServer","org.kde.JobViewServerV2","requestView",{"org.hizoka.gad",3,hints})),this);
-        connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,generation] {
+        connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,generation,requestedOwner] {
             QDBusPendingReply<QDBusObjectPath> reply=*watcher;watcher->deleteLater();
-            if(generation!=viewGeneration)return;
+            if(generation!=viewGeneration) {
+                // Une désactivation peut précéder la réponse KDE : fermer aussi cette vue tardive.
+                auto owner=watcher->reply().service();if(owner.isEmpty())owner=requestedOwner;
+                if(!reply.isError() && !owner.isEmpty())QDBusConnection::sessionBus().asyncCall(method(owner,reply.value().path(),"org.kde.JobViewV3","terminate",{uint(1),withGadLink(GAD_TR("Transfer tracking closed.")),QVariantMap{}}));
+                return;
+            }
             requesting=false;
             if(reply.isError())return;
             viewPath=reply.value().path();
@@ -103,6 +113,18 @@ public:
     /// Ferme une vue encore publiée pour ne pas laisser de transfert natif abandonné.
     ~TransferNotifications() override {
         if(!viewPath.isEmpty())sendView("terminate",{uint(1),withGadLink(GAD_TR("Transfer tracking closed.")),QVariantMap{}});
+    }
+    bool progressMessage() const {return showProgress;}
+    /// Masquer le suivi KDE ne modifie jamais les transferts ni leurs commandes.
+    void setProgressMessage(bool visible) {
+        if(showProgress==visible)return;
+        showProgress=visible;viewRetryClock.invalidate();
+        if(visible)return;
+        ++viewGeneration;requesting=false;
+        if(!viewPath.isEmpty()) {
+            QDBusConnection::sessionBus().disconnect("org.kde.JobViewServer",viewPath,"org.kde.JobViewV3",QString(),this,nullptr);
+            sendView("terminate",{uint(1),withGadLink(GAD_TR("Transfer tracking closed.")),QVariantMap{}});viewPath.clear();
+        }
     }
     /// Retient aussi un lot très court qui pourrait déjà être terminé au premier rafraîchissement.
     void begin(qint64 id) { if(id>0)tracked.insert(id); }
@@ -203,7 +225,7 @@ public:
             :QString(GAD_TR("%1 batch(es) completed.")).arg(doneBatches);
         finishText=withGadLink(result);
         if(starting)announced=true;
-        if(enabled) {
+        if(enabled && showProgress) {
             // Réessayer au plus toutes les deux secondes après un échec, ou immédiatement après un redémarrage.
             if(viewPath.isEmpty() && !requesting && (starting || (!complete && (!viewRetryClock.isValid() || viewRetryClock.elapsed()>=2000))))requestView();
             else if(!viewPath.isEmpty())sendView("update",{latest});

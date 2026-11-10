@@ -204,7 +204,7 @@ impl Engine {
         });
         let mut left = point.bytes;
         let mut hash = md5::Context::new();
-        let mut a = vec![0; 1024 * 1024];
+        let mut a = io_buffer(left, 1024 * 1024);
         let mut b = vec![0; a.len()];
         while left > 0 {
             self.checkpoint_entry(id, index)?;

@@ -236,7 +236,9 @@ impl Engine {
                             .is_some_and(|j| !j.start_required);
                         if automatic {
                             for job in &mut state.jobs {
-                                job.start_required = false;
+                                if job.start_required {
+                                    job.start_required = false;
+                                }
                             }
                         }
                         state.jobs.retain(|j| j.id != id);
@@ -297,7 +299,9 @@ impl Engine {
                 let automatic = !job.start_required && job.state == TransferState::Waiting;
                 if automatic {
                     for job in &mut state.jobs {
-                        job.start_required = false;
+                        if job.start_required {
+                            job.start_required = false;
+                        }
                     }
                 }
                 state.row_layout = None;

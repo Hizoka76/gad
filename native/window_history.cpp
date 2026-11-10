@@ -5,6 +5,7 @@
 void Window::setupHistorySearch(QVBoxLayout *layout,QHBoxLayout *controls) {
     auto *toggle=I18n::localized(new QPushButton(QIcon::fromTheme("edit-find",style()->standardIcon(QStyle::SP_FileDialogContentsView)),QString()),"text",[]{return GAD_TR("Search history");});
     toggle->setObjectName("historySearchButton");toggle->setCheckable(true);controls->insertWidget(0,toggle);
+    I18n::bindProperty(toggle,"toolTip",[]{return GAD_TR("Show or hide search by file name, path, date or status. (Ctrl+F)");});
     auto *panel=new QWidget;panel->setObjectName("historySearchPanel");auto *box=new QVBoxLayout(panel);box->setContentsMargins(0,0,0,0);
     auto *top=new QHBoxLayout;
     auto *text=new QLineEdit;text->setObjectName("historySearchText");text->setClearButtonEnabled(true);

@@ -30,7 +30,7 @@ inline bool attachProfile(QJsonObject &request,const QString &profile,QString &e
 inline QJsonObject configure(const QStringList &arguments,QString &error) {
     auto args=arguments;const auto profile=takeProfile(args,error);if(!error.isEmpty())return {};
     QJsonObject result{{"command",Protocol::Command::Configure}},patch,gui;
-    const QHash<QString,QString> flags{{"verify-fast-move","verify_fast_move"},{"md5","verify_md5"},{"properties","verify_properties"},{"verify-space","verify_space"},{"keep-history","keep_history"},{"resume-interrupted","resume_interrupted"},{"allow-duplication","allow_duplication"},{"include-hidden","include_hidden"},{"autostart","autostart"},{"krusader-ctrl-v","krusader_ctrl_v"},{"konqueror-ctrl-v","konqueror_ctrl_v"},{"dolphin-ctrl-v","dolphin_ctrl_v"}};
+    const QHash<QString,QString> flags{{"progress-message","progressMessage"},{"verify-fast-move","verify_fast_move"},{"md5","verify_md5"},{"properties","verify_properties"},{"verify-space","verify_space"},{"keep-history","keep_history"},{"resume-interrupted","resume_interrupted"},{"allow-duplication","allow_duplication"},{"include-hidden","include_hidden"},{"autostart","autostart"},{"krusader-ctrl-v","krusader_ctrl_v"},{"konqueror-ctrl-v","konqueror_ctrl_v"},{"dolphin-ctrl-v","dolphin_ctrl_v"}};
     QSet<QString> supplied;
     for(int i=2;i<args.size();++i) {
         auto name=args[i];bool enabled=true;
@@ -40,7 +40,7 @@ inline QJsonObject configure(const QStringList &arguments,QString &error) {
             if(supplied.contains(name)){error="Repeated or conflicting option: --"+name;return {};}
             supplied.insert(name);const auto key=flags.value(name);
             if(key=="include_hidden")patch[key]=enabled;
-            else if(key=="krusader_ctrl_v" || key=="autostart" || key=="konqueror_ctrl_v" || key=="dolphin_ctrl_v")gui[key]=enabled;
+            else if(key=="progressMessage" || key=="krusader_ctrl_v" || key=="autostart" || key=="konqueror_ctrl_v" || key=="dolphin_ctrl_v")gui[key]=enabled;
             else result[key]=enabled;
             continue;
         }

@@ -5,11 +5,59 @@
 #include "bridge.h"
 #include <algorithm>
 #include <functional>
+#include <QScopeGuard>
 
 /// Le rang parmi les enfants visuels ne représente plus l’indice du moteur.
 QTreeWidgetItem *Window::entryRow(qint64 job,int index) const {
     const auto found=entryRows.constFind(job);
     return found==entryRows.cend() || index<0 || index>=found->size()?nullptr:(*found)[index];
+}
+
+/// Compteurs et icône restent actifs même lorsque l’arbre est différé en arrière-plan.
+QJsonArray Window::refreshSummary(const QSet<qint64> &changed) {
+    int waiting=0,running=0,done=0,errors=0,activeJobs=0,runningJobs=0,queuedJobs=0,scanningJobs=0,deviceWaitingJobs=0;
+    double totalBytes=0,copiedBytes=0,sessionBytes=0,sessionCopied=0;QJsonArray conflicts;QSet<qint64> live;
+    const auto jobs=state["jobs"].toArray();
+    for(const auto &value:jobs) {
+        const auto job=value.toObject();const auto id=job["id"].toInteger();const auto status=job["state"].toString();live.insert(id);
+        if(!finished(status)){++activeJobs;if(status==Protocol::State::Running || status==Protocol::State::Undoing)++runningJobs;else if(status==Protocol::State::Scanning)++scanningJobs;else {++queuedJobs;if(status==Protocol::State::DeviceWaiting)++deviceWaitingJobs;}}
+        if(changed.contains(id) || !jobTotals.contains(id)) {
+            JobTotals totals;int index=0;
+            for(const auto &entry:job["entries"].toArray()) {
+                const auto e=entry.toObject();const auto status=e["state"].toString();
+                if(e["kind"]!="directory" && !e["hidden"].toBool()) {
+                    if(status==Protocol::State::Waiting || status==Protocol::State::DeviceWaiting)++totals.waiting;
+                    else if(status==Protocol::State::Running || status==Protocol::State::Verifying || status==Protocol::State::Conflict || status==Protocol::State::Undoing)++totals.running;
+                    else if(status==Protocol::State::Done)++totals.done;else if(status==Protocol::State::Error)++totals.errors;
+                    totals.bytes+=e["size"].toDouble();totals.copied+=e["copied"].toDouble();
+                }
+                if(status==Protocol::State::Conflict){auto conflict=e;conflict["job"]=id;conflict["index"]=index;conflict["mode"]=job["mode"];conflict["source_label"]=sourceLabel(job,e["source"].toString());conflict["destination_label"]=destinationLabel(job,e["destination"].toString());totals.conflicts.append(conflict);}++index;
+            }
+            jobTotals[id]=totals;
+        }
+        const auto &totals=jobTotals[id];waiting+=totals.waiting;running+=totals.running;done+=totals.done;errors+=totals.errors;totalBytes+=totals.bytes;copiedBytes+=totals.copied;
+        if(!progressInitialized){progressOffsets[id]=totals.copied;if(finished(status))progressHistory.insert(id);}
+        if(!finished(status))progressHistory.remove(id);
+        if(!progressHistory.contains(id)) {
+            const auto offset=qMin(progressOffsets.value(id,0.),totals.copied);progressOffsets[id]=offset;
+            sessionBytes+=qMax(0.,totals.bytes-offset);sessionCopied+=qMax(0.,totals.copied-offset);
+        }
+        for(const auto &conflict:totals.conflicts)conflicts.append(conflict);
+    }
+    for(auto it=jobTotals.begin();it!=jobTotals.end();)if(!live.contains(it.key()))it=jobTotals.erase(it);else ++it;
+    progressInitialized=true;
+    for(auto it=progressOffsets.begin();it!=progressOffsets.end();)if(!live.contains(it.key())){progressHistory.remove(it.key());it=progressOffsets.erase(it);}else ++it;
+    const bool badgePaused=paused || (deviceWaitingJobs>0 && runningJobs==0);const bool decision=!conflicts.isEmpty();
+    const QString visualKey=QString("%1/%2/%3").arg(activeJobs).arg(badgePaused).arg(decision);
+    if(trayVisualKey!=visualKey){tray->setIcon(transferIcon(activeJobs,badgePaused,decision));trayVisualKey=visualKey;}
+    QString tooltip=QString(GAD_TR("Gad — %1 transfer(s) remaining\n%2 active · %3 queued · %4 scanning\nFiles: %5 active · %6 queued")).arg(activeJobs).arg(runningJobs).arg(queuedJobs).arg(scanningJobs).arg(running).arg(waiting);
+    if(paused)tooltip+=GAD_TR("\nQueue paused");
+    if(deviceWaitingJobs)tooltip+=QString(GAD_TR("\n%1 request(s) waiting for reconnection")).arg(deviceWaitingJobs);
+    if(decision)tooltip+=GAD_TR("\nA conflict needs your decision");
+    if(tray->toolTip()!=tooltip)tray->setToolTip(tooltip);
+    trayPause->setText(paused?GAD_TR("Resume queue"):GAD_TR("Pause all"));progress->setValue(sessionBytes>0?qBound(0,int(1000*sessionCopied/sessionBytes),1000):0);
+    summary->setText(QString(GAD_TR("%1 operation(s) · %2 queued · %3 active · %4 OK · %5 error(s)  —  %6 / %7%8")).arg(jobs.size()).arg(waiting).arg(running).arg(done).arg(errors).arg(bytes(copiedBytes)).arg(bytes(totalBytes)).arg(paused?GAD_TR(" · Paused"):""));
+    return conflicts;
 }
 
 /// Met à jour les lignes existantes à partir d’un instantané JSON, sans reconstruire le modèle.
@@ -66,13 +114,23 @@ void Window::refresh(){
     const auto metricsText=metricsLines.join("\n");
     if(requestMetrics->text()!=metricsText)requestMetrics->setText(metricsText);
     requestMetrics->setVisible(!metricsLines.isEmpty());
+    const auto conflicts=refreshSummary(changed);
+    if(deferHiddenTree && (!isVisible() || isMinimized())){treePending=true;return;}
     auto *view=static_cast<TransferTree *>(tree);
     const bool headerChanged=renderedViewRevision!=view->presentationRevision();
     const bool filterChanged=renderedHeaderFilterRevision!=view->headerFilterRevision();
     const auto rawQueueOrder=state["row_order"].toArray();
     const bool orderChanged=rawQueueOrder!=renderedQueueOrder;
-    const bool force=orderChanged || headerChanged || renderedLanguage!=QLocale().name() || renderedBase!=palette().color(QPalette::Base) || filterChanged || renderedPause!=state["paused"].toBool() || delta["reset"].toBool() || !delta.contains("revision");
-    if(delta["unchanged"].toBool() && !force)return;
+    const bool force=treePending || headerChanged || renderedLanguage!=QLocale().name() || renderedBase!=palette().color(QPalette::Base) || filterChanged || renderedPause!=state["paused"].toBool() || delta["reset"].toBool() || !delta.contains("revision");
+    if(delta["unchanged"].toBool() && !force && !orderChanged)return;
+    treePending=false;
+    // La largeur automatique relirait tous les items pendant chaque modification.
+    // Suspendre aussi la peinture, puis rétablir exactement les réglages du demandeur.
+    const bool updates=tree->updatesEnabled();
+    const auto orderResize=tree->header()->sectionResizeMode(TableView::OrderColumn);
+    tree->setUpdatesEnabled(false);
+    tree->header()->setSectionResizeMode(TableView::OrderColumn,QHeaderView::Fixed);
+    const auto rendering=qScopeGuard([this,updates,orderResize]{tree->header()->setSectionResizeMode(TableView::OrderColumn,orderResize);tree->setUpdatesEnabled(updates);});
     renderedQueueOrder=rawQueueOrder;
     renderedViewRevision=view->presentationRevision();
     renderedHeaderFilterRevision=view->headerFilterRevision();
@@ -131,22 +189,9 @@ void Window::refresh(){
         row->setData(0,HistorySearch::JobStateRole,job["state"].toString());
         row->setData(0,HistorySearch::PathsRole,paths);
     };
-    int waiting = 0, running = 0, done = 0, errors = 0;
-    int activeJobs = 0, runningJobs = 0, queuedJobs = 0, scanningJobs = 0, deviceWaitingJobs=0;
-    double totalBytes = 0, copiedBytes = 0;
-    QJsonArray conflicts;
     for (const auto &value : jobs) {
         const auto job = value.toObject(); const auto id = job["id"].toInteger(); const auto status = job["state"].toString();
-        if (!finished(status)) {
-            ++activeJobs;
-            if (status == Protocol::State::Running || status == Protocol::State::Undoing) ++runningJobs;
-            else if (status == Protocol::State::Scanning) ++scanningJobs;
-            else if(status==Protocol::State::DeviceWaiting){++deviceWaitingJobs;++queuedJobs;}
-            else ++queuedJobs;
-        }
-        JobTotals totals=jobTotals.value(id);
         if(force || changed.contains(id) || !jobRows.contains(id)) {
-            totals=JobTotals{};
             const auto entries = job["entries"].toArray();
             const auto limit=job["rate_limit"].toInteger();
             const QString rateDetail=limit>0?QString(GAD_TR("Limit: %1")).arg(TransferMetrics::speed(limit)):QString();
@@ -169,13 +214,16 @@ void Window::refresh(){
                 for(auto *row:rows)RowTree::attach(row,nullptr,tree);
                 while(rows.size()>entries.size())delete rows.takeLast();
             }
+            // Construire les nouvelles branches hors du modèle évite une suppression
+            // et une réinsertion Qt par fichier lors du rattachement à son dossier.
+            const int firstNew=rows.size();
             while(rows.size()<entries.size()) {
-                auto *row=new QTreeWidgetItem(tree);
+                auto *row=new QTreeWidgetItem;
                 row->setData(0,RowTree::OwnerRole,QVariant::fromValue(reinterpret_cast<quintptr>(parent)));
                 row->setData(0,Qt::UserRole,id);
                 row->setData(0,Qt::UserRole+1,QString::number(id)+"/"+QString::number(rows.size()));
                 row->setData(0,RowTree::EntryIndexRole,rows.size());
-                row->setExpanded(true);rows.append(row);
+                rows.append(row);
             }
             QVector<QString> sourcePaths,destinationPaths;
             QVector<bool> shown(entries.size(),false),completed(entries.size(),false);
@@ -187,6 +235,7 @@ void Window::refresh(){
                 sourcePaths.append(QDir::cleanPath(entry["source"].toString()));destinationPaths.append(QDir::cleanPath(entry["destination"].toString()));
                 if(entry["kind"]=="directory")directories[directoryKey(sourcePaths[i],destinationPaths[i])].append(i);
             }
+            QVector<QTreeWidgetItem *> folders(rows.size(),nullptr);
             for(int i=0;i<entries.size();++i) {
                 auto source=sourcePaths[i],target=destinationPaths[i];QTreeWidgetItem *folder=nullptr;
                 while(true) {
@@ -198,10 +247,25 @@ void Window::refresh(){
                     const auto candidate=std::lower_bound(found->cbegin(),found->cend(),i);
                     folder=rows[candidate==found->cbegin()?found->first():*std::prev(candidate)];break;
                 }
-                // Lors d’une réanalyse, un ancien enfant peut devenir parent : le détacher évite un cycle temporaire.
+                folders[i]=folder;
+            }
+            QList<QTreeWidgetItem *> roots;
+            QHash<QTreeWidgetItem *,QList<QTreeWidgetItem *>> children;
+            for(int i=firstNew;i<rows.size();++i) {
+                auto *folder=folders[i];
+                if(!folder)roots.append(rows[i]);
+                else if(!folder->treeWidget())folder->addChild(rows[i]);
+                else children[folder].append(rows[i]);
+            }
+            tree->addTopLevelItems(roots);
+            for(auto it=children.cbegin();it!=children.cend();++it)it.key()->addChildren(it.value());
+            for(int i=0;i<firstNew;++i) {
+                auto *folder=folders[i];
+                // Une réanalyse peut inverser l’ancienne parenté : éviter un cycle temporaire.
                 for(auto *ancestor=folder;ancestor;ancestor=ancestor->parent())if(ancestor==rows[i]){RowTree::attach(folder,nullptr,tree);break;}
                 RowTree::attach(rows[i],folder,tree);
             }
+            // Qt ne mémorise le développement qu’après insertion dans son modèle.
             if(entries.isEmpty())RowTree::attach(parent,nullptr,tree);
             else if(parent->treeWidget())tree->takeTopLevelItem(tree->indexOfTopLevelItem(parent));
             const bool dark=palette().color(QPalette::Base).lightness()<128;
@@ -273,15 +337,7 @@ void Window::refresh(){
                 const auto kind = e["kind"].toString();
                 const auto size = e["size"].toDouble(), copied = e["copied"].toDouble();
                 if (kind != "directory") {
-                    if (!e["hidden"].toBool()) {
-                    if (s == Protocol::State::Waiting || s == Protocol::State::DeviceWaiting) ++totals.waiting; else if (s == Protocol::State::Running || s == Protocol::State::Verifying || s == Protocol::State::Conflict || s == Protocol::State::Undoing) ++totals.running; else if (s == Protocol::State::Done) ++totals.done; else if (s == Protocol::State::Error) ++totals.errors;
-                    totals.bytes += size; totals.copied += copied;
-                    }
                     jobSize += size; jobCopied += copied;
-                }
-                if (s == Protocol::State::Conflict) {
-                    auto conflict=e; conflict["job"]=id; conflict["index"]=index; conflict["mode"]=job["mode"]; conflict["source_label"]=sourceLabel(job,e["source"].toString()); conflict["destination_label"]=destinationLabel(job,e["destination"].toString());
-                    totals.conflicts.append(conflict);
                 }
                 const bool match = !e["hidden"].toBool();
                 auto *item=rows[index];
@@ -381,6 +437,9 @@ void Window::refresh(){
                 shown[index]=match && view->matches(item);
                 ++index;
             }
+            // Les fichiers n’ont rien à développer. Ouvrir les nouveaux dossiers une fois
+            // leurs cellules remplies évite des milliers de calculs de disposition visibles.
+            for(int i=firstNew;i<rows.size();++i)if(entries[i].toObject()["kind"]=="directory")rows[i]->setExpanded(true);
             // Remonter la visibilité jusqu’au lot, même si une reprise a ajouté un enfant après d’autres racines.
             for(int i=0;i<rows.size();++i)if(shown[i]) {
                 for(auto *folder=rows[i]->parent();folder;folder=folder->parent())shown[folder->data(0,RowTree::EntryIndexRole).toInt()]=true;
@@ -412,11 +471,12 @@ void Window::refresh(){
             const bool hidden = (entries.isEmpty() && !view->matches(parent)) || (allRemoved && I18n::message(job["error"].toString()).isEmpty());
             if (parent->isHidden() != hidden) parent->setHidden(hidden);
             if(hidden && parent->isSelected())parent->setSelected(false);
-            jobTotals[id]=totals;
+        } else if(orderChanged) {
+            // Seul le rang change : conserver le rendu, les infobulles et les mesures du lot.
+            orderText(jobRows.value(id),id,-1);
+            const auto &rows=entryRows[id];
+            for(int i=0;i<rows.size();++i)orderText(rows[i],id,i);
         }
-        waiting+=totals.waiting;running+=totals.running;done+=totals.done;errors+=totals.errors;
-        totalBytes+=totals.bytes;copiedBytes+=totals.copied;
-        for(const auto &conflict:totals.conflicts)conflicts.append(conflict);
     }
     // Garder le rang métier pour les égalités, sans défaire puis refaire le tri à chaque progression.
     qint64 rank=0;
@@ -430,22 +490,7 @@ void Window::refresh(){
     // Les actions d’un menu déjà ouvert suivent aussi les transitions sans nouvelle sélection.
     updateRowActions();
     updateConflictPanel(conflicts);
-    const bool badgePaused=paused || (deviceWaitingJobs>0 && runningJobs==0);
-    const QString visualKey = QString("%1/%2/%3").arg(activeJobs).arg(badgePaused).arg(conflictJob != 0);
-    if (trayVisualKey != visualKey) {
-        tray->setIcon(transferIcon(activeJobs, badgePaused, conflictJob != 0)); trayVisualKey = visualKey;
-    }
-    QString tooltip = QString(GAD_TR("Gad — %1 transfer(s) remaining\n%2 active · %3 queued · %4 scanning\nFiles: %5 active · %6 queued"))
-        .arg(activeJobs).arg(runningJobs).arg(queuedJobs).arg(scanningJobs).arg(running).arg(waiting);
-    if (paused) tooltip += GAD_TR("\nQueue paused");
-    if(deviceWaitingJobs)tooltip+=QString(GAD_TR("\n%1 request(s) waiting for reconnection")).arg(deviceWaitingJobs);
-    if (conflictJob != 0) tooltip += GAD_TR("\nA conflict needs your decision");
-    if (tray->toolTip() != tooltip) tray->setToolTip(tooltip);
-    trayPause->setText(paused ? GAD_TR("Resume queue") : GAD_TR("Pause all"));
     conflictBox->setVisible(conflictJob != 0);
-    progress->setValue(totalBytes > 0 ? qMin(1000, int(1000 * copiedBytes / totalBytes)) : 0);
-    summary->setText(QString(GAD_TR("%1 operation(s) · %2 queued · %3 active · %4 OK · %5 error(s)  —  %6 / %7%8"))
-                     .arg(jobs.size()).arg(waiting).arg(running).arg(done).arg(errors).arg(bytes(copiedBytes)).arg(bytes(totalBytes)).arg(paused ? GAD_TR(" · Paused") : ""));
 }
 
 /// Le préordre métier ne change que la place de frères : une ligne garde toujours son dossier réel.

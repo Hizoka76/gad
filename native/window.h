@@ -48,9 +48,14 @@ class Window : public QMainWindow {
     QCheckBox *verifyProperties;
     QCheckBox *verifySpace;
     QCheckBox *keepHistory;
+    QCheckBox *progressMessage;
     QDoubleSpinBox *globalRate;
     QDoubleSpinBox *requestRate;
     QMenu *profilesMenu=nullptr;
+    QString languageChoice;
+    QActionGroup *languageActions=nullptr;
+    bool languageAvailable(const QString &locale) const;
+    void setLanguage(const QString &locale);
     bool profileApplying=false;
     bool profileCommitting=false;
     QCheckBox *resumeInterrupted;
@@ -62,6 +67,10 @@ class Window : public QMainWindow {
     QueueSnapshot queueSnapshot;
     QJsonArray renderedQueueOrder;
     QHash<qint64,JobTotals> jobTotals;
+    // La barre globale suit les octets traités depuis l'ouverture, sans reprendre l'historique.
+    QHash<qint64,double> progressOffsets;
+    QSet<qint64> progressHistory;
+    bool progressInitialized=false;
     QString renderedLanguage;
     quint64 renderedViewRevision=0,renderedHeaderFilterRevision=0;
     bool renderedPause=false;
@@ -87,6 +96,8 @@ class Window : public QMainWindow {
     bool paused = false;
     // Coupe le rafraîchissement une fois la fermeture du moteur acceptée.
     bool closing = false;
+    bool deferHiddenTree=false,treePending=false;
+    QJsonArray refreshSummary(const QSet<qint64> &changed);
     TransferNotifications *desktopTransfers;
     // Les ajouts suivants attendent la résolution du premier lot pour préserver leur ordre.
     QQueue<QJsonObject> sourceQueue;
@@ -96,7 +107,7 @@ class Window : public QMainWindow {
     quint64 sourceGeneration = 0;
 public:
     /// Construit les contrôles, menus et connexions de signaux ; les choix persistants sont transmis au moteur.
-    Window();
+    explicit Window(bool background=false);
     /// Les métadonnées des demandes sont désormais détachées de l’arbre visuel.
     ~Window() override;
     /// Construit une carte de comparaison dont les textes restent copiables et sans interprétation HTML.
@@ -145,7 +156,7 @@ public:
     /// Regroupe les erreurs et permet leur export et leur réessai ciblé.
     void showErrorReport();
     /// Modifie seulement les règles par défaut des prochaines demandes.
-    void showExclusions();
+    void setupExclusions(QVBoxLayout *layout);
     void updateExclusionSummary();
     void retryErrorSelection();
     /// Réactive les URL KIO en arrière-plan, sans modifier les chemins des journaux.
@@ -188,6 +199,8 @@ public:
     /// Accès direct par indice moteur, utilisé aussi par la navigation vers un conflit.
     QTreeWidgetItem *entryRow(qint64 job,int index) const;
 protected:
+    void showEvent(QShowEvent *event) override;
+    void changeEvent(QEvent *event) override;
     /// Intercepte les collages de fichiers même depuis le champ Destination, tout en laissant le collage de texte habituel.
     bool eventFilter(QObject *object, QEvent *event) override;
     /// Annonce l’acceptation des glissements contenant des URL ; le dépôt vérifie ensuite leurs chemins.

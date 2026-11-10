@@ -1,6 +1,6 @@
 # Gad — Guia do utilizador {#gad-user-guide}
 
-**Gestionnaire Avancé de Duplication · Versão 0.2.0**
+**Gestionnaire Avancé de Duplication · Versão 0.3.0**
 
 **Gad, il copie.**
 
@@ -54,9 +54,9 @@ O Gad integra-se com o Dolphin através de **Colar com Gad** e da opção Ctrl+V
 
 ### Interpretar as capturas {#reading-the-screenshots}
 
-As 22 capturas mostram os widgets reais do Gad, ficheiros de exemplo e estados de transferência simulados. Utilizam o tema claro e o idioma desta edição. Não são fotografados ficheiros pessoais nem o ambiente de trabalho real. As notificações externas do Plasma não são reproduzidas nestas capturas.
+As 23 capturas mostram os widgets reais do Gad, ficheiros de exemplo e estados de transferência simulados. Utilizam o tema claro e o idioma desta edição. Não são fotografados ficheiros pessoais nem o ambiente de trabalho real. As notificações externas do Plasma não são reproduzidas nestas capturas.
 
-O Gad disponibiliza francês, inglês americano, espanhol, português, alemão e japonês. Escolha um idioma em **Definições → Opções…**: a alteração é imediata, sem reiniciar o Gad nem interromper as transferências. Os diálogos e as notificações ativas são atualizados, preservando a seleção e os valores introduzidos. **Sistema** escolhe uma variante disponível do idioma do ambiente de trabalho; caso não exista, utiliza francês ou inglês. Os diagnósticos técnicos não catalogados e as mensagens de serviços externos podem manter o idioma original.
+O Gad disponibiliza francês, inglês americano, espanhol, português, alemão e japonês. Escolha um idioma no menu da bandeira à direita de **Perfis**: a alteração é imediata, sem reiniciar o Gad nem interromper as transferências. Os diálogos e as notificações ativas são atualizados, preservando a seleção e os valores introduzidos. **Sistema** escolhe uma variante disponível do idioma do ambiente de trabalho; caso não exista, utiliza francês ou inglês. Os diagnósticos técnicos não catalogados e as mensagens de serviços externos podem manter o idioma original.
 
 ## Instalação e arranque {#installation-and-startup}
 
@@ -124,7 +124,7 @@ Para uma atualização, termine ou cancele o trabalho ativo e saia do Gad normal
 
 ## Compreender a janela {#understanding-the-window}
 
-![Janela principal, árvore de pastas e pedidos coloridos](images/pt-PT/01-vue-ensemble.png)
+![Janela principal, árvore de pastas e pedidos coloridos](images/pt-PT/01-overview.png)
 
 *A lista mostra os ficheiros diretamente, com pastas reais a formar a árvore. As cores do pedido mantêm os envios separados reconhecíveis.*
 
@@ -132,7 +132,7 @@ Para uma atualização, termine ou cancele o trabalho ativo e saia do Gad normal
 |---|---|
 | **Origem** | Adicione ficheiros, adicione uma pasta ou cole no destino selecionado. |
 | **Destino** | Introduza um caminho local ou um URL remoto compatível ou procure uma pasta. |
-| **Definições → Opções…** | Verificação, eliminações, duplicação, histórico, arranque, idiomas, limites de velocidade e atalhos. |
+| **Definições → Opções…** | Verificação, eliminações, duplicação, histórico, arranque, limites de velocidade e atalhos. |
 | Barra de progresso | Progresso combinado para os trabalhos de transferência listados. |
 | Filtro e comandos | Filtre linhas, pause a fila, cancele, desfaça ou limpe o histórico concluído. |
 | Lista de ficheiros | Origem, destino, estado, progresso e mensagens detalhadas. |
@@ -145,11 +145,11 @@ Para uma atualização, termine ou cancele o trabalho ativo e saia do Gad normal
 
 **Definições → Opções…** abre uma janela modal que bloqueia a janela principal enquanto as transferências continuam. As alterações aplicam-se imediatamente; **Fechar** ou Esc não as anula. Os parâmetros de comando aparecem a cinzento. Tamanho mínimo: **800 × 740**; janela principal, relatório de erros e diagnóstico: **1100 × 600**.
 
-Os quatro separadores são **Definições**, **Atalhos**, **Limites de velocidade** e **Fim do lote**. Os limites incluem o global e o predefinido para novos pedidos. Para alterar um pedido existente, selecione as linhas e utilize **botão direito → Limitar a velocidade da solicitação…**. O limite aparece em **Detalhe**, incluindo nas pastas; sem limite não é acrescentado texto.
+As cinco abas são configurações, atalhos, limites de velocidade, conclusão do lote e exclusões. Os parâmetros de linha de comando aparecem em cinza. O limite de um lote existente é alterado pelo menu de contexto das linhas e aparece na coluna de detalhes.
 
-![Definições → Opções… ](images/pt-PT/21-options-debits.png)
+![Definições → Opções… ](images/pt-PT/21-speed-options.png)
 
-![O separador Atalhos controla a integração dos gestores de ficheiros.](images/pt-PT/14-options-raccourcis.png)
+![O separador Atalhos controla a integração dos gestores de ficheiros.](images/pt-PT/14-shortcut-options.png)
 
 *O separador Atalhos controla a integração dos gestores de ficheiros.*
 
@@ -157,7 +157,7 @@ Os quatro separadores são **Definições**, **Atalhos**, **Limites de velocidad
 
 O **Sobre** mostra o nome, acrónimo, slogan, ícone, versão e data de compilação da aplicação. O ícone do software é a imagem de documento com cabelos encaracolados usada pela janela, lançador, Sobre a janela e bandeja.
 
-![Caixa de diálogo Sobre com ícone e versão do software](images/pt-PT/10-a-propos.png)
+![Caixa de diálogo Sobre com ícone e versão do software](images/pt-PT/10-about.png)
 
 *About identifica a compilação que está a ser executada no momento.*
 
@@ -189,7 +189,7 @@ Gad pode receber ficheiros de outro gestor, como Nautilus, Nemo ou Thunar. A int
 
 1. Selecione os ficheiros no seu gestor e utilize **Ctrl+C** ou **Ctrl+X** para solicitar uma movimentação.
 2. Abra Gad e defina a pasta de destino em **Destino**.
-3. Clique em **Colar aqui** ou prima **Ctrl+V dentro Gad**.
+3. Clique em **Arquivos da área de transferência** ou prima **Ctrl+V dentro Gad**.
 4. Verifique o destino e o tipo de operação apresentados na lista.
 
 O gestor deve publicar uma lista de ficheiros em formato de área de transferência compreendido por Gad. Copiar um caminho como texto simples é insuficiente. A movimentação requer um marcador de corte reconhecido; se não estiver disponível, utilize o comando `--move` explícito abaixo.
@@ -228,7 +228,7 @@ Outros gestores que suportam os menus de serviço KIO também podem oferecer o *
 
 ![Controlos de origem e destino e opções de verificação](images/pt-PT/02-sources-options.png)
 
-Escolha destino e opções e adicione os ficheiros no Gad. Sem trabalho ativo, reveja a lista e clique em **Iniciar**. A colagem habitual inicia automaticamente; novos elementos durante uma transferência entram na fila. **Ctrl+C** copia e **Ctrl+X** move. Arrastar e largar prepara sempre uma cópia.
+Escolha destino e opções e adicione os ficheiros no Gad. Sem trabalho ativo, reveja a lista e clique em **Iniciar**. A colagem externa pelo gerenciador de arquivos inicia automaticamente; novos elementos durante uma transferência entram na fila. **Ctrl+C** copia e **Ctrl+X** move. Arrastar e largar prepara sempre uma cópia.
 
 ### De Dolphin {#from-dolphin}
 
@@ -241,7 +241,7 @@ Uma colagem exterior começa em segundo plano e não força a abertura da janela
 
 ### De Gad {#from-gad}
 
-Utilize **Adicionar ficheiros…** (Adicionar ficheiros), **Adicionar pasta…** (Adicionar pasta) ou **Colar aqui** (Colar aqui). Ctrl+V dentro de Gad cola no destino apresentado. O conteúdo da área de transferência assinalado como Cortar produz um movimento; o conteúdo copiado comum produz uma cópia.
+O menu **Adicionar itens** reúne **Adicionar arquivos…** (Ctrl+Shift+O), **Adicionar pasta…** (Ctrl+O) e **Arquivos da área de transferência** (Ctrl+V). Mantém o modo Copiar ou Recortar. Quando Gad está inativo, todos os itens adicionados dentro do aplicativo aguardam **Iniciar**; durante transferências já iniciadas, entram na fila. Apenas a colagem externa pelo gerenciador de arquivos inicia automaticamente.
 
 Soltar ficheiros em Gad cria sempre um **Cópia: **. Uma lista de ficheiros colada enquanto o campo Destino está em foco ainda entra na fila de transferência. O texto comum mantém o comportamento normal de colagem do campo de texto.
 
@@ -261,7 +261,7 @@ Os ficheiros e caminhos especiais fora do contrato UTF-8 compatível são rejeit
 
 ## Excluir itens das transferências {#excluding-items-from-transfers}
 
-Utilize **Exclusões…** para introduzir um padrão por linha, separadamente para pastas e para ficheiros ou links simbólicos. **Incluir itens ocultos** também está disponível em **Definições → Opções…**. É verificado por defeito, sem exclusões de nomes configuradas inicialmente.
+Em **Configurações → Opções… → Exclusões**, insira um padrão por linha para pastas ou arquivos e links simbólicos. Cada campo é salvo ao perder o foco, sem botão Aplicar nem diálogo adicional. Uma regra inválida gera um aviso; as regras anteriores continuam ativas e o texto permanece para correção. As regras valem para novas transferências. A opção de incluir itens ocultos permanece na aba de configurações.
 
 | Tipo | Exemplo | Efeito |
 | --- | --- | --- |
@@ -331,7 +331,7 @@ Uma pasta só se torna OK depois de seus filhos relevantes terminarem. Ela colap
 
 ### Filtros {#filters}
 
-![Filtros de ficheiros](images/pt-PT/06-filtres.png)
+![Filtros de ficheiros](images/pt-PT/06-filters.png)
 
 *Filtrar muda a visibilidade, não o comportamento de transferência.*
 
@@ -363,7 +363,7 @@ Arraste uma ou mais linhas **espera** antes ou depois de outra linha. O marcador
 
 Uma pasta move- se com a sua ramificação. Os ficheiros dentro de uma pasta reordenam entre irmãos; eles mantêm o seu pai e destino. Mova a pasta pai para reposicionar a ramificação inteira. Arrastar nunca muda o destino.
 
-O menu de contexto oferece **Tratar a seguir** (Processo seguinte) e **Reordenar fila** (Move-se na fila). Ctrl e Shift suportam seleção múltipla. **Selecione toda a solicitação** seleciona as outras raízes pertencentes à mesma submissão.
+O menu de contexto oferece **Tratar a seguir** (Processo seguinte) e **Reordenar fila** (Move-se na fila). Ctrl e Shift suportam seleção múltipla. **Selecionar todo o lote** seleciona as outras raízes pertencentes à mesma submissão.
 
 As prioridades são salvas. O processamento seguinte não interrompe o ficheiro atual ou remove uma pausa. A compatibilidade com o disco e as dependências de desfazer ainda se aplicam. O interleading insegura de solicitações que substituem as mesmas saídas é recusado por uma razão. Uma solicitação parcialmente publicada pode, portanto, manter o trabalho dependente esperando durante uma pausa.
 
@@ -392,7 +392,7 @@ A tampa aplica-se a bytes copiados, incluindo terminais remotos montados. OS e b
 
 ## Resolver conflitos {#resolving-conflicts}
 
-![Comparação do destino de origem e existente abaixo da lista de ficheiros](images/pt-PT/08-conflit.png)
+![Comparação do destino de origem e existente abaixo da lista de ficheiros](images/pt-PT/08-conflict.png)
 
 *A origem e o destino existente são mostrados lado a lado abaixo da lista de ficheiros.*
 
@@ -410,7 +410,7 @@ O **Mostrar ficheiro na lista** localiza a linha bloqueada, incluindo quando um 
 
 ## Cancelar ou restaurar transferências {#canceling-or-undoing-transfers}
 
-![Menu de cancelamento](images/pt-PT/04-menu-annulation.png)
+![Menu de cancelamento](images/pt-PT/04-cancellation-menu.png)
 
 *As ações globais permanecem disponíveis sem uma seleção.*
 
@@ -445,7 +445,7 @@ Uma selecção de pastas estende- se ao seu conteúdo. A selecção de ficheiros
 
 ## Utilizar o menu de contexto {#using-the-context-menu}
 
-![Menu de contexto](images/pt-PT/05-menu-contextuel.png)
+![Menu de contexto](images/pt-PT/05-context-menu.png)
 
 *As ações se adaptam à seleção e aos seus estados atuais.*
 
@@ -453,7 +453,7 @@ Uma selecção de pastas estende- se ao seu conteúdo. A selecção de ficheiros
 |---|---|
 | **Abra a pasta que contém** | Abra a pasta pai de um ficheiro ou abra a pasta selecionada em si. |
 | **Abrir ficheiro** | Abra um ficheiro com sua aplicação associada ao desktop. |
-| **Selecione toda a solicitação** | Selecione os outros itens da mesma submissão. |
+| **Selecionar todo o lote** | Selecione os outros itens da mesma submissão. |
 | **Traiter ensuite / Déplacer dans la file** | Priorizar entradas de espera ou branches. |
 | **Cancelar e manter os ficheiros concluídos** | Parar o trabalho selecionado e reter saídas completas. |
 | **Cancelar e restaurar** | Desfaça a seleção quando o seu diário o permitir. |
@@ -470,7 +470,7 @@ A reativação espera que a requisição pare e conserve os vizinhos completados
 
 ## Relatório de erros e novas tentativas seletivas {#error-reporting-and-targeted-retries}
 
-![Relatório de erro e detalhe do ficheiro selecionado](images/pt-PT/13-bilan-erreurs.png)
+![Relatório de erro e detalhe do ficheiro selecionado](images/pt-PT/13-error-report.png)
 
 *Todos os seis botões têm ícones: tente novamente os erros exibidos, tente novamente a seleção, localize, exporte, refresque e feche.*
 
@@ -488,7 +488,7 @@ O **Exportar…** (Export...) está desactivado quando o relatório carregado es
 
 ## Verificar o conteúdo com MD5 {#checking-file-contents-with-md5}
 
-![Verificação independente do MD5](images/pt-PT/07-verification-md5.png)
+![Verificação independente do MD5](images/pt-PT/07-md5-verification.png)
 
 Activar o **Verifique os ficheiros usando MD5** para novas submissões. Cada ficheiro regular é copiado e sincronizado, sendo então reler e comparar o seu destino de origem e temporário. O Gad publica o mesmo ficheiro temporário verificado sob o seu nome final apenas após verificações bem sucedidas.
 
@@ -500,7 +500,7 @@ MD5 verifica a consistência deste caminho de transferência. Não é uma garant
 
 ## Verificar as propriedades dos ficheiros {#checking-file-properties}
 
-![Diferenças de propriedades mostradas na lista](images/pt-PT/11-verification-proprietes.png)
+![Diferenças de propriedades mostradas na lista](images/pt-PT/11-property-verification.png)
 
 O **Verificar propriedades** compara o proprietário, grupo, bits de permissão, ACLs POSIX e atributos estendidos expostos. Ele distingue as diferenças conhecidas das verificações não disponíveis. Os valores dos atributos não estão incluídos em relatórios salvos; o relatório lista diferenças e verificações não disponíveis. As datas de modificação estão fora desta comparação.
 
@@ -522,7 +522,7 @@ A opção é lembrada para novas solicitações; as existentes mantêm sua escol
 
 ## Aguardar a reconexão de um dispositivo {#waiting-for-a-device-to-reconnect}
 
-![Pedido à espera de um dispositivo](images/pt-PT/12-reconnexion.png)
+![Pedido à espera de um dispositivo](images/pt-PT/12-reconnection.png)
 
 Se um disco conhecido ou montagem desaparece durante uma transferência, Gad exibe **Aguarda dispositivo**, mantém seu ficheiro parcial, e libera o trabalhador para que as solicitações independentes possam prosseguir. Plasma também descreve a espera.
 
@@ -558,7 +558,7 @@ Não exclua manualmente essas pastas privadas enquanto ainda precisa de desfazer
 
 ## Área de notificação e arranque da sessão {#system-tray-and-session-startup}
 
-![Menu da bandeja do sistema](images/pt-PT/09-menu-zone-notification.png)
+![Menu da bandeja do sistema](images/pt-PT/09-tray-menu.png)
 
 Carregue no ícone para esconder uma janela visível ou restaurar uma janela oculta/minimizada. O seu crachá conta os pedidos inacabados, incluindo a análise e o trabalho de espera. Acima de 99, mostra o `99+`; a dica mantém a contagem exacta.
 
@@ -650,7 +650,7 @@ O plugin também expõe a pasta ativa ao **Colar na pasta aberta com Gad**, sem 
 
 ### Documentação na caixa Sobre {#about-documentation}
 
-A caixa **Sobre o Gad** inclui ligações para **Início rápido**, **Guia do utilizador** e **Guia de desenvolvimento**, em HTML e PDF. As ligações acompanham o idioma escolhido, mesmo quando muda com a caixa aberta. Os documentos são instalados localmente e funcionam sem a pasta do projeto. Se uma edição não estiver disponível, o Gad apresenta a edição inglesa disponível; os documentos ausentes não geram ligações inválidas.
+A caixa **Sobre o Gad** inclui ligações para **Início rápido**, **Guia do utilizador** e **Guia de desenvolvimento**, em HTML e Markdown. As ligações acompanham o idioma escolhido, mesmo quando muda com a caixa aberta. Os documentos são instalados localmente e funcionam sem a pasta do projeto. Se uma edição não estiver disponível, o Gad apresenta a edição inglesa disponível; os documentos ausentes não geram ligações inválidas.
 
 ## Configuração e páginas de manual {#command-settings}
 
@@ -700,7 +700,7 @@ O idioma, o limite global e outras definições globais têm o seu efeito habitu
 
 Os perfis antigos são migrados automaticamente: o destino é removido e as opções em falta são inicializadas uma única vez com as definições atuais. Ajuste cada perfil com **Atualizar com as definições atuais**. Não são guardados caminhos de origem, destinos nem palavras-passe.
 
-![Gestão dos perfis de transferência](images/pt-PT/15-profils.png)
+![Gestão dos perfis de transferência](images/pt-PT/15-profiles.png)
 
 Na linha de comandos, `gad --profile "Meu perfil"` aplica as definições sem iniciar uma transferência. Para copiar: `gad --profile "Meu perfil" --copy /caminho/origem --to /caminho/destino`; também funciona com `--move` / `--paste`. Gad aguarda a aplicação do perfil. O destino vem do comando e as opções explícitas, como `--md5`, têm prioridade. Um nome desconhecido devolve um erro sem colocar ficheiros em fila. `--configure --profile "Meu perfil"` aceita definições adicionais, aplicadas após o perfil.
 
@@ -720,7 +720,7 @@ Clique em **Pesquisar no histórico** ou prima **Ctrl+F**. Introduza um nome ou 
 
 A dica da coluna de ordem mostra a data de adição. Operações antigas sem data são identificadas e continuam pesquisáveis sem filtro de data. É necessário manter o histórico: operações apagadas já não podem ser encontradas.
 
-![Pesquisar no histórico guardado](images/pt-PT/16-recherche-historique.png)
+![Pesquisar no histórico guardado](images/pt-PT/16-history-search.png)
 
 ## Diagnóstico de transferências {#transfer-diagnostics}
 
@@ -730,7 +730,7 @@ As causas distinguem pausas, análise da origem, conflitos pendentes, dispositiv
 
 Uma espera de orçamento de velocidade só é indicada se o limitador a observou no último segundo. Um limite configurado não prova uma lentidão. Após cinco segundos sem progresso de bytes durante uma cópia ou MD5, fora das esperas pelo limite, o Gad informa dessa ausência de progresso: as operações de ficheiros ou a finalização podem estar em espera, mas não permitem identificar um limite concreto do disco ou da rede. Não são testes de desempenho e não são guardados no histórico. Fechar a janela não altera as transferências.
 
-![Diagnóstico de transferências](images/pt-PT/17-diagnostic-transferts.png)
+![Diagnóstico de transferências](images/pt-PT/17-transfer-diagnostics.png)
 
 Os limites de velocidade aplicam-se aos bytes copiados; as leituras MD5 e as mudanças de nome locais são fases distintas.
 
@@ -742,7 +742,7 @@ O detalhe indica **Movimento rápido verificado** no fim. O diagnóstico disting
 
 Verifica metadados, não o conteúdo; não substitui uma comparação criptográfica. MD5 continua separado e obriga a copiar/verificar/eliminar. Cópias normais não recebem um falso resultado de verificação rápida. Perfis antigos migram com a opção desativada. Comando: `gad --configure --verify-fast-move`; desativar: `--no-verify-fast-move`.
 
-![Movimento rápido verificado](images/pt-PT/18-verification-deplacement-rapide.png)
+![Movimento rápido verificado](images/pt-PT/18-fast-move-verification.png)
 
 ## Ações de fim do lote {#queue-completion}
 
@@ -754,19 +754,30 @@ Desativar a ação ou fechar a contagem não cancela transferências. A ativaç�
 
 Suspender e desligar utilizam logind e respeitam as suas permissões e inibidores. Uma notificação permite abrir o Gad oculto. `gad --configure --completion-action suspend --completion-delay 60` apenas guarda preferências; ative depois a ação no Gad.
 
-![Ações de fim do lote](images/pt-PT/19-fin-de-file.png)
+![Ações de fim do lote](images/pt-PT/19-batch-completion.png)
 
-![Ações de fim do lote](images/pt-PT/20-options-fin-de-file.png)
+![Ações de fim do lote](images/pt-PT/20-completion-options.png)
 
 
 ## Preparar transferências na lista principal {#preparing-transfers}
 
 Sem trabalho em curso, os ficheiros adicionados pela janela (**Adicionar ficheiros…**, **Adicionar pasta…** ou arrastar e largar) são analisados e mostrados sem iniciar a transferência. Escolha primeiro o destino e as opções, reveja a árvore e clique em **Iniciar**. Já não existe uma janela de simulação separada.
 
-O mesmo botão passa a pausar tudo e depois a retomar a fila. Se já houver transferências autorizadas, os novos elementos entram automaticamente na fila. A colagem habitual e os comandos externos iniciam sem abrir a janela principal; um pedido externo recusado não inicia o trabalho preparado. Os duplicados pendentes são ignorados com um aviso.
+O mesmo botão passa a pausar tudo e depois a retomar a fila. Se já houver transferências autorizadas, os novos elementos entram automaticamente na fila. A colagem externa pelo gerenciador de arquivos e os comandos externos iniciam sem abrir a janela principal; um pedido externo recusado não inicia o trabalho preparado. Os duplicados pendentes são ignorados com um aviso.
 
 Durante a cópia, o ficheiro parcial aparece como `ficheiro.ext.part` e recebe o nome final após sucesso. Se o nome estiver ocupado, o Gad escolhe um sufixo único. Uma interrupção pode retomar o mesmo parcial após verificação. Limpar o histórico elimina a possibilidade de restaurar transferências concluídas.
 
 O relatório de erros e o diagnóstico também bloqueiam a janela principal. **Mostrar na lista** fecha o relatório e desativa pesquisas que ocultem a linha. O filtro do relatório acompanha o idioma selecionado.
 
 ![Preparar transferências na lista principal](images/pt-PT/22-preparation.png)
+
+
+## Idioma e progresso da sessão
+
+O botão à direita de **Perfis** mostra apenas a bandeira do idioma atual. Clique para escolher um idioma. Este menu substitui a caixa nas opções. A barra global começa em zero ao abrir o Gad e acompanha os bytes processados desde esse momento. As linhas mantêm o progresso real, incluindo transferências interrompidas.
+
+## Adicionar itens, atalhos e exclusões
+
+**Ctrl+F** abre a pesquisa. **Ctrl+Q** solicita sair e impede a saída com transferências ativas. **Ctrl+Alt+W** oculta a janela sem interrompê-las. O botão com a bandeira junto a Perfis altera o idioma imediatamente. Os botões principais têm dicas de ferramenta.
+
+![Exclusões](images/pt-PT/23-exclusions.png)

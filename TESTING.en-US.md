@@ -44,6 +44,19 @@ cargo test --locked engine::tests::copies_tree_and_symlink_without_following_it
 
 The runner filter applies to Rust tests; Python tests still run. The benchmark is ignored during normal validation. Individual wrapper scripts remain available.
 
+## Benchmark fast moves
+
+```bash
+cargo build --release --locked
+dbus-run-session -- python3 scripts/benchmark_rename.py --binary target/release/gad --label trial-
+```
+
+The script uses private files, settings, socket, and journals under `target/rename-performance/`. Three runs per size compare POSIX rename, a fresh KIO process, and Gad. JSON reports distinguish the physical rename from completion observed through IPC. History is kept and optional checks are disabled. `--visible` displays the Qt window on the offscreen backend; `--trace` traces a 1,000-file move and requires `strace`. Traced timings are not performance baselines. Starting `kioclient` does not exactly reproduce an action in an existing Dolphin window.
+
+Use `dbus-run-session -- python3 scripts/benchmark_startup.py --binary target/release/gad --records 35` to benchmark startup with a large journal. Synthetic jobs are completed, with no files to transfer or restore. The script records startup time and Linux peak RSS under `target/perf-pass2/`.
+
+Use `dbus-run-session -- python3 scripts/benchmark_copy.py --binary target/release/gad --files 100` to benchmark small-file copies. Add `--compare /path/to/older/gad` to alternate both binaries across three private trials. Contents and source preservation are verified. `wal_segment_bytes` measures only the final remaining segment, not cumulative disk writes. Reports are saved under `target/copy-performance/`.
+
 ## Reports
 
 Each runner invocation writes the following under `target/test-results/`:
@@ -72,7 +85,7 @@ sudo apt install build-essential pkg-config python3 cargo rustc rustfmt rust-cli
   qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qmake6 libkf6windowsystem-dev dbus fonts-dejavu-core
 ```
 
-Use corresponding packages on other distributions. `make doctor` identifies missing tools. Exporting documentation separately requires Markdown, Graphviz, and WeasyPrint; those are not required for the seven standard documentation unit tests. See the [documentation index](docs/README.en-US.md#regeneration).
+Use corresponding packages on other distributions. `make doctor` identifies missing tools. Exporting documentation separately requires Markdown, Graphviz; those are not required for the seven standard documentation unit tests. See the [documentation index](docs/README.en-US.md#regeneration).
 
 ## Isolation
 
@@ -200,7 +213,7 @@ make docs-check
 
 Documentation tests cover the six-language catalog and all three guide types, same-audience language navigation, paper sizes, localized captions, and offline image embedding. They also check that quick starts use a compact print layout, that each user guide references its own screenshots, and that translated examples preserve the original code blocks.
 
-The documentation build renders localized diagrams and 18 guides, then checks local links and anchors, 84 light-theme screenshots and their dimensions and hashes, HTML language tags, embedded images, and all 36 HTML/PDF exports. It requires the optional dependencies listed in the documentation index.
+The documentation build renders localized diagrams and 18 guides, then checks local links and anchors, 84 light-theme screenshots and their dimensions and hashes, HTML language tags, embedded images, and all 36 HTML/Markdown exports. It requires the optional dependencies listed in the documentation index.
 
 [Documentation](docs/README.en-US.md#regeneration)
 
@@ -225,7 +238,7 @@ python3 scripts/test_qt.py --suite row_actions
 
 ## Settings dialog {#settings-menu}
 
-Qt tests check window minimum sizes, both tabs, Close and Escape, retained controls, live translation, and the speed button in the action bar. CLI tests cover invalid values, conflicting switches, partial exclusion updates, and preference synchronization. Python tests check all six manual pages, six-language coverage, installation, and rejection of missing translations.
+Qt tests check window minimum sizes, all five tabs, Close and Escape, retained controls, live translation, and the speed button in the action bar. CLI tests cover invalid values, conflicting switches, partial exclusion updates, and preference synchronization. Python tests check all six manual pages, six-language coverage, installation, and rejection of missing translations.
 
 ```sh
 make manpages-check
@@ -240,3 +253,73 @@ Qt tests cover action recreation, the real timer, disabling, native paste restor
 make test-dolphin-watchdog
 make test-dolphin-watchdog-real
 ```
+
+## Automated interface scenarios
+
+`python3 scripts/test_qt.py --suite ui_interactions` drives real widgets using
+mouse and keyboard events: Start/Pause/Resume, tabs, Escape, live language
+switching, modal blocking, multiple selection and Ctrl+F. The `progressMessage`
+preference is checked through its checkbox, Qt property, CLI, profiles and
+reopening. Notification tests also cover active KDE views and late D-Bus replies.
+
+This suite runs automatically in `make test`, `make test-qt` and CI. It uses a
+simulated engine, private bus, temporary XDG directories and offscreen rendering;
+real desktop transfers and shortcuts remain untouched.
+
+
+Run the isolated directory completion benchmark below. The copy benchmark also accepts `--folders 20` to distribute files across directories, including non-divisible file counts.
+
+```bash
+cargo test --release --locked benchmark_directory_completion -- --ignored --nocapture
+```
+
+
+Journal delta computation also has an isolated benchmark: it compares two 4 MiB JSON strings with cached digests. This measures comparison overhead without disk I/O.
+
+```bash
+cargo test --release --locked benchmark_delta_comparison -- --ignored --nocapture
+```
+
+
+The following benchmark measures 100 unchanged saves with a custom order of 10,000 rows. The copy benchmark also accepts `--reorder` to customize row order before starting the transfer and exercise the active path.
+
+```bash
+cargo test --release --locked benchmark_unchanged_header -- --ignored --nocapture
+```
+
+
+The dependency graph benchmark rebuilds relationships five times for two jobs of 5,001 entries, with distinct and shared destinations. Fixture creation is excluded from timing. Tests also compare the optimized graph with the previous algorithm on 500 reproducible configurations with aliases, repeated destinations and multiple branches.
+
+```bash
+cargo test --release --locked benchmark_dependency_graph -- --ignored --nocapture
+```
+
+
+Additional hot-path benchmarks are ignored by default: staging reservations (100 creations, 5,000 planned files), sorting 5,000 names in three input orders, exclusions (100,000 comparisons), row layout caching, checkpoints with 5,000 history jobs, buffer allocation, small-file MD5 and KIO Fuse detection. Synthetic mount tests never alter real mounts. The copy benchmark now accepts `--verify-md5` and validates the resulting digests.
+
+```bash
+cargo test --release --locked benchmark_staging_reservations -- --ignored --nocapture
+cargo test --release --locked benchmark_directory_sort -- --ignored --nocapture
+cargo test --release --locked benchmark_exclusion_matching -- --ignored --nocapture
+cargo test --release --locked benchmark_row_layout -- --ignored --nocapture
+cargo test --release --locked benchmark_checkpoint_history -- --ignored --nocapture
+cargo test --release --locked benchmark_copy_buffer -- --ignored --nocapture
+cargo test --release --locked benchmark_small_file_md5 -- --ignored --nocapture
+cargo test --release --locked benchmark_kio_mount_detection -- --ignored --nocapture
+```
+
+
+Journal benchmarks isolate loading 10,000 entries, delta replay, encoding 256-byte or 4 MiB records, and reading 30 headers each containing a 10,000-row order. The startup benchmark now accepts `--records 0`, `--wal-format delta`, `--custom-order` and `--compare`, with counterbalanced version ordering.
+
+```bash
+cargo test --release --locked benchmark_snapshot_load -- --ignored --nocapture
+cargo test --release --locked benchmark_delta_replay -- --ignored --nocapture
+cargo test --release --locked benchmark_record_encoding -- --ignored --nocapture
+cargo test --release --locked benchmark_wal_headers -- --ignored --nocapture
+dbus-run-session -- python3 scripts/benchmark_startup.py --binary target/release/gad --records 32 --wal-format delta --custom-order
+```
+
+
+## Recent interface checks
+
+`exclusionsTabCommitsOnFocusLossAndTranslates` and `exclusionsSaveWhenFocusLeavesTheField` check focus-loss saving, rejection without losing text, independent fields and closing settings. `clipboardAdditionKeepsPreparedQueueWaiting` checks that clipboard additions do not start prepared, paused or historical work. Existing tests cover Copy/Cut, automatic external paste, Ctrl+O/Ctrl+Shift+O/Ctrl+Q/Ctrl+Alt+W and all five tabs.

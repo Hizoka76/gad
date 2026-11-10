@@ -39,9 +39,9 @@ inline bool validate(Profile &profile,QString &error) {
     if(QUuid(profile.id).isNull()){error=GAD_TR("Invalid transfer profile settings.");return false;}
     for(const auto &key:QStringList{"verify_fast_move","verify_md5","verify_properties","verify_space","allow_duplication","keep_history","resume_interrupted"})
         if(!profile.options[key].isBool()){error=GAD_TR("Invalid transfer profile settings.");return false;}
-    for(const auto &key:QStringList{"autostart","dolphin_ctrl_v","konqueror_ctrl_v"})
+    for(const auto &key:QStringList{"progressMessage","autostart","dolphin_ctrl_v","konqueror_ctrl_v"})
         if(!profile.gui[key].isBool()){error=GAD_TR("Invalid transfer profile settings.");return false;}
-    if(profile.options.size()!=10 || !profile.options["conflict_policy"].isString() || !QStringList{"ask","skip","newer","rename"}.contains(profile.options["conflict_policy"].toString()) || !validRate(profile.options["rate_limit"]) || !profile.options["exclusions"].isObject() || !validRules(profile.options["exclusions"].toObject()) || profile.rate<0 || profile.rate>MaximumRate || (profile.gui.size()!=6+(profile.gui.contains("krusader_ctrl_v")?1:0)) || (profile.gui.contains("krusader_ctrl_v") && !profile.gui["krusader_ctrl_v"].isBool()) || !profile.gui["completion_action"].isString() || !Completion::validAction(profile.gui["completion_action"].toString()) || !Completion::validDelay(profile.gui["completion_delay"]) || !profile.gui["language"].isString() || profile.gui["language"].toString().isEmpty() || profile.gui["language"].toString().size()>100){error=GAD_TR("Invalid transfer profile settings.");return false;}
+    if(profile.options.size()!=10 || !profile.options["conflict_policy"].isString() || !QStringList{"ask","skip","newer","rename"}.contains(profile.options["conflict_policy"].toString()) || !validRate(profile.options["rate_limit"]) || !profile.options["exclusions"].isObject() || !validRules(profile.options["exclusions"].toObject()) || profile.rate<0 || profile.rate>MaximumRate || (profile.gui.size()!=7+(profile.gui.contains("krusader_ctrl_v")?1:0)) || (profile.gui.contains("krusader_ctrl_v") && !profile.gui["krusader_ctrl_v"].isBool()) || !profile.gui["completion_action"].isString() || !Completion::validAction(profile.gui["completion_action"].toString()) || !Completion::validDelay(profile.gui["completion_delay"]) || !profile.gui["language"].isString() || profile.gui["language"].toString().isEmpty() || profile.gui["language"].toString().size()>100){error=GAD_TR("Invalid transfer profile settings.");return false;}
     return true;
 }
 inline bool store(const QList<Profile> &profiles,QString &error);
@@ -61,7 +61,7 @@ inline QList<Profile> load(QString &error) {
     const auto invalid=[&](){error=GAD_TR("Saved transfer profiles are invalid; kept unchanged.");return QList<Profile>{};};
     if(raw.size()>1024*1024)return invalid();
     const auto document=QJsonDocument::fromJson(raw);const auto root=document.object();const auto version=root["version"].toInt();
-    if(!document.isObject() || (version!=1 && version!=2 && version!=3 && version!=4 && version!=5) || !root["profiles"].isArray() || root["profiles"].toArray().size()>64)return invalid();
+    if(!document.isObject() || (version!=1 && version!=2 && version!=3 && version!=4 && version!=5 && version!=6) || !root["profiles"].isArray() || root["profiles"].toArray().size()>64)return invalid();
     const auto defaults=version==1?migrationDefaults():Profile{};QList<Profile> result;QSet<QString> names,ids;
     for(const auto &value:root["profiles"].toArray()) {
         if(!value.isObject())return invalid();
@@ -76,10 +76,11 @@ inline QList<Profile> load(QString &error) {
         if(version<3)profile.options["conflict_policy"]="ask";
         if(version<4)profile.options["verify_fast_move"]=false;
         if(version<5){profile.gui["completion_action"]="none";profile.gui["completion_delay"]=30;}
+        if(version<6)profile.gui["progressMessage"]=true;
         QString validation;if(!validate(profile,validation) || names.contains(nameKey(profile.name)) || ids.contains(profile.id))return invalid();
         names.insert(nameKey(profile.name));ids.insert(profile.id);result.append(profile);
     }
-    if(version<5 && !store(result,error))return {};
+    if(version<6 && !store(result,error))return {};
     return result;
 }
 /// QSettings synchronise atomiquement son fichier ; vérifier l’erreur et conserver la valeur précédente si possible.
@@ -92,7 +93,7 @@ inline bool store(const QList<Profile> &profiles,QString &error) {
         if(ids.contains(profile.id)){error=GAD_TR("Invalid transfer profile settings.");return false;}
         names.insert(nameKey(profile.name));ids.insert(profile.id);values.append(profile.json());
     }
-    const auto raw=QJsonDocument(QJsonObject{{"version",5},{"profiles",values}}).toJson(QJsonDocument::Compact);
+    const auto raw=QJsonDocument(QJsonObject{{"version",6},{"profiles",values}}).toJson(QJsonDocument::Compact);
     if(raw.size()>1024*1024){error=GAD_TR("Invalid transfer profile settings.");return false;}
     QSettings settings;const auto previous=settings.value(SettingsKey);settings.setValue(SettingsKey,raw);settings.sync();
     if(settings.status()!=QSettings::NoError){if(previous.isValid())settings.setValue(SettingsKey,previous);else settings.remove(SettingsKey);settings.sync();error=GAD_TR("Unable to save transfer profiles.");return false;}

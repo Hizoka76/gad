@@ -1,6 +1,6 @@
 # Gad — User Guide
 
-**Gestionnaire Avancé de Duplication · Version 0.2.0**
+**Gestionnaire Avancé de Duplication · Version 0.3.0**
 
 **Gad, il copie.**
 
@@ -54,9 +54,9 @@ Gad integrates with Dolphin through **Paste with Gad** and its optional Ctrl+V s
 
 ### Reading the screenshots {#reading-the-screenshots}
 
-The 22 screenshots show real Gad widgets, sample files, and simulated transfer states. They use the light theme and the interface language of this edition. Personal files and the real desktop are never photographed. External Plasma notifications are not reproduced by these offscreen captures.
+The 23 screenshots show real Gad widgets, sample files, and simulated transfer states. They use the light theme and the interface language of this edition. Personal files and the real desktop are never photographed. External Plasma notifications are not reproduced by these offscreen captures.
 
-Gad provides French, US English, Spanish, Portuguese, German, and Japanese. Choose a language in **Settings → Options…**: it applies immediately without restarting Gad or interrupting transfers. Open dialogs and active notifications update while selection and entered values are preserved. **System** chooses an available variant of the desktop language, falling back to French or English. Uncataloged technical diagnostics and external-service messages may retain their original language.
+Gad provides French, US English, Spanish, Portuguese, German, and Japanese. Choose a language from the flag menu to the right of **Profiles**: it applies immediately without restarting Gad or interrupting transfers. Open dialogs and active notifications update while selection and entered values are preserved. **System** chooses an available variant of the desktop language, falling back to French or English. Uncataloged technical diagnostics and external-service messages may retain their original language.
 
 ## Installation and startup
 
@@ -124,7 +124,7 @@ For an update, finish or cancel active work and quit Gad normally before reopeni
 
 ## Understanding the window
 
-![Main window, folder tree, and colored requests](images/en-US/01-vue-ensemble.png)
+![Main window, folder tree, and colored requests](images/en-US/01-overview.png)
 
 *The list shows files directly, with real folders forming the tree. Request colors keep separate submissions recognizable.*
 
@@ -132,7 +132,7 @@ For an update, finish or cancel active work and quit Gad normally before reopeni
 |---|---|
 | **Source** | Add files, add a folder, or paste into the selected destination. |
 | **Destination** | Enter a local path or a supported remote URL, or browse for a folder. |
-| **Settings → Options…** | Verification, exclusions, duplication, history, startup, languages, speed limits, and shortcuts. |
+| **Settings → Options…** | Verification, exclusions, duplication, history, startup, speed limits, and shortcuts. |
 | Progress bar | Combined progress for the listed transfer work. |
 | Filter and controls | Filter rows, pause the queue, cancel, undo, or clear finished history. |
 | File list | Source, destination, state, progress, and detailed messages. |
@@ -145,11 +145,11 @@ For an update, finish or cancel active work and quit Gad normally before reopeni
 
 **Settings → Options…** opens a modal window: the main window is blocked until it closes, while transfers continue. Settings apply immediately; **Close** or Escape does not undo them. Command-line options appear in gray below each control. Minimum size: **800 × 740**; main window, error report and diagnostics: **1100 × 600**.
 
-The four tabs are **Settings**, **Shortcuts**, **Speed limits** and **Batch completion**. **Speed limits** contains the global cap and the default cap for new requests. To change an existing request, select its rows and choose **right-click → Limit request speed…**. The limit appears in the **Detail** cell, including folders; unlimited transfers have no extra limit text.
+The five tabs are **Settings**, **Shortcuts**, **Speed limits**, **Batch completion** and **Exclusions**. Command-line options appear in gray. Change existing batch speed limits from the row context menu; the limit appears in **Detail**.
 
-![Settings → Options… o](images/en-US/21-options-debits.png)
+![Settings → Options… o](images/en-US/21-speed-options.png)
 
-![The Shortcuts tab controls file manager integrations.](images/en-US/14-options-raccourcis.png)
+![The Shortcuts tab controls file manager integrations.](images/en-US/14-shortcut-options.png)
 
 *The Shortcuts tab controls file manager integrations.*
 
@@ -157,7 +157,7 @@ The four tabs are **Settings**, **Shortcuts**, **Speed limits** and **Batch comp
 
 **About** displays the application name, acronym, slogan, icon, version, and build date. The software icon is the curly-haired document image used by the window, launcher, About dialog, and tray.
 
-![About dialog with software icon and version](images/en-US/10-a-propos.png)
+![About dialog with software icon and version](images/en-US/10-about.png)
 
 *About identifies the build currently running.*
 
@@ -189,7 +189,7 @@ Gad can receive files from another manager, such as Nautilus, Nemo, or Thunar. C
 
 1. Select files in your manager and use **Ctrl+C**, or **Ctrl+X** to request a move.
 2. Open Gad and set the target folder in **Destination**.
-3. Click **Paste here**, or press **Ctrl+V inside Gad**.
+3. Click **Clipboard files**, or press **Ctrl+V inside Gad**.
 4. Check the destination and operation type shown in the list.
 
 The manager must publish a file list in a clipboard format understood by Gad. Copying a path as plain text is insufficient. Moving requires a recognized cut marker; if it is unavailable, use the explicit `--move` command below.
@@ -228,7 +228,7 @@ Other managers that support KIO service menus may also offer **Paste with Gad**.
 
 ![Source and destination controls and verification options](images/en-US/02-sources-options.png)
 
-Choose the destination and options, then add files in Gad. When idle, review the list and click **Start**. Normal paste starts automatically; additions during a transfer join the queue. **Ctrl+C** copies and **Ctrl+X** moves. Drag and drop into Gad always prepares a copy.
+Choose the destination and options, then add files in Gad. When idle, review the list and click **Start**. External paste from the file manager starts automatically; additions during a transfer join the queue. **Ctrl+C** copies and **Ctrl+X** moves. Drag and drop into Gad always prepares a copy.
 
 ### From Dolphin
 
@@ -241,7 +241,7 @@ An external paste starts in the background and does not force the main window op
 
 ### From Gad
 
-Use **Add files…** (Add files), **Add folder…** (Add folder), or **Paste here** (Paste here). Ctrl+V inside Gad pastes into the displayed destination. Clipboard content marked as Cut produces a move; ordinary copied content produces a copy.
+The **Add items** menu contains **Add files…** (Ctrl+Shift+O), **Add folder…** (Ctrl+O) and **Clipboard files** (Ctrl+V). Clipboard files preserve Copy or Cut mode. When Gad is idle, all additions inside Gad wait for **Start**; during previously started transfers, they join the queue. Only external paste from the file manager starts automatically.
 
 Dropping files onto Gad always creates a **copy**. A file list pasted while the Destination field has focus still enters the transfer queue. Ordinary text keeps the normal text-field paste behavior.
 
@@ -261,7 +261,7 @@ Special files and paths outside the supported UTF-8 contract are rejected. A sou
 
 ## Excluding items from transfers
 
-Use **Exclusions…** to enter one pattern per line, separately for folders and for files or symbolic links. **Include hidden items** is also available in **Settings → Options…**. It is checked by default, with no name exclusions initially configured.
+In **Settings → Options… → Exclusions**, enter one pattern per line for folders or files and symbolic links. Each field saves when it loses focus, without an Apply button or a separate dialog. Invalid rules are reported; previously accepted rules remain active and the rejected text stays available for correction. Rules apply to new transfers. **Include hidden items** remains on the **Settings** tab.
 
 | Type | Example | Effect |
 | --- | --- | --- |
@@ -331,7 +331,7 @@ A folder becomes OK only after its relevant children finish. It collapses on tha
 
 ### Filters
 
-![File filters](images/en-US/06-filtres.png)
+![File filters](images/en-US/06-filters.png)
 
 *Filtering changes visibility, not transfer behavior.*
 
@@ -363,7 +363,7 @@ Drag one or more **waiting** rows before or after another row. The insertion mar
 
 A folder moves with its branch. Files within a folder reorder among siblings; they keep their actual parent and destination. Move the parent folder to reposition the whole branch. Dragging never changes the destination.
 
-The context menu provides **Process next** (Process next) and **Reorder queue** (Move in queue). Ctrl and Shift support multiple selection. **Select entire request** selects the other roots belonging to the same submission.
+The context menu provides **Process next** (Process next) and **Reorder queue** (Move in queue). Ctrl and Shift support multiple selection. **Select entire batch** selects the other roots belonging to the same submission.
 
 Priorities are saved. Processing next does not interrupt the current file or remove a pause. Disk compatibility and undo dependencies still apply. Unsafe interleaving of requests that replace the same outputs is refused with a reason. A partly published request can therefore keep dependent work waiting during a pause.
 
@@ -392,7 +392,7 @@ The cap applies to copied bytes, including mounted remote endpoints. OS and netw
 
 ## Resolving conflicts
 
-![Source and existing destination comparison below the file list](images/en-US/08-conflit.png)
+![Source and existing destination comparison below the file list](images/en-US/08-conflict.png)
 
 *The source and existing destination are shown side by side beneath the file list.*
 
@@ -410,7 +410,7 @@ The checkbox applies the decision to later conflicts **in that request**. It res
 
 ## Canceling or undoing transfers
 
-![Cancellation menu](images/en-US/04-menu-annulation.png)
+![Cancellation menu](images/en-US/04-cancellation-menu.png)
 
 *Global actions remain available without a selection.*
 
@@ -445,7 +445,7 @@ A folder selection extends to its contents. Selecting individual files does not 
 
 ## Using the context menu
 
-![Context menu](images/en-US/05-menu-contextuel.png)
+![Context menu](images/en-US/05-context-menu.png)
 
 *Actions adapt to the selection and its current states.*
 
@@ -453,7 +453,7 @@ A folder selection extends to its contents. Selecting individual files does not 
 |---|---|
 | **Open containing folder** | Open a file's parent folder, or open the selected folder itself. |
 | **Open file** | Open one file with its desktop-associated application. |
-| **Select entire request** | Select the other entries from the same submission. |
+| **Select entire batch** | Select the other entries from the same submission. |
 | **Traiter ensuite / Déplacer dans la file** | Prioritize waiting entries or branches. |
 | **Cancel and keep completed files** | Stop selected work and retain completed outputs. |
 | **Cancel and restore** | Undo the selection when its journal permits it. |
@@ -470,7 +470,7 @@ Reactivation waits for the request to stop and preserves completed neighbors. If
 
 ## Error reporting and targeted retries
 
-![Error report and selected-file detail](images/en-US/13-bilan-erreurs.png)
+![Error report and selected-file detail](images/en-US/13-error-report.png)
 
 *All six buttons have icons: retry displayed errors, retry the selection, locate, export, refresh, and close.*
 
@@ -488,7 +488,7 @@ A preparation failure with no listed files can be retried through full root vali
 
 ## Checking file contents with MD5
 
-![Independent MD5 verification](images/en-US/07-verification-md5.png)
+![Independent MD5 verification](images/en-US/07-md5-verification.png)
 
 Enable **Verify files using MD5** for new submissions. Each regular file is copied and synchronized, then its source and temporary destination are reread and compared. Gad publishes the same verified temporary file under its final name only after successful checks.
 
@@ -500,7 +500,7 @@ MD5 verifies consistency of this transfer path. It is not a cryptographic guaran
 
 ## Checking file properties
 
-![Property differences shown in the list](images/en-US/11-verification-proprietes.png)
+![Property differences shown in the list](images/en-US/11-property-verification.png)
 
 **Verify properties** compares exposed owner, group, permission bits, POSIX ACLs, and extended attributes. It distinguishes known differences from unavailable checks. Attribute values are not included in saved reports; the report lists differences and unavailable checks. Modification dates are outside this comparison.
 
@@ -522,7 +522,7 @@ The option is remembered for new requests; existing ones retain their captured c
 
 ## Waiting for a device to reconnect
 
-![Request waiting for a device](images/en-US/12-reconnexion.png)
+![Request waiting for a device](images/en-US/12-reconnection.png)
 
 If a known disk or mount disappears during a transfer, Gad displays **Waiting for device**, retains its partial file, and releases the worker so independent requests can proceed. Plasma also describes the wait.
 
@@ -558,7 +558,7 @@ Do not manually delete those private directories while you still need undo. An i
 
 ## System tray and session startup
 
-![System tray menu](images/en-US/09-menu-zone-notification.png)
+![System tray menu](images/en-US/09-tray-menu.png)
 
 Click the icon to hide a visible window or restore a hidden/minimized one. Its badge counts unfinished requests, including analysis and waiting work. Above 99, it displays `99+`; the tooltip keeps the exact count.
 
@@ -650,7 +650,7 @@ The plugin also exposes the active folder to **Paste into the open folder with G
 
 ### Documentation from About {#about-documentation}
 
-**About** links to the **Quick Start**, **User Guide**, and **Developer Guide**, with HTML and PDF access. Links follow the selected Gad language, including when it changes while the dialog is open. Documents are installed locally and remain available without the project folder. If an edition is missing, Gad offers the available English edition; missing documents do not create broken links.
+**About** links to the **Quick Start**, **User Guide**, and **Developer Guide**, with HTML and Markdown access. Links follow the selected Gad language, including when it changes while the dialog is open. Documents are installed locally and remain available without the project folder. If an edition is missing, Gad offers the available English edition; missing documents do not create broken links.
 
 ## Configuration and manual pages {#command-settings}
 
@@ -700,7 +700,7 @@ Language, the global speed limit and other global settings take their usual imme
 
 Older profiles migrate automatically: the destination is removed and previously missing options are initialized from current settings once. Use **Update from current settings** to adjust each profile afterwards. No source path, destination or password is saved.
 
-![Transfer profile management](images/en-US/15-profils.png)
+![Transfer profile management](images/en-US/15-profiles.png)
 
 From the command line, `gad --profile "My profile"` applies settings without starting a transfer. Combine it with a copy: `gad --profile "My profile" --copy /path/source --to /path/destination`, or with `--move` / `--paste`. Gad waits for profile application before starting the transfer. The destination comes from the command; explicit options such as `--md5` override the profile. An unknown name returns an error without queuing files. `--configure --profile "My profile"` also accepts additional settings, applied after the profile.
 
@@ -720,7 +720,7 @@ Click **Search history** or press **Ctrl+F**. Enter a file name or part of a sou
 
 The queue-order tooltip shows the date added. Older operations without a recorded date are marked unknown and remain searchable while the date filter is off. History must be retained: cleared or removed operations can no longer be found.
 
-![Search retained history](images/en-US/16-recherche-historique.png)
+![Search retained history](images/en-US/16-history-search.png)
 
 ## Transfer diagnostics {#transfer-diagnostics}
 
@@ -730,7 +730,7 @@ Causes distinguish pauses, source scanning, conflicts awaiting a decision, unava
 
 A speed-budget wait is reported only when the limiter actually observed one within the last second. A configured limit alone is not proof of a slowdown. After five seconds without byte progress during copying or MD5, outside rate-limit waiting, Gad reports the lack of progress: file I/O or finalization may be waiting, but this cannot precisely identify a disk or network bottleneck. Diagnostics are not performance benchmarks and are not recorded in history. Closing this window changes no transfer.
 
-![Transfer diagnostics](images/en-US/17-diagnostic-transferts.png)
+![Transfer diagnostics](images/en-US/17-transfer-diagnostics.png)
 
 Speed limits apply to copied bytes; MD5 rereads and local renames are separate phases.
 
@@ -742,7 +742,7 @@ Details show **Fast move verified** on success. Diagnostics distinguish this pha
 
 This checks metadata rather than file contents: it preserves rename speed but does not replace a cryptographic comparison. Existing MD5 remains separate and forces copy/verify/delete. Ordinary copies do not receive a false fast-move verification result. Older profiles migrate with the option off. Command: `gad --configure --verify-fast-move`; disable with `--no-verify-fast-move`.
 
-![Fast move verified](images/en-US/18-verification-deplacement-rapide.png)
+![Fast move verified](images/en-US/18-fast-move-verification.png)
 
 ## Batch-completion actions {#queue-completion}
 
@@ -754,19 +754,30 @@ The action waits until all tracked transfers succeed, remote preparation ends an
 
 Suspend and power off use logind and respect its authorization and inhibitors. A notification reopens hidden Gad. `gad --configure --completion-action suspend --completion-delay 60` only saves preferences; activate the action separately in Gad.
 
-![Batch-completion actions](images/en-US/19-fin-de-file.png)
+![Batch-completion actions](images/en-US/19-batch-completion.png)
 
-![Batch-completion actions](images/en-US/20-options-fin-de-file.png)
+![Batch-completion actions](images/en-US/20-completion-options.png)
 
 
 ## Prepare transfers in the main list {#preparing-transfers}
 
 When no work is running, files added through the window (**Add files…**, **Add folder…** or drag and drop) are scanned and displayed without starting the transfer. Choose the destination and options before adding, review the tree, then click **Start**. There is no separate simulation window.
 
-The same button becomes **Pause all**, then **Resume queue**. If transfers are already authorized, new additions automatically join the queue. Normal paste and external commands start automatically without opening the main window; a rejected external request does not start prepared work. Already queued duplicates are ignored with a message.
+The same button becomes **Pause all**, then **Resume queue**. If transfers are already authorized, new additions automatically join the queue. External paste from the file manager and external commands start automatically without opening the main window; a rejected external request does not start prepared work. Already queued duplicates are ignored with a message.
 
 During copying, the partial file is visible at the destination as `file.ext.part` and receives its final name after success. Existing names are never overwritten for staging: Gad chooses a unique suffix. Interrupted transfers can resume the same partial file after verification. Clearing history removes the ability to restore completed transfers.
 
 The error report and transfer diagnostics also block interaction with the main window. **Show in list** closes the report and disables searches that could hide the row. Report filtering follows the selected language.
 
 ![Prepare transfers in the main list](images/en-US/22-preparation.png)
+
+
+## Language and session progress
+
+The button to the right of **Profiles** shows only the current language flag. Click it to choose a language. This menu replaces the selector in settings. The global bar starts at zero whenever Gad opens and tracks bytes processed since then. Individual rows retain their actual progress, including interrupted transfers.
+
+## Adding items, shortcuts and exclusions
+
+**Ctrl+F** opens search. **Ctrl+Q** requests exit and refuses to quit while transfers are active. **Ctrl+Alt+W** hides the window without stopping transfers. The flag button to the right of **Profiles** changes the language immediately. Main-window buttons have tooltips.
+
+![Exclusions](images/en-US/23-exclusions.png)

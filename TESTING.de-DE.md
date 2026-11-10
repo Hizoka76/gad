@@ -72,7 +72,7 @@ sudo apt install build-essential pkg-config python3 cargo rustc rustfmt rust-cli
   qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qmake6 libkf6windowsystem-dev dbus fonts-dejavu-core
 ```
 
-Verwenden Sie entsprechende Pakete auf anderen Distributionen. `make doctor` identifiziert fehlende Werkzeuge. Für den separaten Export der Dokumentation sind Markdown, Graphviz und WeasyPrint erforderlich. Diese sind für die sieben Standard-Dokumentations-Unit-Tests nicht erforderlich. Siehe [Dokumentationsindex](docs/README.de-DE.md#regeneration).
+Verwenden Sie entsprechende Pakete auf anderen Distributionen. `make doctor` identifiziert fehlende Werkzeuge. Für den separaten Export der Dokumentation sind Markdown, Graphviz erforderlich. Diese sind für die sieben Standard-Dokumentations-Unit-Tests nicht erforderlich. Siehe [Dokumentationsindex](docs/README.de-DE.md#regeneration).
 
 ## Isolierung {#isolation}
 
@@ -200,7 +200,7 @@ make docs-check
 
 Die Dokumentationstests prüfen den Katalog mit sechs Sprachen und drei Handbuchtypen, Sprachwechsel, Papierformate, Bildunterschriften und eingebettete Bilder. Außerdem prüfen sie das kompakte Drucklayout der Schnellstarts, die eigenen Bildschirmaufnahmen jeder Sprache und die unveränderten Codebeispiele.
 
-Der Build erzeugt übersetzte Diagramme und 18 Handbücher. Anschließend werden lokale Links und Sprungziele, die 84 Aufnahmen im hellen Design mit Abmessungen und Prüfsummen, HTML-Sprachangaben, eingebettete Bilder und alle 36 HTML-/PDF-Ausgaben geprüft. Dafür sind die im Dokumentationsindex genannten optionalen Abhängigkeiten nötig.
+Der Build erzeugt übersetzte Diagramme und 18 Handbücher. Anschließend werden lokale Links und Sprungziele, die 84 Aufnahmen im hellen Design mit Abmessungen und Prüfsummen, HTML-Sprachangaben, eingebettete Bilder und alle 18 HTML-Ausgaben geprüft. Dafür sind die im Dokumentationsindex genannten optionalen Abhängigkeiten nötig.
 
 [Documentation](docs/README.de-DE.md#regeneration)
 
@@ -240,3 +240,8 @@ Qt-Tests decken neu erzeugte Aktionen, den tatsächlichen Timer, Deaktivierung, 
 make test-dolphin-watchdog
 make test-dolphin-watchdog-real
 ```
+
+
+## Aktuelle Oberflächentests
+
+`exclusionsTabCommitsOnFocusLossAndTranslates` und `exclusionsSaveWhenFocusLeavesTheField` prüfen Speichern bei Fokusverlust, Ablehnung ohne Textverlust, unabhängige Felder und das Schließen der Einstellungen. `clipboardAdditionKeepsPreparedQueueWaiting` prüft, dass Zwischenablage-Ergänzungen vorbereitete, pausierte oder historische Arbeit nicht starten. Getestet werden auch Kopieren/Ausschneiden, automatisches externes Einfügen, Strg+O/Strg+Umschalt+O/Strg+Q/Strg+Alt+W und alle fünf Reiter.

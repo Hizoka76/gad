@@ -1,6 +1,6 @@
 # Gad — Quick Start
 
-**Gad, il copie. · Advanced Duplication Manager · Version 0.2.0**
+**Gad, il copie. · Advanced Duplication Manager · Version 0.3.0**
 
 [User Guide](USER_GUIDE.en-US.md) · [Developer Guide](DEVELOPER_GUIDE.en-US.md) · [All languages](README.en-US.md)
 
@@ -32,7 +32,7 @@ If it is not installed yet, follow the [installation instructions](USER_GUIDE.en
 
 ![Prepare transfers in the main list](images/en-US/22-preparation.png)
 
-Choose the destination and options, then add files in Gad. When idle, review the list and click **Start**. Normal paste starts automatically; additions during a transfer join the queue. **Ctrl+C** copies and **Ctrl+X** moves. Drag and drop into Gad always prepares a copy.
+Choose the destination and options, then add files in Gad. When idle, review the list and click **Start**. External paste from the file manager starts automatically; additions during a transfer join the queue. **Ctrl+C** copies and **Ctrl+X** moves. Drag and drop into Gad always prepares a copy.
 
 ## Read and control transfers
 
@@ -48,7 +48,7 @@ Choose the destination and options, then add files in Gad. When idle, review the
 
 *The settings dialog opens from the Settings block.*
 
-In **Settings → Options…**, the **Settings** and **Shortcuts** tabs group preferences and integrations. Changes apply immediately; **Close** or Escape closes the dialog. Command-line parameters appear in gray. **Exclusions…** accepts folder patterns such as `__*` and file patterns such as `*.tmp` or `*~`. The speed button for selected requests is on the left of the main action bar.
+In **Settings → Options… → Exclusions**, enter one pattern per line for folders or files and symbolic links. Each field saves when it loses focus, without an Apply button or a separate dialog. Invalid rules are reported; previously accepted rules remain active and the rejected text stays available for correction. Rules apply to new transfers. **Include hidden items** remains on the **Settings** tab.
 
 **Allow duplication in the same folder** creates names such as `photo_copied1.jpg` when copying back into the original folder. It is off by default and applies only to copies. Selection, verification, and duplication choices are captured for new requests; existing requests keep their settings. The global speed limit can change during transfers.
 
@@ -62,7 +62,7 @@ A paste started from a file manager can run in the background without opening Ga
 
 ## Resolve a conflict or an error
 
-![File conflict comparison](images/en-US/08-conflit.png)
+![File conflict comparison](images/en-US/08-conflict.png)
 
 *Compare the source and the existing destination before choosing an action.*
 
@@ -99,10 +99,16 @@ From the command line, `gad --profile "My profile"` applies settings without sta
 
 ## Prepare transfers in the main list
 
-Choose the destination and options, then add files in Gad. When idle, review the list and click **Start**. Normal paste starts automatically; additions during a transfer join the queue. **Ctrl+C** copies and **Ctrl+X** moves. Drag and drop into Gad always prepares a copy.
+Choose the destination and options, then add files in Gad. When idle, review the list and click **Start**. External paste from the file manager starts automatically; additions during a transfer join the queue. **Ctrl+C** copies and **Ctrl+X** moves. Drag and drop into Gad always prepares a copy.
 
 ## Options
 
 **Settings → Options…** opens a modal window: the main window is blocked until it closes, while transfers continue. Settings apply immediately; **Close** or Escape does not undo them. Command-line options appear in gray below each control. Minimum size: **800 × 740**; main window, error report and diagnostics: **1100 × 600**.
 
-The four tabs are **Settings**, **Shortcuts**, **Speed limits** and **Batch completion**. **Speed limits** contains the global cap and the default cap for new requests. To change an existing request, select its rows and choose **right-click → Limit request speed…**. The limit appears in the **Detail** cell, including folders; unlimited transfers have no extra limit text.
+The five tabs are **Settings**, **Shortcuts**, **Speed limits**, **Batch completion** and **Exclusions**. Command-line options appear in gray. Change existing batch speed limits from the row context menu; the limit appears in **Detail**.
+
+## Adding items, shortcuts and exclusions
+
+The **Add items** menu contains **Add files…** (Ctrl+Shift+O), **Add folder…** (Ctrl+O) and **Clipboard files** (Ctrl+V). Clipboard files preserve Copy or Cut mode. When Gad is idle, all additions inside Gad wait for **Start**; during previously started transfers, they join the queue. Only external paste from the file manager starts automatically.
+
+**Ctrl+F** opens search. **Ctrl+Q** requests exit and refuses to quit while transfers are active. **Ctrl+Alt+W** hides the window without stopping transfers. The flag button to the right of **Profiles** changes the language immediately. Main-window buttons have tooltips.

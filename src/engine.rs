@@ -8,6 +8,7 @@ mod completion;
 mod conflicts;
 mod controls;
 mod diagnostics;
+mod directories;
 mod duplicates;
 mod duplication;
 mod errors;
@@ -26,6 +27,7 @@ use fast_move::EntryOutcome;
 mod protocol;
 use protocol::{Command, TransferState};
 mod history;
+mod journal;
 mod queue;
 mod row_queue;
 mod scheduling;
@@ -103,6 +105,9 @@ struct Entry {
 #[derive(Clone, Serialize, Deserialize)]
 /// Un lot soumis par une action de copie ou de déplacement, avec ses options figées.
 struct Job {
+    /// Index strictement temporaire ; les clones et les journaux ne le conservent pas.
+    #[serde(skip)]
+    directory_index: directories::Cache,
     /// Les ajouts manuels sont analysés mais exigent une validation explicite.
     #[serde(default)]
     start_required: bool,
@@ -282,7 +287,7 @@ struct Shared {
     /// Réveille les travailleurs après changement de pause, conflit, réservation ou annulation.
     wake: Condvar,
     /// Sérialise les remplacements du journal temporaire commun.
-    writer: Mutex<()>,
+    writer: Mutex<journal::Writer>,
     /// Exclut les restaurations et nettoyages de sauvegardes concurrents.
     maintenance: Mutex<()>,
     /// Journal persistant ; None pour les moteurs de test sans sauvegarde.
@@ -326,7 +331,7 @@ impl Engine {
                 state: Mutex::new(state),
                 limiter: Mutex::new(rate::Limiter::default()),
                 wake: Condvar::new(),
-                writer: Mutex::new(()),
+                writer: Mutex::new(journal::Writer::default()),
                 maintenance: Mutex::new(()),
                 history_path,
                 stop: std::sync::atomic::AtomicBool::new(false),
@@ -599,6 +604,7 @@ impl Engine {
                             .any(|j| !j.start_required && !terminal(&j.state) && !j.cancel);
                     state.jobs.push(
                         Job {
+                            directory_index: Default::default(),
                             start_required,
                             created_at: std::time::SystemTime::now()
                                 .duration_since(std::time::UNIX_EPOCH)
@@ -687,7 +693,9 @@ impl Engine {
                     state.pause_epoch = state.pause_epoch.wrapping_add(1);
                     if !state.paused {
                         for job in &mut state.jobs {
-                            job.start_required = false;
+                            if job.start_required {
+                                job.start_required = false;
+                            }
                         }
                     }
                 }
@@ -838,6 +846,7 @@ impl Engine {
                 for handle in self.shared.worker.lock().unwrap().drain(..) {
                     let _ = handle.join();
                 }
+                self.checkpoint_history()?;
                 Ok(json!({"ok":true}))
             }
             _ => Err("Commande inconnue".into()),
@@ -1020,7 +1029,7 @@ impl Engine {
                 .map_err(|e| e.to_string())?
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(|e| e.to_string())?;
-            children.sort_by_key(|e| e.file_name());
+            sort_children(&mut children);
             for child in children {
                 self.scan_selected(
                     id,
@@ -1046,18 +1055,7 @@ impl Engine {
     fn checkpoint_for(&self, id: u64, index: Option<usize>) -> Result<(), String> {
         let mut state = self.shared.state.lock().unwrap();
         loop {
-            if state.jobs.iter().find(|j| j.id == id).is_none_or(|j| {
-                j.cancel || index.is_some_and(|i| j.entries.get(i).is_none_or(|e| e.cancel))
-            }) {
-                return Err("Canceled".into());
-            }
-            if !state.paused
-                && state
-                    .jobs
-                    .iter()
-                    .find(|j| j.id == id)
-                    .is_some_and(|j| !j.paused && index.is_none_or(|i| !j.entries[i].paused))
-            {
+            if checkpoint_ready(&state, id, index)? {
                 return Ok(());
             }
             state = self
@@ -1703,7 +1701,7 @@ impl Engine {
             let mut saved = total;
             let mut point_clock = std::time::Instant::now();
             let mut connection_check = std::time::Instant::now();
-            let mut buffer = vec![0u8; 64 * 1024];
+            let mut buffer = copy_buffer(meta.len().saturating_sub(total));
             loop {
                 self.checkpoint_entry(id, index)?;
                 if connection_check.elapsed() >= std::time::Duration::from_millis(500) {
@@ -1878,49 +1876,52 @@ impl Engine {
 /// Déduit les états des dossiers de ceux de leurs descendants, du bas vers le haut.
 /// Ne réactive pas un dossier déjà remis en état.
 fn finish_directories(job: &mut Job) {
-    for index in (0..job.entries.len()).rev() {
-        if job.entries[index].kind != "directory"
-            || job.entries[index].state == TransferState::Waiting
-            || job.entries[index].state == TransferState::Undone
-            // Conserver l’échec propre au dossier ; ses enfants ne peuvent pas l’annuler.
-            || job.entries[index].state == TransferState::Error
-        {
-            continue;
-        }
-        if job.entries[index].cancel {
-            job.entries[index].state = TransferState::Cancelled;
-            continue;
-        }
-        let root = job.entries[index].source.clone();
-        let target = job.entries[index].destination.clone();
-        let children = job
-            .entries
-            .iter()
-            .enumerate()
-            .filter(|(i, e)| {
-                *i != index && e.source.starts_with(&root) && e.destination.starts_with(&target)
-            })
-            .map(|(_, e)| e.state)
-            .collect::<Vec<_>>();
-        let state = if children.contains(&TransferState::Error) {
-            TransferState::Error
-        } else if children.iter().any(|s| {
-            ![
-                TransferState::Done,
-                TransferState::Skipped,
-                TransferState::Cancelled,
-            ]
-            .contains(s)
-        }) {
-            TransferState::Running
-        } else if children.contains(&TransferState::Cancelled) {
-            TransferState::Cancelled
-        } else {
-            TransferState::Done
-        };
-        job.entries[index].state = state;
+    directories::finish(job);
+}
+/// État de pause/annulation sous le verrou : aucune E/S ni attente ici.
+fn checkpoint_ready(state: &State, id: u64, index: Option<usize>) -> Result<bool, String> {
+    let job = state
+        .jobs
+        .iter()
+        .find(|job| job.id == id)
+        .ok_or("Canceled")?;
+    let entry = match index {
+        Some(index) => Some(job.entries.get(index).ok_or("Canceled")?),
+        None => None,
+    };
+    if job.cancel || entry.is_some_and(|entry| entry.cancel) {
+        return Err("Canceled".into());
+    }
+    Ok(!state.paused && !job.paused && entry.is_none_or(|entry| !entry.paused))
+}
+/// Tampon de copie ; la taille maximale reste commune aux copies locales et distantes.
+fn copy_buffer(remaining: u64) -> Vec<u8> {
+    io_buffer(remaining, 64 * 1024)
+}
+/// Allocation commune aux copies, calculs MD5 et contrôles de reprise.
+fn io_buffer(remaining: u64, maximum: usize) -> Vec<u8> {
+    // Un tampon vide ferait passer read([]) pour une fin de fichier sans lecture réelle.
+    vec![0; remaining.clamp(1, maximum as u64) as usize]
+}
+
+/// Tri commun à la préparation et à l’aperçu ; conserve l’ordre lexical des noms.
+fn sort_children(children: &mut [fs::DirEntry]) {
+    // Un seul nom créé par élément, sans cache si l'ordre est déjà monotone.
+    if children.len() < 2 || children.is_sorted_by_key(|entry| entry.file_name()) {
+        return;
+    }
+    // Strictement décroissant : des noms égaux doivent conserver leur ordre initial.
+    if children
+        .iter()
+        .map(|entry| entry.file_name())
+        .is_sorted_by(|left, right| left > right)
+    {
+        children.reverse();
+    } else {
+        children.sort_by_cached_key(|entry| entry.file_name());
     }
 }
+
 /// Classe les types réellement pris en charge, sans déduire le type depuis le nom ou la cible d’un lien.
 fn source_kind(metadata: &fs::Metadata) -> Option<&'static str> {
     if metadata.file_type().is_symlink() {
@@ -1967,8 +1968,8 @@ fn md5_file(
         return Err("Source file changed before MD5 verification; original kept".into());
     }
     let mut hash = md5::Context::new();
-    let mut buffer = vec![0u8; 1024 * 1024];
-    let mut total = 0;
+    let mut buffer = io_buffer(before.len(), 1024 * 1024);
+    let mut total = 0_u64;
     progress(0)?;
     loop {
         let n = file
@@ -1977,8 +1978,13 @@ fn md5_file(
         if n == 0 {
             break;
         }
+        // Refuser une source qui grandit avant de traiter une quantité de données non prévue.
+        let next = total
+            .checked_add(n as u64)
+            .filter(|next| *next <= before.len())
+            .ok_or("File changed during MD5 verification; original kept")?;
         hash.consume(&buffer[..n]);
-        total += n as u64;
+        total = next;
         progress(total)?;
     }
     let after = file.metadata().map_err(reconnect::io_error)?;

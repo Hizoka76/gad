@@ -1,6 +1,6 @@
 # Gad — Guide développeur
 
-Version documentée : **0.2.0**, protocole **33**, 8 novembre 2026.
+Version documentée : **0.3.0**, protocole **33**, 8 novembre 2026.
 
 Ce guide décrit le fonctionnement présent dans le dépôt. Il complète le [guide utilisateur](GUIDE_UTILISATEUR.md), le [guide de tests](../TESTING.md) et les instructions de compilation du [README](../README.md). Gad signifie **Gestionnaire Avancé de Duplication** ; son slogan est « Gad, il copie. »
 
@@ -54,7 +54,8 @@ KIO Fuse ne remplace pas le moteur : il expose une source distante sous un chemi
 | `src/engine/selection.rs` | Expansion des sélections et actions ciblées |
 | `src/engine/properties.rs` | Capture et comparaison des propriétés visibles, rapports sans valeurs privées |
 | `src/engine/resume.rs` | Points durables et reprise des fichiers interrompus |
-| `src/engine/history.rs` | Persistance, chargement et nettoyage du journal |
+| `src/engine/history.rs` | Chargement, orchestration et nettoyage du journal |
+| `src/engine/journal.rs` | Instantané, deltas durables, relecture et compaction |
 | `src/engine/undo.rs` | Précontrôles et remise en état |
 | `src/engine/snapshot.rs` | Révisions et instantanés différentiels |
 | `src/engine/protocol.rs` | Types générés du vocabulaire partagé ; routage dans `engine.rs` |
@@ -204,7 +205,7 @@ Les dépendances indexent les cibles identiques et les dossiers contenant une au
 
 La recherche de suffixe « copie N » évite aussi les noms déjà prévus par les entrées en attente, y compris leurs clés de montage normalisées. Un fichier déplacé plus tôt dans la file ne peut donc pas prendre le nom futur d’une entrée antérieure et inverser sa chaîne de restauration.
 
-`TransferTree` transporte uniquement des références stables, avec un jeton propre au widget. Les dépôts externes ne sont pas interprétés comme des priorités. Qt ne déplace pas lui-même les données du modèle : le dépôt est validé par le moteur, puis le préordre reçu replace les frères existants. Sélection, branches ouvertes, fichier courant et défilement sont conservés. `RequestDelegate` ajoute un repère ; des fonds légers dérivés de la palette distinguent les demandes, sans remplacer le survol ni la sélection du thème. `Sélectionner toute la demande` agit par identifiant métier.
+`TransferTree` transporte uniquement des références stables, avec un jeton propre au widget. Les dépôts externes ne sont pas interprétés comme des priorités. Qt ne déplace pas lui-même les données du modèle : le dépôt est validé par le moteur, puis le préordre reçu replace les frères existants. Sélection, branches ouvertes, fichier courant et défilement sont conservés. `RequestDelegate` ajoute un repère ; des fonds légers dérivés de la palette distinguent les demandes, sans remplacer le survol ni la sélection du thème. `Sélectionner le lot entier` agit par identifiant métier.
 
 ### Discipline des verrous
 
@@ -244,7 +245,7 @@ La définition complète des champs sérialisés est dans les structures Rust. N
 
 La pause est un attribut, **pas un nouvel état JSON**. Le libellé « En pause » est calculé pour les entrées concernées. `skipped` ne fait pas partie du même ensemble d’états terminaux que les lots : ne pas réutiliser aveuglément un prédicat global pour compter les fichiers.
 
-![Cycle simplifié d’une opération](images/cycle-lot.png)
+![Cycle simplifié d’une opération](images/batch-lifecycle.png)
 
 Ce schéma simplifie la planification de restauration : le code distingue aussi `undo_waiting` et une demande d’annulation/restauration pendant un traitement actif. Les états `conflict` et `verifying` décrivent les entrées.
 
@@ -348,7 +349,15 @@ Qt résout de nouveau les URL KIO au plus toutes les cinq secondes, sans repasse
 
 Le journal est `$XDG_DATA_HOME/gad/state.json`, ou `~/.local/share/gad/state.json` par défaut. Un répertoire XDG doit être absolu. Les dossiers privés utilisent des permissions restrictives et le fichier de journal est créé en mode privé.
 
-L’écriture produit un temporaire sans suivre de lien, écrit l’état complet, synchronise le fichier, le renomme et synchronise son dossier. Ce n’est pas un journal de deltas : chaque sauvegarde sérialise un état cohérent. Le verrou de rédaction empêche qu’une sauvegarde ancienne écrase une plus récente.
+La relecture conserve le JSON exact des lots modifiés, applique les deltas, puis décode leur version finale dans les types métier. Un tampon de 64 Kio évite de charger tout le WAL. Atteindre le seuil de compaction ne provoque aucune écriture tant que l’état reste inchangé ; les instantanés explicites de fermeture restent effectués. Les verrous et les synchronisations avant les opérations de fichiers sont conservés. Les liens finaux et fichiers non ordinaires sont refusés aussi en lecture.
+
+Le WAL écrit désormais `format: 2`, `jobs: null`, `full_jobs` et `patches`. Chaque delta remplace un intervalle d’octets UTF-8 dans le JSON exact du lot ; il contient son identifiant, les empreintes MD5 de base et de résultat, `offset`, `remove` et `insert`. Ces empreintes détectent les corruptions accidentelles, sans authentification cryptographique. Le lecteur vérifie la base, les limites, les frontières UTF-8, le JSON résultant et l’identité. Ne jamais réencoder les objets complets entre leur lecture et l’application des deltas. Le cache contient au maximum 16 Mio de texte JSON, avec 8 Mio par lot. Les lots trop gros et les modifications trop larges sont écrits intégralement. Le cache n’avance qu’après fsync réussi et est vidé à chaque compaction : la prochaine base est toujours réécrite en entier. Les anciens WAL restent lisibles. Les anciens lecteurs refusent les enregistrements v2 grâce à `jobs: null` ; quitter normalement la nouvelle version produit un instantané complet et vide le WAL avant un éventuel retour à une ancienne version.
+
+`engine/journal.rs` conserve un instantané atomique `state.json` et ajoute les seuls lots modifiés dans `state.json.wal`. Chaque ligne contient une séquence, les réglages persistants, l’ordre des identifiants, les lots modifiés et une somme MD5 détectant les corruptions accidentelles. Cette somme ne constitue pas une authentification. Le WAL est synchronisé avant de rendre la main : aucune frontière de durabilité n’est supprimée. Le verrou de rédaction précède le verrou d’état.
+
+La première sauvegarde, le démarrage, la fermeture normale et la compaction publient un instantané complet par temporaire privé, synchronisation, renommage et synchronisation du dossier. La compaction intervient à la sauvegarde suivante après 64 enregistrements ou 64 Mio de WAL. L’instantané contient `_gad_journal_seq` ; il devient durable avant la remise à zéro du WAL. Après un arrêt entre ces deux étapes, le chargement ignore les séquences déjà intégrées. Une dernière ligne incomplète est ignorée ; une ligne complète corrompue ou une rupture de séquence bloque le chargement en conservant les fichiers. Les anciens instantanés sans WAL restent lisibles.
+
+Pendant l’exécution, **l’état durable est l’ensemble `state.json` + `state.json.wal`**. Arrêter Gad avant d’en faire une copie cohérente ; conserver aussi les sauvegardes `.gad-undo-*` concernées. Le lecteur `scripts/journal_reader.py` reconstruit cet état pour les tests d’interruption et les diagnostics.
 
 Les indicateurs d’étapes prévues sont enregistrés **avant** les modifications correspondantes. Ils permettent au chargement de distinguer une opération interrompue d’une opération terminée. Après un arrêt brutal, les lots non terminés deviennent des erreurs de récupération. Les lots munis de points de reprise peuvent être revalidés et remis en file automatiquement selon la préférence globale.
 
@@ -592,9 +601,9 @@ python3 scripts/build_docs.py
 python3 scripts/check_docs.py
 ```
 
-Les guides sont disponibles en français, anglais américain, espagnol, portugais, allemand et japonais. Les éditions anglaises : [utilisateur](USER_GUIDE.en-US.md) et [développeur](DEVELOPER_GUIDE.en-US.md). Le README racine est volontairement court et renvoie vers ces références. `scripts/doc_catalog.py` associe explicitement source, langue, public et sorties ; les couvertures et la navigation ne dépendent pas d’un nom français de fichier. Les PDF français restent en A4, ceux en-US utilisent US Letter. Les liens et fragments, les 120 captures réparties dans six langues et les 36 exports sont contrôlés. Les schémas ont des versions traduites.
+Les guides sont disponibles en français, anglais américain, espagnol, portugais, allemand et japonais. Les éditions anglaises : [utilisateur](USER_GUIDE.en-US.md) et [développeur](DEVELOPER_GUIDE.en-US.md). Le README racine est volontairement court et renvoie vers ces références. `scripts/doc_catalog.py` associe explicitement source, langue, public et sorties ; les couvertures et la navigation ne dépendent pas d’un nom français de fichier. Les liens et fragments, les 120 captures réparties dans six langues et les 36 exports sont contrôlés. Les schémas ont des versions traduites.
 
-Les tests Python sans dépendance de rendu couvrent langue, navigation, papier, liens, titres, légendes, images embarquées et lancement des exports. Les éditions comprennent un démarrage rapide et les guides utilisateur/développeur dans six langues, avec 20 captures claires par langue. Le rendu réel demande séparément Markdown, Graphviz et WeasyPrint. Mettre à jour les six langues lors d’un changement fonctionnel.
+Les tests Python sans dépendance de rendu couvrent langue, navigation, papier, liens, titres, légendes, images embarquées et lancement des exports. Les éditions comprennent un démarrage rapide et les guides utilisateur/développeur dans six langues, avec 20 captures claires par langue. Le rendu réel demande séparément Markdown, Graphviz. Mettre à jour les six langues lors d’un changement fonctionnel.
 
 Le manifeste `docs/images/captures.json` décrit tailles, version et empreintes des captures. Les sources Graphviz de l’architecture et du cycle se trouvent dans `docs/tools/`. Le [sommaire documentaire](README.md) donne les dépendances d’export.
 
@@ -612,7 +621,7 @@ Ces limites doivent rester visibles dans les décisions d’architecture et les 
 
 Les clés de tri forment une liste ordonnée de couples colonne/sens. TransferHeader lit Ctrl dans le véritable événement de relâchement ; Ctrl+clic ajoute ou inverse une clé, un clic simple remplace la liste. Les marqueurs d’en-tête conservent les priorités à travers les traductions. Retirer une clé conserve les autres. La combobox globale et son prédicat redondant ont été retirés. Les nouvelles icônes de menus disposent de replis Qt si le thème ne les fournit pas.
 
-La colonne Ordre est la colonne logique 5 déplacée à la position visuelle 0 ; `setTreePosition(0)` garde les branches dans Source sans décaler les rôles ni les références des actions existantes. Les numéros proviennent de `row_order`, avec un repli construit depuis l’instantané lorsque la disposition n’est pas fournie. Un delta de disposition seul force l’actualisation de toutes les lignes, y compris les demandes absentes de ce delta. Les infobulles utilisent les identifiants immuables de lot. Le tri Ordre compare les rangs numériquement ; la sixième colonne accepte filtres et tris Ctrl+clic. Le repère coloré est dessiné sur la première colonne visuelle.
+La colonne Ordre est la colonne logique 5 déplacée à la position visuelle 0 ; `setTreePosition(0)` garde les branches dans Source sans décaler les rôles ni les références des actions existantes. Les numéros proviennent de `row_order`, avec un repli construit depuis l’instantané lorsque la disposition n’est pas fournie. Un delta de disposition seul actualise les numéros et rangs des lignes, y compris les demandes absentes de ce delta, sans recalculer leur présentation détaillée. Les infobulles utilisent les identifiants immuables de lot. Le tri Ordre compare les rangs numériquement ; la sixième colonne accepte filtres et tris Ctrl+clic. Le repère coloré est dessiné sur la première colonne visuelle.
 
 Les retours entre phrases des infobulles explicatives sont explicites dans les littéraux anglais et le catalogue français. Aucun remplacement de ponctuation à l’exécution ne modifie les chemins, URL ou erreurs externes. Source garde le chemin et les options du transfert ; l’identification du lot reste dans Ordre. La régression de langue à chaud utilise un nom contenant un point, une espace et des caractères semblables à du HTML.
 
@@ -656,15 +665,15 @@ Le module expose aussi le dossier actif au menu **Coller dans le dossier ouvert 
 
 **Paramètres → Options…** ouvre une fenêtre modale : la fenêtre principale reste bloquée jusqu’à sa fermeture, tandis que les transferts continuent. Les réglages s’appliquent immédiatement ; **Fermer** ou Échap ne les annule pas. Les paramètres de commande apparaissent en gris sous les contrôles. Taille minimale : **800 × 740** ; fenêtre principale, bilan des erreurs et diagnostic : **1100 × 600**.
 
-Les quatre onglets sont **Paramètres**, **Raccourcis**, **Débits** et **Fin de lot**. **Débits** contient le plafond global et celui appliqué par défaut aux nouveaux lots. Pour modifier un lot existant, sélectionnez ses lignes puis utilisez **clic droit → Limiter le débit de la demande…**. La limite apparaît dans la cellule **Détail**, y compris sur les dossiers ; la valeur illimitée n’ajoute aucun texte.
+Les cinq onglets sont **Paramètres**, **Raccourcis**, **Débits**, **Fin de lot** et **Exclusions**. Les paramètres de commande sont indiqués en gris. Le débit des lots existants se modifie via le menu contextuel des lignes ; la limite apparaît dans **Détail**.
 
-`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`. `rowRateLimit` → `Window::showRateLimit`.
+`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`, `exclusionsPanel`. `rowRateLimit` → `Window::showRateLimit`.
 
 Les commandes et la case Dolphin partagent `Window::configureDolphin`. Cette méthode exécute le composant privé `gad/integration/dolphin_shortcut.py` avec Python et QProcess, sans bloquer les transferts. Le reçu reste dans `gad/dolphin-paste.json`. Le délai maximal est de huit secondes ; un échec restaure la case et renvoie une erreur au client. `Window::handleAsync` diffère la réponse IPC jusqu’au résultat. Konqueror conserve `konquerorCtrlV`, lu par son module à chaque Ctrl+V. Aucune commande publique séparée n’est installée.
 
 ### Documentation depuis À propos {#about-documentation}
 
-Le catalogue `docs/catalog.json` est généré depuis `doc_catalog.runtime_catalog()` et installé avec les exports par `scripts/install_docs.py`, sans outil de rendu requis lors de l’installation. `native/documentation.h` recherche `gad/docs/catalog.json` dans les dossiers de données XDG, puis dans les emplacements portables/de développement. Les champs `locale`, `kind`, `title`, `html` et `pdf` relient les trois guides à leurs fichiers réels. La sélection privilégie la locale exacte, une variante de la même langue puis l’anglais. Les chemins sont contrôlés par rapport à la racine canonique pour refuser les traversées et les liens symboliques sortants. Les liens d’À propos sont recalculés à chaque changement de langue et ouverts avec `QDesktopServices`.
+Le catalogue `docs/catalog.json` est généré depuis `doc_catalog.runtime_catalog()` et installé avec les exports par `scripts/install_docs.py`, sans outil de rendu requis lors de l’installation. `native/documentation.h` recherche `gad/docs/catalog.json` dans les dossiers de données XDG, puis dans les emplacements portables/de développement. Les champs `locale`, `kind`, `title`, `html` et `md` relient les trois guides à leurs fichiers réels. La sélection privilégie la locale exacte, une variante de la même langue puis l’anglais. Les chemins sont contrôlés par rapport à la racine canonique pour refuser les traversées et les liens symboliques sortants. Les liens d’À propos sont recalculés à chaque changement de langue et ouverts avec `QDesktopServices`.
 
 ## Configuration et pages de manuel {#command-settings}
 
@@ -752,3 +761,28 @@ La mise en veille et l’extinction utilisent logind et respectent ses autorisat
 ## Préparer les transferts dans la liste principale {#preparing-transfers}
 
 Le protocole courant est **33**. `Job.start_required` est persisté ; `prepare_only` distingue les préparations manuelles des demandes externes. L’ordonnanceur ignore les préparations non validées. Le contrôle unique envoie `pause` avec `paused=false` pour démarrer ou reprendre. `staging.rs` crée les temporaires visibles ; `resume.rs` vérifie leur identité et leur préfixe avant reprise. Les commandes de simulation en lecture seule restent internes au moteur, sans fenêtre dédiée.
+
+
+## Index temporaire des dossiers
+
+`engine/directories.rs` réutilise les relations entre dossiers et descendants tant que les chemins source/destination, types et positions restent identiques. Les états sont recalculés à chaque appel. Le cache est limité à 16 384 entrées et environ 8 Mio par lot actif ; au-delà, le calcul utilise un index temporaire. Il est exclu des clones et de la sérialisation, puis libéré lorsque le travailleur rend le lot, sans modifier sa révision.
+
+
+## Cache des réglages du journal
+
+`engine/journal/settings.rs` conserve les réglages persistants sous forme typée et leur JSON exact. Chaque sauvegarde compare les valeurs actuelles ; l’ordre des lignes reste comparé intégralement. Une progression de fichier réutilise le JSON sans reconstruire son arbre de valeurs. Un changement de réglage ou d’ordre recrée le cache, publié seulement après écriture durable réussie. Chaque enregistrement WAL 2 contient toujours l’en-tête complet ; le format et les fsync ne changent pas.
+
+
+## Lecture et encodage du journal
+
+`engine/journal/snapshot_reader.rs` décode l’état et extrait `_gad_journal_seq` en un seul passage. Le champ `jobs` reste obligatoire dans un instantané. Le lecteur WAL emprunte le JSON des réglages et lots à la ligne courante ; seuls les lots retenus sont copiés. Chaque en-tête utile distinct est décodé directement en `State`, sans arbre JSON intermédiaire. Les clés de réglages dupliquées sont refusées. L’encodeur réserve le préfixe de checksum et sérialise dans le même tampon que celui écrit sur disque. Le format WAL 2 et les synchronisations restent inchangés. Le dernier en-tête validé est réutilisé si ses octets sont identiques au suivant. Ce cache est limité à 1 Mio, invalidé par un en-tête plus grand et libéré à la fin du chargement.
+
+## Ajout, raccourcis et exclusions
+
+Le menu **Ajouter des éléments** regroupe **Ajouter des fichiers…** (Ctrl+Maj+O), **Ajouter un dossier…** (Ctrl+O) et **Fichiers du presse-papiers** (Ctrl+V). Ce dernier conserve le mode Copier ou Couper. Au repos, tous les ajouts depuis Gad attendent **Démarrer** ; pendant des transferts déjà lancés, ils rejoignent la file. Seul le collage externe depuis le gestionnaire de fichiers démarre automatiquement.
+
+**Ctrl+F** ouvre la recherche. **Ctrl+Q** demande à quitter Gad et refuse la sortie si des transferts sont actifs. **Ctrl+Alt+W** masque la fenêtre sans arrêter les transferts. Le bouton drapeau, à droite de **Profils**, change immédiatement la langue. Les boutons de la fenêtre principale disposent d’infobulles.
+
+Dans **Paramètres → Options… → Exclusions**, saisissez un motif par ligne dans **Dossiers exclus** ou **Fichiers et liens symboliques exclus**. Chaque champ est enregistré dès qu’il perd le focus, sans bouton Appliquer et sans dialogue supplémentaire. Une règle invalide est signalée ; les règles précédentes restent actives et le texte à corriger reste visible. Ces règles concernent les prochains transferts. La case **Inclure les éléments cachés** reste dans l’onglet **Paramètres**.
+
+`Window::setupExclusions` crée deux `ExclusionEdit` (dérivés de `QPlainTextEdit`) dans `exclusionsPanel`. `focusOutEvent` appelle la validation du seul champ modifié via `Window::handle(configure)`. Les valeurs identiques ne déclenchent pas de mutation. Le moteur valide avant mise à jour de QSettings ; un refus garde le brouillon. La synchronisation CLI/profil ne remplace que les tableaux modifiés. `manualAdditionWaits` partage les règles de préparation entre `enqueue` et `pasteInto(background=false)` ; les collages externes utilisent `background=true`.

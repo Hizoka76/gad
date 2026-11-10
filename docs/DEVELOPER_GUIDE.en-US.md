@@ -1,6 +1,6 @@
 # Gad — Developer Guide
 
-Documented version: **0.2.0**, protocol **33**, November 8, 2026.
+Documented version: **0.3.0**, protocol **33**, November 8, 2026.
 
 Gad means **Gestionnaire Avancé de Duplication**; its slogan is **Gad, il copie.** This guide describes the implementation in this repository. The code remains authoritative for exact fields and defaults.
 
@@ -286,7 +286,11 @@ Qt retries origin URL resolution through KIO at most every five seconds without 
 
 ## Journal and crash recovery
 
-The user journal is `$XDG_DATA_HOME/gad/state.json`, defaulting to `~/.local/share/gad/state.json`. `save` serializes writers, writes a temporary state file, replaces it atomically, and synchronizes as required. Do not hold `state` while calling it.
+The durable journal consists of `$XDG_DATA_HOME/gad/state.json` (default `~/.local/share/gad/state.json`) and `state.json.wal`. `engine/journal.rs` appends only changed jobs, persistent settings, and job IDs, with a sequence number and MD5 checksum for accidental-corruption detection. Each record is synchronized before the corresponding file operation. Startup, normal shutdown, and compaction publish an atomic full snapshot before resetting the WAL. Compaction occurs on the save following 64 records or 64 MiB. `_gad_journal_seq` prevents replaying records already compacted. An incomplete final line is ignored; complete corrupt records and sequence gaps stop loading without deleting the journal. Legacy snapshots remain readable. Stop Gad before copying both journal files and the associated `.gad-undo-*` backups. Do not hold `state` when calling `save`; the writer lock comes first. `scripts/journal_reader.py` reconstructs the durable state for diagnostics and crash tests.
+
+Replay preserves the exact JSON of changed jobs, applies patches, then decodes each final job into application types. A 64 KiB buffer avoids loading the entire WAL. Reaching the compaction threshold causes no write while state remains unchanged; explicit shutdown snapshots still run. Locks and synchronization before file operations are preserved. Final symlinks and nonregular files are rejected when reading too.
+
+New WAL records use `format: 2`, `jobs: null`, `full_jobs`, and `patches`. Each patch replaces a UTF-8 byte range in the exact job JSON and includes the job ID, base/result MD5 checksums, `offset`, `remove`, and `insert`. Checksums detect accidental corruption, not cryptographic authentication. Replay verifies the base, bounds, UTF-8 boundaries, resulting JSON, and identity. Never re-encode full objects between reading and patching. Cached JSON text is limited to 16 MiB total and 8 MiB per job. Oversized jobs and broad changes use full records. Cache updates happen only after successful fsync; compaction clears it, so the next base is written in full. Legacy WAL files remain readable. Older readers reject v2 records because `jobs` is null; normally quitting the new version writes a complete snapshot and clears the WAL before downgrading.
 
 `undo::Record` captures owned staging, results, backups/original stamps, source removal, restored-source preparation, and completed recovery steps. Replaced destinations live in private `.gad-undo-*` directories on their filesystem. Keep the journal before effects that need recovery; do not treat a display path as ownership evidence.
 
@@ -449,7 +453,7 @@ After adding display strings, run `make translations` to synchronize sources, tr
 
 The root README is a short entry point; detailed guides are maintained here. The documentation covers six languages. Each edition includes Quick Start, User Guide, Developer Guide, and 20 screenshots of its own interface in the light theme. Architecture and lifecycle diagrams have localized labels.
 
-`doc_catalog.py` identifies each source's language and audience. `build_docs.py` generates language-correct covers, same-audience language switches, relative links/fragments, and offline embedded images. English PDFs use US Letter; other PDFs use A4. `check_docs.py` validates all README/testing/guide links, captures, language metadata, and all 36 HTML/PDF exports.
+`doc_catalog.py` identifies each source's language and audience. `build_docs.py` generates language-correct covers, same-audience language switches, relative links/fragments, and offline embedded images. `check_docs.py` validates all README/testing/guide links, captures, language metadata, and all 36 HTML/Markdown exports.
 
 ```bash
 make docs-captures
@@ -459,7 +463,7 @@ make docs-check
 
 Capture code links the actual widgets to a demo C bridge, uses temporary files and isolated sessions, and applies Breeze Light in its private configuration, preserving the desktop’s font settings. The manifest records dimensions, version, and hashes. It never controls the real Gad process or clipboard. Native tray/progress rendering outside the widget capture is not simulated as a real desktop screenshot.
 
-Documentation Python tests cover locale selection, navigation, paper size, relative links, captions, image embedding, missing headings, and complete export invocation without requiring Markdown or WeasyPrint in the routine test environment. See the [documentation index](README.en-US.md) for optional export dependencies.
+Documentation Python tests cover locale selection, navigation, paper size, relative links, captions, image embedding, missing headings, and complete export invocation without requiring Markdown or in the routine test environment. See the [documentation index](README.en-US.md) for optional export dependencies.
 
 ## Explicit limitations
 
@@ -477,7 +481,7 @@ Keep these boundaries visible in design decisions and user messages. A successfu
 
 Sort keys form an ordered list of column/direction pairs. TransferHeader reads Ctrl from the actual mouse release event; Ctrl+click appends or reverses a key, while an ordinary click replaces the list. Header markers retain key priorities across translation. Clearing a sort key preserves the rest. The redundant global combo and its predicate were removed. New menu icons have Qt fallbacks when a theme lacks them.
 
-The order column is logical column 5 and visual column 0; `setTreePosition(0)` keeps branches in Source. Existing column roles and action references keep their meaning. Numbers come from `row_order`, with a snapshot-derived fallback when no layout is provided. A layout-only delta forces all rows to refresh, including jobs omitted from that delta. Cell tooltips show immutable batch IDs. Order sorting uses numeric queue ranks, and the sixth column supports filters and Ctrl+click sorting. Request color accents are drawn in the first visual column.
+The order column is logical column 5 and visual column 0; `setTreePosition(0)` keeps branches in Source. Existing column roles and action references keep their meaning. Numbers come from `row_order`, with a snapshot-derived fallback when no layout is provided. A layout-only delta updates order cells and ranks, including jobs omitted from that delta, without rebuilding their detailed presentation. Cell tooltips show immutable batch IDs. Order sorting uses numeric queue ranks, and the sixth column supports filters and Ctrl+click sorting. Request color accents are drawn in the first visual column.
 
 Tooltip sentence breaks are explicit newlines in the English source literals and French catalog. No runtime punctuation replacement touches paths, URLs, or external error text. Source tooltips retain the path and operation options; batch identification remains in the Order column. The live-language regression includes a filename containing a period, a space, and HTML-like characters.
 
@@ -521,15 +525,15 @@ The plugin also exposes the active folder to **Paste into the open folder with G
 
 **Settings → Options…** opens a modal window: the main window is blocked until it closes, while transfers continue. Settings apply immediately; **Close** or Escape does not undo them. Command-line options appear in gray below each control. Minimum size: **800 × 740**; main window, error report and diagnostics: **1100 × 600**.
 
-The four tabs are **Settings**, **Shortcuts**, **Speed limits** and **Batch completion**. **Speed limits** contains the global cap and the default cap for new requests. To change an existing request, select its rows and choose **right-click → Limit request speed…**. The limit appears in the **Detail** cell, including folders; unlimited transfers have no extra limit text.
+The five tabs are **Settings**, **Shortcuts**, **Speed limits**, **Batch completion** and **Exclusions**. Command-line options appear in gray. Change existing batch speed limits from the row context menu; the limit appears in **Detail**.
 
-`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`. `rowRateLimit` → `Window::showRateLimit`.
+`QDialog::setWindowModality(Qt::WindowModal)`; `settingsTabs`: `settingsPanel`, `shortcutsPanel`, `ratesPanel`, `completionPanel`, `exclusionsPanel`. `rowRateLimit` → `Window::showRateLimit`.
 
 Dolphin commands and its checkbox share `Window::configureDolphin`. It runs the private `gad/integration/dolphin_shortcut.py` component with Python and QProcess without blocking transfers. The receipt remains in `gad/dolphin-paste.json`. An eight-second timeout bounds execution; failures restore the checkbox and return an error to the client. `Window::handleAsync` delays the IPC reply until completion. Konqueror keeps `konquerorCtrlV`, read by its plugin on each Ctrl+V. No separate public command is installed.
 
 ### Documentation from About {#about-documentation}
 
-`docs/catalog.json` is generated by `doc_catalog.runtime_catalog()` and installed with exports by `scripts/install_docs.py`, without requiring rendering tools during installation. `native/documentation.h` searches XDG data directories for `gad/docs/catalog.json`, followed by portable/development locations. Fields `locale`, `kind`, `title`, `html`, and `pdf` map each guide to real files. Selection prefers the exact locale, a variant of the same language, then English. Paths are checked against the canonical document root to reject traversal and escaping symlinks. About links are recalculated on language changes and opened through `QDesktopServices`.
+`docs/catalog.json` is generated by `doc_catalog.runtime_catalog()` and installed with exports by `scripts/install_docs.py`, without requiring rendering tools during installation. `native/documentation.h` searches XDG data directories for `gad/docs/catalog.json`, followed by portable/development locations. Fields `locale`, `kind`, `title`, `html`, and `md` map each guide to real files. Selection prefers the exact locale, a variant of the same language, then English. Paths are checked against the canonical document root to reject traversal and escaping symlinks. About links are recalculated on language changes and opened through `QDesktopServices`.
 
 ## Configuration and manual pages {#command-settings}
 
@@ -617,3 +621,28 @@ Suspend and power off use logind and respect its authorization and inhibitors. A
 ## Prepare transfers in the main list {#preparing-transfers}
 
 The current protocol is **33**. `Job.start_required` is persisted; `prepare_only` distinguishes manual preparation from external submissions. Scheduling skips unapproved preparations. The single control sends `pause` with `paused=false` to start or resume. `staging.rs` creates visible partial files; `resume.rs` verifies their identity and prefix before resuming. Read-only simulation commands remain internal to the engine, without a dedicated window.
+
+
+## Transient directory index
+
+`engine/directories.rs` reuses directory/descendant relationships while source and destination paths, types and positions stay unchanged. States are recomputed on every call. Caching is limited to 16,384 entries and approximately 8 MiB per active job; larger jobs use a temporary index. Clones and serialization exclude the cache. Releasing the worker clears it without changing the job revision.
+
+
+## Journal settings cache
+
+`engine/journal/settings.rs` stores typed persistent settings and their exact JSON. Each save compares current values, including the complete row order. File progress reuses the JSON without rebuilding its value tree. Settings or order changes rebuild the cache, which is published only after a successful durable write. Every WAL 2 record still contains the complete header; the format and fsync boundaries are unchanged.
+
+
+## Journal decoding and encoding
+
+`engine/journal/snapshot_reader.rs` decodes state and extracts `_gad_journal_seq` in one pass. Snapshots still require `jobs`. WAL records borrow settings and job JSON from the current line; only retained jobs are copied. Each changed header is decoded directly into `State` without an intermediate JSON value tree. Duplicate setting keys are rejected. Encoding reserves the checksum prefix and serializes into the same buffer written to disk. WAL format 2 and synchronization boundaries are unchanged. Replay reuses the last validated header when its bytes are identical. This cache is limited to 1 MiB, invalidated by a larger header, and freed when loading finishes.
+
+## Adding items, shortcuts and exclusions
+
+The **Add items** menu contains **Add files…** (Ctrl+Shift+O), **Add folder…** (Ctrl+O) and **Clipboard files** (Ctrl+V). Clipboard files preserve Copy or Cut mode. When Gad is idle, all additions inside Gad wait for **Start**; during previously started transfers, they join the queue. Only external paste from the file manager starts automatically.
+
+**Ctrl+F** opens search. **Ctrl+Q** requests exit and refuses to quit while transfers are active. **Ctrl+Alt+W** hides the window without stopping transfers. The flag button to the right of **Profiles** changes the language immediately. Main-window buttons have tooltips.
+
+In **Settings → Options… → Exclusions**, enter one pattern per line for folders or files and symbolic links. Each field saves when it loses focus, without an Apply button or a separate dialog. Invalid rules are reported; previously accepted rules remain active and the rejected text stays available for correction. Rules apply to new transfers. **Include hidden items** remains on the **Settings** tab.
+
+`Window::setupExclusions` creates two `ExclusionEdit` widgets derived from `QPlainTextEdit` in `exclusionsPanel`. `focusOutEvent` validates only the changed field through `Window::handle(configure)`. Unchanged values do not cause mutations. The engine validates before QSettings is updated; rejection retains the draft. CLI/profile synchronization replaces only changed arrays. `manualAdditionWaits` shares preparation rules between `enqueue` and `pasteInto(background=false)`; external pastes use `background=true`.

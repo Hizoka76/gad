@@ -1,6 +1,6 @@
 # Gad — Guide utilisateur
 
-**Gestionnaire Avancé de Duplication · Version 0.2.0**
+**Gestionnaire Avancé de Duplication · Version 0.3.0**
 
 **Gad, il copie.**
 
@@ -51,7 +51,7 @@ Gad s’intègre à Dolphin par **Coller avec Gad**. **Ctrl+V** peut être assoc
 
 ### Langue de l’interface
 
-Le sélecteur dans **Paramètres → Options…** propose **Système**, **Français**, **English (US)**, **Español**, **Português**, **Deutsch** et **日本語**, accompagnés d’une icône d’ordinateur ou du drapeau correspondant. Le choix s’applique immédiatement, sans relancer Gad ni interrompre les transferts. Les menus, états, unités, infobulles et dialogues déjà ouverts sont actualisés ; la sélection, les dossiers développés et les valeurs saisies sont conservés. Les notifications de transfert en cours utilisent aussi la nouvelle langue. En mode Système, un bureau anglophone utilise l’anglais américain, un bureau hispanophone utilise l’espagnol, un bureau lusophone utilise le portugais du Portugal, un bureau germanophone utilise l’allemand, un bureau japonais utilise le japonais et les autres langues utilisent le français. Les diagnostics techniques non encore catalogués et ceux des services externes conservent leur langue d’origine.
+Le menu du drapeau, à droite de **Profils**, propose **Système**, **Français**, **English (US)**, **Español**, **Português**, **Deutsch** et **日本語**, accompagnés d’une icône d’ordinateur ou du drapeau correspondant. Le choix s’applique immédiatement, sans relancer Gad ni interrompre les transferts. Les menus, états, unités, infobulles et dialogues déjà ouverts sont actualisés ; la sélection, les dossiers développés et les valeurs saisies sont conservés. Les notifications de transfert en cours utilisent aussi la nouvelle langue. En mode Système, un bureau anglophone utilise l’anglais américain, un bureau hispanophone utilise l’espagnol, un bureau lusophone utilise le portugais du Portugal, un bureau germanophone utilise l’allemand, un bureau japonais utilise le japonais et les autres langues utilisent le français. Les diagnostics techniques non encore catalogués et ceux des services externes conservent leur langue d’origine.
 
 ### À propos des captures
 
@@ -134,7 +134,7 @@ Gad refuse de quitter tant que des opérations ou des préparations sont encore 
 
 ## Comprendre la fenêtre
 
-![Fenêtre principale de Gad avec trois lots de démonstration](images/fr/01-vue-ensemble.png)
+![Fenêtre principale de Gad avec trois lots de démonstration](images/fr/01-overview.png)
 
 *Figure 1 — Un dossier en copie, une demande de déplacement en attente et un dossier terminé replié.*
 
@@ -144,7 +144,7 @@ La fenêtre se lit de haut en bas :
 | --- | --- |
 | **Source** | Ajouter des fichiers, ajouter un dossier ou coller une sélection. |
 | **Destination** | Indiquer le dossier qui recevra les éléments. |
-| **Paramètres → Options…** | Vérifications, exclusions, duplication, historique, démarrage, langues, limites de débit et raccourcis. |
+| **Paramètres → Options…** | Vérifications, exclusions, duplication, historique, démarrage, limites de débit et raccourcis. |
 | **Barre de progression** | Voir l’avancement global des octets affichés dans la liste. |
 | **Filtre et commandes** | Filtrer les lignes, mettre la file en pause, annuler ou nettoyer l’historique. |
 | **Liste des fichiers** | Consulter source, destination, état, progression et détails. |
@@ -159,11 +159,11 @@ La fenêtre se lit de haut en bas :
 
 **Paramètres → Options…** ouvre une fenêtre modale : la fenêtre principale reste bloquée jusqu’à sa fermeture, tandis que les transferts continuent. Les réglages s’appliquent immédiatement ; **Fermer** ou Échap ne les annule pas. Les paramètres de commande apparaissent en gris sous les contrôles. Taille minimale : **800 × 740** ; fenêtre principale, bilan des erreurs et diagnostic : **1100 × 600**.
 
-Les quatre onglets sont **Paramètres**, **Raccourcis**, **Débits** et **Fin de lot**. **Débits** contient le plafond global et celui appliqué par défaut aux nouveaux lots. Pour modifier un lot existant, sélectionnez ses lignes puis utilisez **clic droit → Limiter le débit de la demande…**. La limite apparaît dans la cellule **Détail**, y compris sur les dossiers ; la valeur illimitée n’ajoute aucun texte.
+Les cinq onglets sont **Paramètres**, **Raccourcis**, **Débits**, **Fin de lot** et **Exclusions**. Les paramètres de commande sont indiqués en gris. Le débit des lots existants se modifie via le menu contextuel des lignes ; la limite apparaît dans **Détail**.
 
-![Paramètres → Options…](images/fr/21-options-debits.png)
+![Paramètres → Options…](images/fr/21-speed-options.png)
 
-![L’onglet Raccourcis et les intégrations des gestionnaires de fichiers.](images/fr/14-options-raccourcis.png)
+![L’onglet Raccourcis et les intégrations des gestionnaires de fichiers.](images/fr/14-shortcut-options.png)
 
 *L’onglet Raccourcis et les intégrations des gestionnaires de fichiers.*
 
@@ -171,11 +171,11 @@ La section **Raccourcis** permet d’activer ou désactiver Ctrl+V avec Gad dans
 
 - **Ajouter des fichiers…** ouvre un sélecteur de fichiers. Plusieurs fichiers peuvent être choisis.
 - **Ajouter un dossier…** ajoute un dossier et son contenu.
-- **Coller ici** utilise les fichiers présents dans le presse-papiers et la destination affichée.
+- **Fichiers du presse-papiers** utilise les fichiers présents dans le presse-papiers et la destination affichée.
 - **Parcourir…** permet de choisir un dossier de destination existant.
 - Le champ de destination accepte un chemin local, un chemin de montage ou une adresse `sftp://`, `ftp://`, `smb://` ou `kdeconnect://` vers un dossier existant.
 
-Choisissez la destination et les options, puis ajoutez vos fichiers dans Gad. Lorsque rien n’est en cours, vérifiez la liste et cliquez sur **Démarrer**. Un collage habituel démarre automatiquement ; les ajouts pendant un transfert rejoignent sa file. **Ctrl+C** copie, **Ctrl+X** déplace. Le glisser-déposer dans Gad prépare toujours une copie.
+Choisissez la destination et les options, puis ajoutez vos fichiers dans Gad. Lorsque rien n’est en cours, vérifiez la liste et cliquez sur **Démarrer**. Un collage externe depuis le gestionnaire de fichiers démarre automatiquement ; les ajouts pendant un transfert rejoignent sa file. **Ctrl+C** copie, **Ctrl+X** déplace. Le glisser-déposer dans Gad prépare toujours une copie.
 
 Gad ignore automatiquement une opération déjà prévue dans une demande encore active, y compris en pause : même fichier source, même destination et même type (copie ou déplacement). Cela couvre un double collage, les ajouts simultanés et les fichiers déjà inclus dans un dossier. Les fichiers nouveaux restent dans la file ; un message temporaire indique le nombre d’éléments ignorés. Un collage externe entièrement composé de doublons peut démarrer la préparation existante, sans ajouter une seconde copie.
 
@@ -219,7 +219,7 @@ Gad peut recevoir des fichiers depuis un autre gestionnaire, par exemple Nautilu
 
 1. Dans votre gestionnaire, sélectionnez les fichiers et utilisez **Ctrl+C**, ou **Ctrl+X** pour demander un déplacement.
 2. Ouvrez Gad et indiquez le dossier cible dans **Destination**.
-3. Cliquez sur **Coller ici**, ou utilisez **Ctrl+V dans la fenêtre de Gad**.
+3. Cliquez sur **Fichiers du presse-papiers**, ou utilisez **Ctrl+V dans la fenêtre de Gad**.
 4. Vérifiez dans la liste la destination et le type d’opération retenus.
 
 Le gestionnaire doit publier une liste de fichiers dans un format de presse-papiers compris par Gad. Copier uniquement un chemin sous forme de texte ne suffit pas. Le mode déplacement nécessite un marqueur Couper reconnu ; si ce marqueur n’est pas disponible, utilisez la commande explicite `--move` ci-dessous.
@@ -298,7 +298,7 @@ La remise en état du déplacement rapide ramène les fichiers par renommage. Po
 
 ### Copier depuis la fenêtre Gad
 
-Indiquez une destination puis utilisez les boutons d’ajout, **Coller ici**, **Ctrl+V**, ou déposez les éléments dans la fenêtre.
+Le menu **Ajouter des éléments** regroupe **Ajouter des fichiers…** (Ctrl+Maj+O), **Ajouter un dossier…** (Ctrl+O) et **Fichiers du presse-papiers** (Ctrl+V). Ce dernier conserve le mode Copier ou Couper. Au repos, tous les ajouts depuis Gad attendent **Démarrer** ; pendant des transferts déjà lancés, ils rejoignent la file. Seul le collage externe depuis le gestionnaire de fichiers démarre automatiquement.
 
 Le presse-papiers conserve l’intention Copier/Couper : **Ctrl+V** dans Gad peut donc créer un déplacement si les fichiers ont été coupés dans Dolphin. Le **glisser-déposer dans Gad crée toujours une copie**.
 
@@ -312,7 +312,7 @@ Une analyse peut prendre du temps, notamment sur un téléphone ou un partage r�
 
 ## Exclure des éléments du transfert
 
-Le bouton **Exclusions…** permet de saisir un motif par ligne, séparément pour les dossiers et pour les fichiers ou liens symboliques. La case **Inclure les éléments cachés** est également accessible dans **Paramètres → Options…**. Elle est cochée par défaut ; aucun motif n’est activé initialement.
+Dans **Paramètres → Options… → Exclusions**, saisissez un motif par ligne dans **Dossiers exclus** ou **Fichiers et liens symboliques exclus**. Chaque champ est enregistré dès qu’il perd le focus, sans bouton Appliquer et sans dialogue supplémentaire. Une règle invalide est signalée ; les règles précédentes restent actives et le texte à corriger reste visible. Ces règles concernent les prochains transferts. La case **Inclure les éléments cachés** reste dans l’onglet **Paramètres**.
 
 | Type | Exemple | Effet |
 | --- | --- | --- |
@@ -332,7 +332,7 @@ La liste affiche directement les fichiers et dossiers : il n’y a plus d’en-t
 
 La colonne **Ordre**, tout à gauche, ajuste automatiquement sa largeur au minimum nécessaire pour son titre, sa flèche et ses numéros. Elle suit l’ordre des lignes fourni par le moteur, dossiers et demandes en préparation compris. Les lignes conservées dans l’historique gardent leur place dans cette numérotation. Un filtre masque des lignes sans renuméroter celles qui restent : des écarts entre numéros sont donc normaux. Une modification de priorité réactualise les positions. Le survol d’un numéro indique **Lot #…**. Deux transferts compatibles peuvent avancer simultanément : le numéro n’annonce pas leur ordre de fin.
 
-L’icône **Copier** devant le nom indique une copie ; l’icône **Couper** indique un déplacement, y compris pour les dossiers et les demandes en préparation. Les dossiers restent en gras et conservent leur arborescence. Le survol de Source donne le chemin complet et les éventuelles options MD5 ou de débit, sans répéter le mode ni le lot ; le numéro de lot reste dans l’infobulle **Ordre**. Les aides longues sont présentées avec un saut de ligne entre les phrases. Le menu **Sélectionner toute la demande** retrouve tous les éléments de cette demande, même si vous avez changé leur ordre ou si plusieurs demandes ont des couleurs proches. Une ligne d’analyse ou d’erreur reste visible lorsqu’aucun fichier n’a encore été énuméré.
+L’icône **Copier** devant le nom indique une copie ; l’icône **Couper** indique un déplacement, y compris pour les dossiers et les demandes en préparation. Les dossiers restent en gras et conservent leur arborescence. Le survol de Source donne le chemin complet et les éventuelles options MD5 ou de débit, sans répéter le mode ni le lot ; le numéro de lot reste dans l’infobulle **Ordre**. Les aides longues sont présentées avec un saut de ligne entre les phrases. Le menu **Sélectionner le lot entier** retrouve tous les éléments de cette demande, même si vous avez changé leur ordre ou si plusieurs demandes ont des couleurs proches. Une ligne d’analyse ou d’erreur reste visible lorsqu’aucun fichier n’a encore été énuméré.
 
 | Colonne | Contenu |
 | --- | --- |
@@ -368,7 +368,7 @@ Un dossier ne devient OK qu’après ses descendants, passe en vert et se replie
 
 ### Filtrer sans modifier les transferts
 
-![Menu de tri et filtres des en-têtes](images/fr/06-filtres.png)
+![Menu de tri et filtres des en-têtes](images/fr/06-filters.png)
 
 *Figure 3 — Le filtre change seulement les lignes visibles.*
 
@@ -420,7 +420,7 @@ Le clic droit propose aussi :
 | **Déplacer dans la file → Monter d’un rang** | Avance la sélection parmi les lignes de même parent. |
 | **Déplacer dans la file → Descendre d’un rang** | Recule la sélection parmi ses frères. |
 | **Déplacer dans la file → Placer en fin de file** | Place la sélection après les autres lignes de même parent. |
-| **Sélectionner toute la demande** | Sélectionne les fichiers et dossiers associés au même collage ou ajout. |
+| **Sélectionner le lot entier** | Sélectionne les fichiers et dossiers associés au même collage ou ajout. |
 
 La sélection multiple conserve son ordre relatif. Une branche contenant un transfert actif ne se déplace pas ; ses fichiers encore en attente peuvent être réordonnés séparément. Les lignes terminées ne se déplacent pas.
 
@@ -456,7 +456,7 @@ La limitation porte sur les octets copiés, y compris vers ou depuis un montage 
 
 ## Résoudre les conflits
 
-![Panneau comparant le fichier source et le fichier existant](images/fr/08-conflit.png)
+![Panneau comparant le fichier source et le fichier existant](images/fr/08-conflict.png)
 
 *Figure 5 — La source et le fichier déjà présent sont comparés sous la liste.*
 
@@ -482,7 +482,7 @@ Un fichier qui occupe la place d’un dossier, ou un lien symbolique dans un che
 
 ## Annuler ou remettre comme avant
 
-![Menu Annulation avec actions globales et ciblées](images/fr/04-menu-annulation.png)
+![Menu Annulation avec actions globales et ciblées](images/fr/04-cancellation-menu.png)
 
 *Figure 6 — Les actions globales restent disponibles sans sélection.*
 
@@ -490,7 +490,7 @@ Un fichier qui occupe la place d’un dossier, ou un lien symbolique dans un che
 
 **Tout annuler** arrête les opérations actives et en attente, y compris les demandes encore en préparation. Cela ne supprime pas les fichiers déjà transférés.
 
-**Annuler les opérations sélectionnées** limite cet arrêt à la sélection. Les commandes sur un dossier concernent aussi ses descendants ; **Sélectionner toute la demande** permet d’agir sur ses différentes racines.
+**Annuler les opérations sélectionnées** limite cet arrêt à la sélection. Les commandes sur un dossier concernent aussi ses descendants ; **Sélectionner le lot entier** permet d’agir sur ses différentes racines.
 
 ### Remettre comme avant
 
@@ -527,7 +527,7 @@ La sélection d’un dossier étend l’action à son contenu. Une sélection de
 
 ## Utiliser le clic droit
 
-![Menu contextuel d’une ligne de fichier](images/fr/05-menu-contextuel.png)
+![Menu contextuel d’une ligne de fichier](images/fr/05-context-menu.png)
 
 *Figure 7 — Le menu s’adapte aux états de la sélection.*
 
@@ -538,7 +538,7 @@ La sélection d’un dossier étend l’action à son contenu. Une sélection de
 | **Annuler sans supprimer les fichiers terminés** | Arrête la sélection et conserve ses résultats déjà terminés. |
 | **Annuler et remettre comme avant** | Arrête et restaure la sélection lorsque son journal le permet. |
 | **Traiter ensuite / Déplacer dans la file** | Modifie la priorité des fichiers ou branches en attente sélectionnés. |
-| **Sélectionner toute la demande** | Sélectionne les éléments d’un même ajout ou collage. |
+| **Sélectionner le lot entier** | Sélectionne les éléments d’un même ajout ou collage. |
 | **Mettre en pause / Reprendre** | Contrôle les lignes ou lots sélectionnés. |
 | **Reprendre les lots interrompus** | Retente la reprise du lot après un arrêt brutal, par exemple après reconnexion d’un disque. |
 | **Réessayer uniquement les fichiers en erreur** | Remet en file les échecs éligibles, sans recopier les fichiers OK. |
@@ -554,7 +554,7 @@ Une réactivation attend l’arrêt du lot. Les fichiers voisins déjà terminé
 
 ## Consulter et réessayer les erreurs
 
-![Bilan des erreurs et détail du fichier sélectionné](images/fr/13-bilan-erreurs.png)
+![Bilan des erreurs et détail du fichier sélectionné](images/fr/13-error-report.png)
 
 Les six boutons du bilan disposent d’icônes, avec un repli standard si le thème ne les fournit pas.
 
@@ -572,7 +572,7 @@ Une analyse ayant échoué avant l’apparition de fichiers peut être relancée
 
 ## Vérifier les fichiers avec MD5
 
-![Vérification MD5 avec progression et empreinte validée](images/fr/07-verification-md5.png)
+![Vérification MD5 avec progression et empreinte validée](images/fr/07-md5-verification.png)
 
 *Figure 8 — La copie écrite est relue avant d’être validée.*
 
@@ -586,7 +586,7 @@ Le réglage est mémorisé pour les prochains lots, y compris ceux envoyés depu
 
 ## Vérifier les propriétés
 
-![Avertissement de propriétés sur une copie terminée](images/fr/11-verification-proprietes.png)
+![Avertissement de propriétés sur une copie terminée](images/fr/11-property-verification.png)
 
 *Le contrôle signale les différences sans confondre un contenu copié avec des propriétés reproduites.*
 
@@ -620,7 +620,7 @@ Un second contrôle précède l’écriture de chaque fichier. L’estimation ne
 
 ## Attendre la reconnexion d’un périphérique
 
-![Demande suspendue en attente du périphérique](images/fr/12-reconnexion.png)
+![Demande suspendue en attente du périphérique](images/fr/12-reconnection.png)
 
 Lorsqu’un disque ou un montage connu disparaît pendant un transfert, Gad affiche **En attente du périphérique**. La demande reste présente et son temporaire est conservé. Le travailleur est libéré pour permettre aux demandes indépendantes d’avancer. Le suivi Plasma indique l’attente de reconnexion.
 
@@ -658,7 +658,7 @@ Les fichiers remplacés et les temporaires peuvent occuper de l’espace sur les
 
 ## Zone de notification et démarrage automatique
 
-![Menu de l’icône de Gad](images/fr/09-menu-zone-notification.png)
+![Menu de l’icône de Gad](images/fr/09-tray-menu.png)
 
 *Figure 9 — Le menu reste accessible quand la fenêtre est masquée.*
 
@@ -678,7 +678,7 @@ Cochez **Lancer au démarrage** pour démarrer Gad dans la zone de notification 
 
 ### À propos
 
-![Boîte À propos avec l’icône de Gad](images/fr/10-a-propos.png)
+![Boîte À propos avec l’icône de Gad](images/fr/10-about.png)
 
 *Figure 10 — Les informations à transmettre pour identifier votre version.*
 
@@ -771,7 +771,7 @@ Le module expose aussi le dossier actif au menu **Coller dans le dossier ouvert 
 
 ### Documentation depuis À propos {#about-documentation}
 
-La boîte **À propos** contient des liens vers le **Démarrage rapide**, le **Guide utilisateur** et le **Guide développeur**, avec un accès HTML et PDF. Les liens suivent la langue choisie dans Gad, même si la boîte reste ouverte pendant le changement. Les documents sont installés localement et restent accessibles sans le dossier du projet. Si une édition est absente, Gad propose l’édition anglaise disponible ; un document indisponible ne produit pas de lien mort.
+La boîte **À propos** contient des liens vers le **Démarrage rapide**, le **Guide utilisateur** et le **Guide développeur**, avec un accès HTML et Markdown. Les liens suivent la langue choisie dans Gad, même si la boîte reste ouverte pendant le changement. Les documents sont installés localement et restent accessibles sans le dossier du projet. Si une édition est absente, Gad propose l’édition anglaise disponible ; un document indisponible ne produit pas de lien mort.
 
 ## Configuration et pages de manuel {#command-settings}
 
@@ -821,7 +821,7 @@ La langue, le débit global et les autres réglages globaux prennent leur effet 
 
 Les anciens profils sont migrés automatiquement : leur destination est supprimée et les options qu’ils ne stockaient pas sont initialisées avec les réglages courants, une seule fois. Utilisez ensuite **Mettre à jour avec les réglages actuels** pour ajuster chaque profil. Aucun chemin source, destination ou mot de passe n’est enregistré.
 
-![Gestion des profils de transfert](images/fr/15-profils.png)
+![Gestion des profils de transfert](images/fr/15-profiles.png)
 
 En ligne de commande, `gad --profile "Mon profil"` applique le profil sans lancer de transfert. Combinez-le avec une copie : `gad --profile "Mon profil" --copy /chemin/source --to /chemin/destination`, ou avec `--move` / `--paste`. Gad attend la fin de l’application du profil avant de lancer le transfert. La destination vient de la commande ; les options explicites, telles que `--md5`, priment sur le profil. Un nom inconnu renvoie une erreur sans ajouter de fichiers. `--configure --profile "Mon profil"` accepte aussi des réglages supplémentaires, appliqués après le profil.
 
@@ -841,7 +841,7 @@ Cliquez sur **Rechercher dans l’historique** ou utilisez **Ctrl+F**. Saisissez
 
 La date d’ajout apparaît dans l’infobulle de la colonne d’ordre. Les anciennes opérations sans date sont indiquées comme telles et restent recherchables hors filtre de date. L’historique doit être conservé : une opération nettoyée ou supprimée ne peut plus être retrouvée.
 
-![Recherche dans l’historique](images/fr/16-recherche-historique.png)
+![Recherche dans l’historique](images/fr/16-history-search.png)
 
 ## Diagnostic des transferts {#transfer-diagnostics}
 
@@ -851,7 +851,7 @@ Les causes distinguent : pause, analyse des sources, conflit attendant une déci
 
 Une attente de budget de débit est indiquée seulement lorsque le limiteur l’a effectivement observée dans la dernière seconde. Une limite configurée seule n’est pas une preuve de ralentissement. Après cinq secondes sans progression des octets pendant une copie ou un MD5, hors attente du limiteur, Gad signale cette absence de progression : les entrées-sorties ou la finalisation peuvent attendre, mais cela ne permet pas d’accuser précisément le disque ou le réseau. Les diagnostics ne sont pas des tests de performance et ne sont pas enregistrés dans l’historique. Fermer cette fenêtre ne change aucun transfert.
 
-![Diagnostic des transferts](images/fr/17-diagnostic-transferts.png)
+![Diagnostic des transferts](images/fr/17-transfer-diagnostics.png)
 
 Les limites de débit concernent les octets copiés ; les relectures MD5 et les renommages locaux constituent des phases distinctes.
 
@@ -863,7 +863,7 @@ Le détail indique **Déplacement rapide vérifié** après succès. Pendant le 
 
 Ce contrôle relit les métadonnées, pas le contenu : il conserve l’avantage du renommage mais ne remplace pas une comparaison cryptographique. Le MD5 existant reste distinct et impose le parcours copie/vérification/suppression. Les copies ordinaires ne reçoivent pas un faux résultat de vérification rapide. Les anciens profils migrent avec cette option désactivée. Commande : `gad --configure --verify-fast-move` ; désactivation : `--no-verify-fast-move`.
 
-![Déplacement rapide vérifié](images/fr/18-verification-deplacement-rapide.png)
+![Déplacement rapide vérifié](images/fr/18-fast-move-verification.png)
 
 ## Actions de fin de lot {#queue-completion}
 
@@ -875,19 +875,30 @@ L’action attend la fin réussie de tous les transferts suivis, des préparatio
 
 La mise en veille et l’extinction utilisent logind et respectent ses autorisations et inhibiteurs. Une notification permet de rouvrir Gad lorsqu’il est masqué. `gad --configure --completion-action suspend --completion-delay 60` enregistre seulement les préférences ; activez ensuite l’action dans Gad.
 
-![Actions de fin de lot](images/fr/19-fin-de-file.png)
+![Actions de fin de lot](images/fr/19-batch-completion.png)
 
-![Actions de fin de lot](images/fr/20-options-fin-de-file.png)
+![Actions de fin de lot](images/fr/20-completion-options.png)
 
 
 ## Préparer les transferts dans la liste principale {#preparing-transfers}
 
 Quand aucun travail n’est en cours, les fichiers ajoutés par la fenêtre (**Ajouter des fichiers…**, **Ajouter un dossier…** ou glisser-déposer) sont analysés et affichés sans démarrer le transfert. Choisissez la destination et les options avant l’ajout, examinez l’arborescence puis cliquez sur **Démarrer**. Il n’y a plus de fenêtre de simulation séparée.
 
-Le même bouton devient **Tout mettre en pause**, puis **Reprendre la file**. Si des transferts sont déjà autorisés, les nouveaux ajouts rejoignent automatiquement la file. Le collage habituel et les commandes externes démarrent automatiquement, sans ouvrir la fenêtre principale ; une demande externe refusée ne démarre pas les préparations. Les doublons déjà en attente sont ignorés avec un message.
+Le même bouton devient **Tout mettre en pause**, puis **Reprendre la file**. Si des transferts sont déjà autorisés, les nouveaux ajouts rejoignent automatiquement la file. Le collage externe depuis le gestionnaire de fichiers et les commandes externes démarrent automatiquement, sans ouvrir la fenêtre principale ; une demande externe refusée ne démarre pas les préparations. Les doublons déjà en attente sont ignorés avec un message.
 
 Pendant une copie, le fichier partiel apparaît à destination sous le nom `fichier.ext.part`, puis prend son nom final après réussite. Un nom déjà occupé n’est jamais écrasé : Gad utilise un suffixe unique. Une interruption peut reprendre le même temporaire après vérification. Le nettoyage de l’historique supprime la possibilité de remettre les transferts terminés en état.
 
 Le bilan des erreurs et le diagnostic des transferts bloquent aussi les interactions avec la fenêtre principale. **Afficher dans la liste** ferme le bilan et désactive la recherche susceptible de masquer la ligne. Le filtre du bilan suit la langue choisie.
 
 ![Préparer les transferts dans la liste principale](images/fr/22-preparation.png)
+
+
+## Langue et progression de la session
+
+Le bouton situé à droite de **Profils** affiche uniquement le drapeau de la langue actuelle. Cliquez dessus pour choisir une langue. Ce menu remplace le sélecteur des options. La barre globale démarre à zéro à chaque ouverture de Gad et suit les octets traités depuis cette ouverture. Les lignes conservent leur progression réelle, y compris pour une reprise interrompue.
+
+## Ajout, raccourcis et exclusions
+
+**Ctrl+F** ouvre la recherche. **Ctrl+Q** demande à quitter Gad et refuse la sortie si des transferts sont actifs. **Ctrl+Alt+W** masque la fenêtre sans arrêter les transferts. Le bouton drapeau, à droite de **Profils**, change immédiatement la langue. Les boutons de la fenêtre principale disposent d’infobulles.
+
+![Exclusions](images/fr/23-exclusions.png)

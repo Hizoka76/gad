@@ -72,7 +72,7 @@ sudo apt install build-essential pkg-config python3 cargo rustc rustfmt rust-cli
   qt6-base-dev qt6-base-dev-tools qt6-qpa-plugins qmake6 libkf6windowsystem-dev dbus fonts-dejavu-core
 ```
 
-Utilize pacotes correspondentes noutras distribuições. `make doctor` identifica ferramentas em falta. A exportação de documentação em separado requer o Markdown, Graphviz e WeasyPrint; não são necessários para os sete testes de unidade de documentação padrão. Veja o [índice de documentação](docs/README.pt-PT.md#regeneration).
+Utilize pacotes correspondentes noutras distribuições. `make doctor` identifica ferramentas em falta. A exportação de documentação em separado requer o Markdown, Graphviz; não são necessários para os sete testes de unidade de documentação padrão. Veja o [índice de documentação](docs/README.pt-PT.md#regeneration).
 
 ## Isolamento {#isolation}
 
@@ -200,7 +200,7 @@ make docs-check
 
 Os testes da documentação verificam o catálogo de seis idiomas e os três tipos de guia, a navegação entre idiomas, os formatos de papel, as legendas e as imagens incorporadas. Também verificam o formato compacto do início rápido, as capturas próprias de cada idioma e a preservação do código dos exemplos.
 
-A geração produz diagramas traduzidos e 18 guias. Em seguida, verifica ligações e âncoras, as 84 capturas com tema claro e as suas dimensões e assinaturas, o idioma do HTML, as imagens incorporadas e as 36 exportações HTML/PDF. Requer as dependências opcionais indicadas no índice da documentação.
+A geração produz diagramas traduzidos e 18 guias. Em seguida, verifica ligações e âncoras, as 84 capturas com tema claro e as suas dimensões e assinaturas, o idioma do HTML, as imagens incorporadas e as 36 exportações HTML/Markdown. Requer as dependências opcionais indicadas no índice da documentação.
 
 [Documentation](docs/README.pt-PT.md#regeneration)
 
@@ -225,7 +225,7 @@ python3 scripts/test_qt.py --suite row_actions
 
 ## Diálogo de definições {#settings-menu}
 
-Os testes Qt verificam tamanhos mínimos, ambos os separadores, Fechar e Esc, conservação dos controlos, tradução imediata e o botão de velocidade na barra de ações. A CLI é testada com valores inválidos, opções contraditórias, exclusões parciais e sincronização de preferências. Python verifica os seis manuais, os seis idiomas, a instalação e a rejeição de traduções em falta.
+Os testes Qt verificam tamanhos mínimos, os cinco separadores, Fechar e Esc, conservação dos controlos, tradução imediata e o botão de velocidade na barra de ações. A CLI é testada com valores inválidos, opções contraditórias, exclusões parciais e sincronização de preferências. Python verifica os seis manuais, os seis idiomas, a instalação e a rejeição de traduções em falta.
 
 ```sh
 make manpages-check
@@ -240,3 +240,8 @@ Os testes Qt abrangem a recriação de ações, o temporizador real, a desativa�
 make test-dolphin-watchdog
 make test-dolphin-watchdog-real
 ```
+
+
+## Verificações recentes da interface
+
+`exclusionsTabCommitsOnFocusLossAndTranslates` e `exclusionsSaveWhenFocusLeavesTheField` verificam a gravação ao perder o foco, a rejeição sem perder o texto, campos independentes e o fecho das opções. `clipboardAdditionKeepsPreparedQueueWaiting` verifica que os itens da área de transferência não iniciam trabalho preparado, pausado ou histórico. Também são testados Copiar/Recortar, colagem externa automática, Ctrl+O/Ctrl+Shift+O/Ctrl+Q/Ctrl+Alt+W e as cinco abas.

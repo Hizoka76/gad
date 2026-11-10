@@ -92,22 +92,32 @@ void Window::updateRowActions(){
     I18n::bindProperty(rowLaunchFile,"toolTip",[=]{return oneFile?GAD_TR("Opens with the associated application:\n")+locations[0].path:GAD_TR("Select a single file to open it.");});
 }
 
+namespace {
+/// Les ajouts de la fenêtre attendent Démarrer, sauf si un lot a déjà été lancé ou est en préparation distante.
+bool manualAdditionWaits(const QJsonObject &state,const QQueue<QJsonObject> &pending) {
+    for(const auto &value:state["jobs"].toArray()) {
+        const auto job=value.toObject();
+        if(!job["start_required"].toBool() && !finished(job["state"].toString()) && !job["cancel"].toBool())return false;
+    }
+    for(const auto &request:pending)if(!request["prepare_only"].toBool())return false;
+    return true;
+}
+}
+
 /// Dans une file inactive, les ajouts manuels attendent le contrôle de démarrage.
 QJsonObject Window::enqueue(const QStringList &sources){
     QJsonArray array; for (const auto &source : sources) array.append(source);
-    bool active=false;for(const auto &value:state["jobs"].toArray()){const auto job=value.toObject();active|=!job["start_required"].toBool() && !finished(job["state"].toString()) && !job["cancel"].toBool();}
-    // Capturer cette intention avant une éventuelle attente de montage distant.
-    for(const auto &request:sourceQueue)active|=!request["prepare_only"].toBool();
-    auto result=handle({{"command", Protocol::Command::Enqueue}, {"sources", array}, {"destination", destination->text()},{"prepare_only",!active}});refresh();return result;
+    auto result=handle({{"command", Protocol::Command::Enqueue}, {"sources", array}, {"destination", destination->text()},{"prepare_only",manualAdditionWaits(state,sourceQueue)}});refresh();return result;
 }
 
-/// Lit le presse-papiers immédiatement et conserve le mode Copier/Couper ainsi que le lancement en arrière-plan.
+/// L’ajout dans Gad suit la préparation manuelle ; le collage externe conserve son démarrage immédiat.
 QJsonObject Window::pasteInto(const QString &path, bool background){
     destination->setText(path);
     const auto files = Clipboard::current();
     if (!files.error.isEmpty()) return error(files.error);
     auto request = Clipboard::request(files, path);
     request["background"] = background;
+    if(!background)request["prepare_only"]=manualAdditionWaits(state,sourceQueue);
     return handle(request);
 }
 
@@ -231,6 +241,7 @@ void Window::handleAsync(QJsonObject request,std::function<void(QJsonObject)> re
         connect(worker,&QThread::finished,worker,&QObject::deleteLater);worker->start();return;
     }
     auto gui=request["gui_settings"].toObject();
+    if(gui.contains("progressMessage") && !gui["progressMessage"].isBool()){reply({{"error",GAD_TR("Invalid transfer profile settings.")}});return;}
     if(gui.contains("completion_action") && (!gui["completion_action"].isString() || !Completion::validAction(gui["completion_action"].toString()))){reply({{"error",GAD_TR("Invalid completion action")}});return;}
     if(gui.contains("completion_delay") && !Completion::validDelay(gui["completion_delay"])){reply({{"error",GAD_TR("Invalid countdown: use 5 to 3600 whole seconds.")}});return;}
 
@@ -240,7 +251,7 @@ void Window::handleAsync(QJsonObject request,std::function<void(QJsonObject)> re
         configureKrusader(enabled,[this,request,reply](QJsonObject result){if(result.contains("error") || (request.size()==2 && request["gui_settings"].toObject().isEmpty())){reply(result);return;}handleAsync(request,reply);});return;
     }
     if(request["command"]!=Protocol::Command::Configure || !gui.contains("dolphin_ctrl_v")){reply(handle(request));return;}
-    if(gui.contains("language") && findChild<QComboBox *>("languageSelector")->findData(gui["language"].toString())<0){reply({{"error","Unknown language: "+gui["language"].toString()}});return;}
+    if(gui.contains("language") && !languageAvailable(gui["language"].toString())){reply({{"error","Unknown language: "+gui["language"].toString()}});return;}
     const bool enabled=gui.take("dolphin_ctrl_v").toBool();request["gui_settings"]=gui;
     if(gui.contains("request_rate_limit") && !TransferProfiles::validRate(gui["request_rate_limit"])) {reply({{"error",GAD_TR("Invalid transfer profile settings.")}});return;}
     configureDolphin(enabled,[this,request,reply](QJsonObject result){
@@ -260,6 +271,7 @@ QJsonObject Window::handle(QJsonObject request){
     if(request.contains("verify_fast_move") && !request["verify_fast_move"].isBool())return {{"error","Invalid fast-move verification option"}};
     if(request.contains("profile"))return {{"error",GAD_TR("Invalid request")}};
     const auto gui=request.take("gui_settings").toObject();
+    if(gui.contains("progressMessage") && !gui["progressMessage"].isBool())return {{"error",GAD_TR("Invalid transfer profile settings.")}};
     if(gui.contains("completion_action") && (!gui["completion_action"].isString() || !Completion::validAction(gui["completion_action"].toString())))return {{"error",GAD_TR("Invalid completion action")}};
     if(gui.contains("completion_delay") && !Completion::validDelay(gui["completion_delay"]))return {{"error",GAD_TR("Invalid countdown: use 5 to 3600 whole seconds.")}};
 
@@ -267,8 +279,8 @@ QJsonObject Window::handle(QJsonObject request){
     if(command==Protocol::Command::Configure) {
         if(gui.contains("request_rate_limit") && !TransferProfiles::validRate(gui["request_rate_limit"]))return {{"error",GAD_TR("Invalid transfer profile settings.")}};
         if(gui.contains("language")) {
-            const auto locale=gui["language"].toString();auto *selector=findChild<QComboBox *>("languageSelector");
-            if(selector->findData(locale)<0)return {{"error","Unknown language: "+locale}};
+            const auto locale=gui["language"].toString();
+            if(!languageAvailable(locale))return {{"error","Unknown language: "+locale}};
         }
         // Les modifications partielles conservent les règles et la visibilité non fournies.
         if(request.contains("exclusion_patch")) {
@@ -318,6 +330,7 @@ QJsonObject Window::handle(QJsonObject request){
     if(!result.contains("error") && (command== Protocol::Command::CancelAll || command== Protocol::Command::UndoAll))
         result["cancelled_preparations"]=cancelSourcePreparation();
     if (command == Protocol::Command::Configure && !result.contains("error")) {
+        if(gui.contains("progressMessage")){const bool visible=gui["progressMessage"].toBool();QSignalBlocker blocker(progressMessage);progressMessage->setChecked(visible);QSettings().setValue("progressMessage",visible);desktopTransfers->setProgressMessage(visible);}
         if(gui.contains("completion_action") || gui.contains("completion_delay")){
             cancelCompletion();QSignalBlocker action(completionAction),delay(completionDelay);
             if(gui.contains("completion_action")){completionAction->setCurrentIndex(completionAction->findData(gui["completion_action"].toString()));QSettings().setValue("completionAction",gui["completion_action"].toString());}
@@ -331,10 +344,17 @@ QJsonObject Window::handle(QJsonObject request){
         if(request.contains("allow_duplication")){QSignalBlocker blocker(allowDuplication);allowDuplication->setChecked(request["allow_duplication"].toBool());QSettings().setValue("allowDuplication",allowDuplication->isChecked());}
         if(request.contains("exclusions")) {
             const auto supplied=request["exclusions"].toObject();
+            const bool directoriesChanged=exclusionRules["directories"].toArray()!=supplied["directories"].toArray();
+            const bool filesChanged=exclusionRules["files"].toArray()!=supplied["files"].toArray();
             exclusionRules={{"include_hidden",supplied.value("include_hidden").toBool(true)},{"directories",supplied["directories"].toArray()},{"files",supplied["files"].toArray()}};
             QSignalBlocker blocker(includeHidden);includeHidden->setChecked(exclusionRules["include_hidden"].toBool());
             const auto names=[](const QJsonArray &array){QStringList values;for(const auto &value:array)values.append(value.toString());return values;};
-            QSettings settings;settings.setValue("includeHidden",includeHidden->isChecked());settings.setValue("excludeDirectories",names(exclusionRules["directories"].toArray()));settings.setValue("excludeFiles",names(exclusionRules["files"].toArray()));updateExclusionSummary();
+            QSettings settings;settings.setValue("includeHidden",includeHidden->isChecked());settings.setValue("excludeDirectories",names(exclusionRules["directories"].toArray()));settings.setValue("excludeFiles",names(exclusionRules["files"].toArray()));
+            // Les changements issus de la CLI ou d’un profil actualisent également les champs intégrés.
+            const auto sync=[this](const char *name,const QJsonArray &values){if(auto *edit=findChild<QPlainTextEdit *>(name)){QStringList lines;for(const auto &value:values)lines.append(value.toString());const auto text=lines.join("\n");if(edit->toPlainText()!=text){QSignalBlocker blocker(edit);edit->setPlainText(text);}}};
+            if(directoriesChanged)sync("excludedDirectories",exclusionRules["directories"].toArray());
+            if(filesChanged)sync("excludedFiles",exclusionRules["files"].toArray());
+            updateExclusionSummary();
         }
         if(request.contains("rate_limit")){QSignalBlocker blocker(globalRate);const auto bytes=request["rate_limit"].toInteger();globalRate->setValue(bytes/1048576.0);QSettings().setValue("rateLimit",bytes);}
         if(request.contains("verify_space")){QSignalBlocker blocker(verifySpace);verifySpace->setChecked(request["verify_space"].toBool());QSettings().setValue("verifySpace",verifySpace->isChecked());}
@@ -349,7 +369,7 @@ QJsonObject Window::handle(QJsonObject request){
         if(gui.contains("konqueror_ctrl_v")) {
             const auto enabled=gui["konqueror_ctrl_v"].toBool();auto *check=findChild<QCheckBox *>("konquerorShortcut");QSignalBlocker blocker(check);check->setChecked(enabled);QSettings().setValue("konquerorCtrlV",enabled);
         }
-        if(gui.contains("language")){auto *selector=findChild<QComboBox *>("languageSelector");const auto locale=gui["language"].toString();const auto index=selector->findData(locale);if(selector->currentIndex()==index){QSettings().setValue("language",locale);I18n::initialize(locale);}else selector->setCurrentIndex(index);}
+        if(gui.contains("language"))setLanguage(gui["language"].toString());
     }
     if (command == Protocol::Command::Enqueue) {
         if (!request["background"].toBool()) { showMainWindow(); }
@@ -442,26 +462,35 @@ void Window::updateExclusionSummary() {
     exclusionSummary->setText(directories+files?QString(GAD_TR("%1 folder rule(s) · %2 file rule(s)")).arg(directories).arg(files):GAD_TR("No name exclusions"));
 }
 
-/// Dialog de réglages : éditer ou annuler ne modifie aucune demande déjà présente.
-void Window::showExclusions() {
-    if(auto *existing=findChild<QDialog *>("exclusionsDialog")){existing->show();existing->raise();existing->activateWindow();return;}
-    auto *settings=findChild<QDialog *>("settingsDialog");
-    auto *dialog=new QDialog(settings && settings->isVisible()?static_cast<QWidget *>(settings):this);dialog->setObjectName("exclusionsDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);dialog->resize(650,450);
-    I18n::bindProperty(dialog,"windowTitle",[]{return GAD_TR("Transfer exclusions");});auto *layout=new QVBoxLayout(dialog);
+namespace {
+/// QPlainTextEdit ne fournit pas editingFinished : valider après sa perte de focus native.
+class ExclusionEdit : public QPlainTextEdit {
+public:
+    std::function<void()> commit;
+protected:
+    void focusOutEvent(QFocusEvent *event) override {
+        QPlainTextEdit::focusOutEvent(event);
+        if(commit)commit();
+    }
+};
+}
+
+/// Chaque champ valide ses motifs à la perte de focus, sans toucher au brouillon de l’autre champ.
+void Window::setupExclusions(QVBoxLayout *layout) {
     auto *help=I18n::localized(new QLabel,"text",[]{return GAD_TR("One name pattern per line, at any depth.\n* matches any text; ? matches one character.\nFolder exclusions skip their entire contents.\nRules apply to new transfers only; excluded items are kept at the source during moves.");});help->setWordWrap(true);help->setTextFormat(Qt::PlainText);layout->addWidget(help);
-    auto *hidden=I18n::localized(new QCheckBox,"text",[]{return GAD_TR("Include hidden items");});hidden->setObjectName("exclusionsIncludeHidden");hidden->setChecked(exclusionRules["include_hidden"].toBool(true));layout->addWidget(hidden);
     const auto lines=[](const QJsonArray &array){QStringList values;for(const auto &value:array)values.append(value.toString());return values.join("\n");};
-    auto *directories=new QPlainTextEdit;directories->setObjectName("excludedDirectories");directories->setPlainText(lines(exclusionRules["directories"].toArray()));directories->setPlaceholderText("__*\n__pycache__\nnode_modules");
-    auto *files=new QPlainTextEdit;files->setObjectName("excludedFiles");files->setPlainText(lines(exclusionRules["files"].toArray()));files->setPlaceholderText("*.tmp\n*.swp\n*~");
+    auto *directories=new ExclusionEdit;directories->setObjectName("excludedDirectories");directories->setPlainText(lines(exclusionRules["directories"].toArray()));directories->setPlaceholderText("__*\n__pycache__\nnode_modules");
+    auto *files=new ExclusionEdit;files->setObjectName("excludedFiles");files->setPlainText(lines(exclusionRules["files"].toArray()));files->setPlaceholderText("*.tmp\n*.swp\n*~");
     auto *directoryLabel=I18n::localized(new QLabel,"text",[]{return GAD_TR("Excluded folders");});directoryLabel->setBuddy(directories);layout->addWidget(directoryLabel);layout->addWidget(directories);
     auto *fileLabel=I18n::localized(new QLabel,"text",[]{return GAD_TR("Excluded files and symbolic links");});fileLabel->setBuddy(files);layout->addWidget(fileLabel);layout->addWidget(files);
-    auto *buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel);buttons->setObjectName("exclusionsButtons");layout->addWidget(buttons);connect(buttons,&QDialogButtonBox::rejected,dialog,&QDialog::reject);
-    connect(buttons,&QDialogButtonBox::accepted,dialog,[this,dialog,directories,files,hidden]{
-        const auto patterns=[](QPlainTextEdit *edit){return QJsonArray::fromStringList(edit->toPlainText().split('\n',Qt::SkipEmptyParts));};
-        const QJsonObject rules{{"include_hidden",hidden->isChecked()},{"directories",patterns(directories)},{"files",patterns(files)}};
-        const auto result=handle({{"command",Protocol::Command::Configure},{"exclusions",rules}});
-        if(result.contains("error")){error(result["error"].toString());return;}
-        dialog->accept();
-    });
-    dialog->open();
+    const auto bind=[this](ExclusionEdit *edit,const QString &key){
+        edit->commit=[this,edit,key]{
+            const auto patterns=QJsonArray::fromStringList(edit->toPlainText().split('\n',Qt::SkipEmptyParts));
+            if(patterns==exclusionRules[key].toArray())return;
+            auto rules=exclusionRules;rules[key]=patterns;
+            const auto result=handle({{"command",Protocol::Command::Configure},{"exclusions",rules}});
+            if(result.contains("error"))error(result["error"].toString());
+        };
+    };
+    bind(directories,"directories");bind(files,"files");
 }

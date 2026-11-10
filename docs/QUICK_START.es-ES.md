@@ -1,6 +1,6 @@
 # Gad — Inicio rápido {#gad-quick-start}
 
-**Gad, il copie. · Gestor avanzado de duplicación · Versión 0.2.0**
+**Gad, il copie. · Gestor avanzado de duplicación · Versión 0.3.0**
 
 [Guía del usuario](USER_GUIDE.es-ES.md) · [Guía para desarrolladores](DEVELOPER_GUIDE.es-ES.md) · [Todos los idiomas](README.es-ES.md)
 
@@ -32,7 +32,7 @@ Si aún no está instalado, siga las instrucciones [instrucciones de instalació
 
 ![Preparar transferencias en la lista principal](images/es-ES/22-preparation.png)
 
-Elija destino y opciones y añada los archivos en Gad. Si no hay trabajo activo, revise la lista y pulse **Iniciar**. El pegado habitual arranca automáticamente; los nuevos elementos durante una transferencia se añaden a la cola. **Ctrl+C** copia y **Ctrl+X** mueve. Arrastrar y soltar siempre prepara una copia.
+Elija destino y opciones y añada los archivos en Gad. Si no hay trabajo activo, revise la lista y pulse **Iniciar**. El pegado externo desde el gestor de archivos arranca automáticamente; los nuevos elementos durante una transferencia se añaden a la cola. **Ctrl+C** copia y **Ctrl+X** mueve. Arrastrar y soltar siempre prepara una copia.
 
 ## Seguir y controlar las transferencias {#read-and-control-transfers}
 
@@ -48,7 +48,7 @@ Elija destino y opciones y añada los archivos en Gad. Si no hay trabajo activo,
 
 *El diálogo de opciones se abre desde el bloque Configuración.*
 
-En **Configuración → Opciones…**, las pestañas **Configuración** y **Atajos** agrupan las preferencias y las integraciones. Los cambios se aplican inmediatamente; **Cerrar** o Esc cierra el diálogo. Los parámetros de comando aparecen en gris. **Exclusiones…** acepta patrones de carpetas como `__*` y de archivos como `*.tmp` o `*~`. El botón de velocidad de los lotes seleccionados está a la izquierda de la barra de acciones principal.
+En **Configuración → Opciones… → Exclusiones**, introduzca un patrón por línea para carpetas o archivos y enlaces simbólicos. Cada campo se guarda al perder el foco, sin botón Aplicar ni diálogo adicional. Si una regla es inválida, se indica el error, las reglas anteriores siguen activas y el texto permanece para corregirlo. Se aplica a nuevas transferencias. La opción de incluir elementos ocultos permanece en la pestaña de configuración.
 
 **Permitir duplicación en la misma carpeta** crea nombres como `photo_copied1.jpg` al volver a copiar a la carpeta original. Está desactivado de forma predeterminada y se aplica sólo a las copias. Las opciones de selección, verificación y duplicación se capturan para nuevas solicitudes; Las solicitudes existentes mantienen su configuración. El límite de velocidad global puede cambiar durante los traslados.
 
@@ -62,7 +62,7 @@ Un pegado iniciado desde un administrador de archivos se puede ejecutar en segun
 
 ## Resolver un conflicto o un error {#resolve-a-conflict-or-an-error}
 
-![Comparación de conflictos de archivos](images/es-ES/08-conflit.png)
+![Comparación de conflictos de archivos](images/es-ES/08-conflict.png)
 
 *Compare el origen y el destino existente antes de elegir una acción.*
 
@@ -99,10 +99,18 @@ En la línea de órdenes, `gad --profile "Mi perfil"` aplica los ajustes sin ini
 
 ## Preparar transferencias en la lista principal
 
-Elija destino y opciones y añada los archivos en Gad. Si no hay trabajo activo, revise la lista y pulse **Iniciar**. El pegado habitual arranca automáticamente; los nuevos elementos durante una transferencia se añaden a la cola. **Ctrl+C** copia y **Ctrl+X** mueve. Arrastrar y soltar siempre prepara una copia.
+Elija destino y opciones y añada los archivos en Gad. Si no hay trabajo activo, revise la lista y pulse **Iniciar**. El pegado externo desde el gestor de archivos arranca automáticamente; los nuevos elementos durante una transferencia se añaden a la cola. **Ctrl+C** copia y **Ctrl+X** mueve. Arrastrar y soltar siempre prepara una copia.
 
 ## Opciones
 
 **Ajustes → Opciones…** abre una ventana modal que bloquea la ventana principal mientras las transferencias continúan. Los cambios se aplican inmediatamente; **Cerrar** o Esc no los deshace. Los parámetros de línea de órdenes aparecen en gris. Tamaño mínimo: **800 × 740**; ventana principal, informe de errores y diagnóstico: **1100 × 600**.
 
 Los cuatro apartados son **Ajustes**, **Atajos**, **Límites de velocidad** y **Fin del lote**. Los límites incluyen el global y el predeterminado para nuevas solicitudes. Para modificar una existente, seleccione sus filas y utilice **clic derecho → Limitar la velocidad de la solicitud…**. El límite aparece en **Detalle**, también en carpetas; sin límite no se añade texto.
+
+## Añadir elementos, atajos y exclusiones
+
+El menú **Añadir elementos** incluye **Añadir archivos…** (Ctrl+Mayús+O), **Añadir carpeta…** (Ctrl+O) y **Archivos del portapapeles** (Ctrl+V). Conserva el modo Copiar o Cortar. Si Gad está inactivo, los elementos añadidos dentro de Gad esperan a **Iniciar**; si hay transferencias iniciadas, se incorporan a la cola. Solo el pegado externo desde el gestor de archivos inicia automáticamente.
+
+**Ctrl+F** abre la búsqueda. **Ctrl+Q** solicita salir y lo impide si hay transferencias activas. **Ctrl+Alt+W** oculta la ventana sin detenerlas. El botón de bandera junto a Perfiles cambia el idioma inmediatamente. Los botones principales muestran información emergente.
+
+Hay cinco pestañas: configuración, atajos, límites de velocidad, fin del lote y exclusiones. Los parámetros de línea de comandos aparecen en gris. El límite de un lote existente se cambia en el menú contextual de sus filas y aparece en la columna de detalle.

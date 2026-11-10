@@ -7,7 +7,7 @@
 TransferProfiles::Profile Window::currentTransferProfile() const {
     TransferProfiles::Profile profile;profile.id=QUuid::createUuid().toString(QUuid::WithoutBraces);
     profile.options={{"verify_fast_move",verifyFastMove->isChecked()},{"conflict_policy",conflictPolicy->currentData().toString()},{"verify_md5",verifyMd5->isChecked()},{"verify_properties",verifyProperties->isChecked()},{"verify_space",verifySpace->isChecked()},{"allow_duplication",allowDuplication->isChecked()},{"exclusions",exclusionRules},{"keep_history",keepHistory->isChecked()},{"resume_interrupted",resumeInterrupted->isChecked()},{"rate_limit",qRound64(globalRate->value()*1048576)}};
-    profile.gui={{"krusader_ctrl_v",findChild<QCheckBox *>("krusaderShortcut")->isChecked()},{"completion_action",completionAction->currentData().toString()},{"completion_delay",completionDelay->value()},{"autostart",findChild<QCheckBox *>("launchAtStartup")->isChecked()},{"dolphin_ctrl_v",findChild<QCheckBox *>("dolphinShortcut")->isChecked()},{"konqueror_ctrl_v",findChild<QCheckBox *>("konquerorShortcut")->isChecked()},{"language",findChild<QComboBox *>("languageSelector")->currentData().toString()}};
+    profile.gui={{"progressMessage",progressMessage->isChecked()},{"krusader_ctrl_v",findChild<QCheckBox *>("krusaderShortcut")->isChecked()},{"completion_action",completionAction->currentData().toString()},{"completion_delay",completionDelay->value()},{"autostart",findChild<QCheckBox *>("launchAtStartup")->isChecked()},{"dolphin_ctrl_v",findChild<QCheckBox *>("dolphinShortcut")->isChecked()},{"konqueror_ctrl_v",findChild<QCheckBox *>("konquerorShortcut")->isChecked()},{"language",languageChoice}};
     profile.rate=qRound64(requestRate->value()*1048576);return profile;
 }
 
@@ -20,7 +20,7 @@ static QJsonObject profileConfiguration(const TransferProfiles::Profile &profile
 /// Empêcher les changements concurrents de réglages pendant le traitement asynchrone du raccourci.
 void Window::setProfileApplying(bool applying) {
     profileApplying=applying;
-    for(const auto &name:QStringList{"profilesButton","settingsPanel","shortcutsPanel","ratesPanel","completionPanel"})if(auto *widget=findChild<QWidget *>(name))widget->setEnabled(!applying);
+    for(const auto &name:QStringList{"profilesButton","languageMenuButton","settingsPanel","shortcutsPanel","ratesPanel","completionPanel"})if(auto *widget=findChild<QWidget *>(name))widget->setEnabled(!applying);
     if(auto *dialog=findChild<QDialog *>("profilesDialog"))dialog->setEnabled(!applying);
 }
 
@@ -33,7 +33,7 @@ bool Window::applyTransferProfile(const QString &id,std::function<void(QJsonObje
     auto found=std::find_if(profiles.begin(),profiles.end(),[&](const auto &profile){return profile.id==id;});
     if(found==profiles.end()){return fail(GAD_TR("This transfer profile no longer exists."));}
     const auto profile=*found;
-    if(findChild<QComboBox *>("languageSelector")->findData(profile.gui["language"].toString())<0){return fail(GAD_TR("The language saved in this profile is unavailable."));}
+    if(!languageAvailable(profile.gui["language"].toString())){return fail(GAD_TR("The language saved in this profile is unavailable."));}
     auto *dolphin=findChild<QCheckBox *>("dolphinShortcut");
     if(dolphin->property("configuring").toBool() || findChild<QCheckBox *>("krusaderShortcut")->property("configuring").toBool()){return fail(GAD_TR("A transfer profile is already being applied."));}
     const auto previous=currentTransferProfile();const bool changeDolphin=profile.gui["dolphin_ctrl_v"].toBool()!=previous.gui["dolphin_ctrl_v"].toBool();
@@ -85,6 +85,7 @@ QString Window::transferProfileDescription(const TransferProfiles::Profile &prof
     const auto rules=profile.options["exclusions"].toObject();flag(rules["include_hidden"].toBool(),GAD_TR("Include hidden items"));
     const auto patterns=[](const QJsonArray &values){QStringList names;for(const auto &value:values)names.append(value.toString());return names.join(", ");};
     lines.append(GAD_TR("Excluded folders")+": "+patterns(rules["directories"].toArray()));lines.append(GAD_TR("Excluded files and symbolic links")+": "+patterns(rules["files"].toArray()));
+    flag(profile.gui["progressMessage"].toBool(),GAD_TR("Show transfer progress in KDE"));
     flag(profile.gui["autostart"].toBool(),GAD_TR("Launch at startup"));flag(profile.gui["dolphin_ctrl_v"].toBool(),GAD_TR("Ctrl+V with Gad in Dolphin"));flag(profile.gui["konqueror_ctrl_v"].toBool(),GAD_TR("Ctrl+V with Gad in Konqueror"));
     if(profile.gui.contains("krusader_ctrl_v"))flag(profile.gui["krusader_ctrl_v"].toBool(),GAD_TR("Ctrl+V with Gad in Krusader"));
     auto language=profile.gui["language"].toString();if(language=="system")language=GAD_TR("System");else for(const auto &available:I18n::languages())if(available.locale==language){language=available.name;break;}

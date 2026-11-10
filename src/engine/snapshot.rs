@@ -37,6 +37,14 @@ impl std::ops::DerefMut for TrackedJob {
     }
 }
 impl TrackedJob {
+    /// Libérer un cache interne ne change ni le journal ni la révision visible par Qt.
+    pub(super) fn clear_directory_index(&mut self) {
+        self.job.directory_index.clear();
+    }
+    /// Révision du lot pour ne persister que les lots modifiés.
+    pub(super) fn revision(&self) -> u64 {
+        self.revision
+    }
     /// Copie métier destinée à un travailleur, sans exporter la révision de diffusion.
     pub(super) fn snapshot(&self) -> Job {
         self.job.clone()

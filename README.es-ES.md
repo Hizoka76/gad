@@ -17,7 +17,7 @@ Gad trae copias de archivos y los mueve a una ventana nativa KDE Plasma. Su moto
 - Fuentes y destinos locales y remotos a través de KIO Fuse: KDE Connect, FTP, SFTP y SMB.
 
 
-**0.2.0** — Elija destino y opciones y añada los archivos en Gad. Si no hay trabajo activo, revise la lista y pulse **Iniciar**. El pegado habitual arranca automáticamente; los nuevos elementos durante una transferencia se añaden a la cola. **Ctrl+C** copia y **Ctrl+X** mueve. Arrastrar y soltar siempre prepara una copia.
+**0.3.0** — Elija destino y opciones y añada los archivos en Gad. Si no hay trabajo activo, revise la lista y pulse **Iniciar**. El pegado externo desde el gestor de archivos arranca automáticamente; los nuevos elementos durante una transferencia se añaden a la cola. **Ctrl+C** copia y **Ctrl+X** mueve. Arrastrar y soltar siempre prepara una copia.
 
 ## Documentación {#documentation}
 
@@ -29,7 +29,7 @@ Este README es un punto de partida. Las guías describen el comportamiento compl
 | Desarrolladores | [Arquitectura y Protocolo](docs/DEVELOPER_GUIDE.es-ES.md) | [Arquitectura y protocolo](docs/GUIDE_DEVELOPPEUR.md) |
 | Pruebas | [Validación](TESTING.es-ES.md) | [Pruebas](TESTING.md) |
 
-[Todas las ediciones HTML y PDF](docs/README.es-ES.md)
+[Todas las ediciones HTML y Markdown](docs/README.es-ES.md)
 
 ## Instalación {#installation}
 

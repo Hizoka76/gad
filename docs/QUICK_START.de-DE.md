@@ -1,6 +1,6 @@
 # Gad — Schnellstart {#gad-quick-start}
 
-**Gad, il copie. · Erweiterter Duplizierungsmanager · Version 0.2.0**
+**Gad, il copie. · Erweiterter Duplizierungsmanager · Version 0.3.0**
 
 [Benutzerhandbuch](USER_GUIDE.de-DE.md) · [Entwicklerhandbuch](DEVELOPER_GUIDE.de-DE.md) · [Alle Sprachen](README.de-DE.md)
 
@@ -32,7 +32,7 @@ Wenn es noch nicht installiert ist, befolgen Sie die Anweisungen [Installationsa
 
 ![Übertragungen in der Hauptliste vorbereiten](images/de-DE/22-preparation.png)
 
-Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts läuft, prüfen Sie die Liste und klicken Sie auf **Starten**. Normales Einfügen startet automatisch; während einer Übertragung werden neue Aufträge eingereiht. **Strg+C** kopiert, **Strg+X** verschiebt. Ziehen und Ablegen bereitet immer eine Kopie vor.
+Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts läuft, prüfen Sie die Liste und klicken Sie auf **Starten**. Externes Einfügen aus dem Dateimanager startet automatisch; während einer Übertragung werden neue Aufträge eingereiht. **Strg+C** kopiert, **Strg+X** verschiebt. Ziehen und Ablegen bereitet immer eine Kopie vor.
 
 ## Übertragungen verfolgen und steuern {#read-and-control-transfers}
 
@@ -48,7 +48,7 @@ Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts l
 
 *Der Optionsdialog wird über den Bereich Einstellungen geöffnet.*
 
-Unter **Einstellungen → Optionen…** fassen die Reiter **Einstellungen** und **Tastenkürzel** Einstellungen und Integrationen zusammen. Änderungen gelten sofort; **Schließen** oder Escape schließt den Dialog. Befehlszeilenparameter erscheinen grau. **Ausschlüsse…** akzeptiert Ordnermuster wie `__*` und Dateimuster wie `*.tmp` oder `*~`. Die Geschwindigkeitsschaltfläche für ausgewählte Aufträge befindet sich links in der Hauptaktionsleiste.
+Unter **Einstellungen → Optionen… → Ausschlüsse** wird je ein Muster pro Zeile für Ordner oder Dateien und symbolische Links eingegeben. Jedes Feld wird beim Fokusverlust gespeichert, ohne Anwenden-Schaltfläche und ohne zusätzlichen Dialog. Ungültige Regeln werden gemeldet; bisherige Regeln bleiben aktiv und der Text bleibt zur Korrektur erhalten. Regeln gelten für neue Übertragungen. Die Option für versteckte Elemente bleibt im Reiter Einstellungen.
 
 **Duplizieren im selben Ordner erlauben** erstellt beim Zurückkopieren in den ursprünglichen Ordner Namen wie `photo_copied1.jpg`. Sie ist standardmäßig deaktiviert und gilt nur für Kopien. Auswahl-, Verifizierungs- und Duplizierungsoptionen werden für neue Anfragen erfasst; Bestehende Anfragen behalten ihre Einstellungen. Die globale Geschwindigkeitsbegrenzung kann sich während des Transfers ändern.
 
@@ -62,7 +62,7 @@ Ein von einem Dateimanager gestartetes Einfügen kann im Hintergrund ausgeführt
 
 ## Einen Konflikt oder Fehler beheben {#resolve-a-conflict-or-an-error}
 
-![Vergleich von Dateikonflikten](images/de-DE/08-conflit.png)
+![Vergleich von Dateikonflikten](images/de-DE/08-conflict.png)
 
 *Vergleichen Sie die Quelle und das vorhandene Ziel, bevor Sie eine Aktion auswählen.*
 
@@ -99,10 +99,16 @@ In der Befehlszeile übernimmt `gad --profile "Mein Profil"` die Einstellungen o
 
 ## Übertragungen in der Hauptliste vorbereiten
 
-Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts läuft, prüfen Sie die Liste und klicken Sie auf **Starten**. Normales Einfügen startet automatisch; während einer Übertragung werden neue Aufträge eingereiht. **Strg+C** kopiert, **Strg+X** verschiebt. Ziehen und Ablegen bereitet immer eine Kopie vor.
+Wählen Sie Ziel und Optionen und fügen Sie Dateien in Gad hinzu. Wenn nichts läuft, prüfen Sie die Liste und klicken Sie auf **Starten**. Externes Einfügen aus dem Dateimanager startet automatisch; während einer Übertragung werden neue Aufträge eingereiht. **Strg+C** kopiert, **Strg+X** verschiebt. Ziehen und Ablegen bereitet immer eine Kopie vor.
 
 ## Optionen
 
 **Einstellungen → Optionen…** öffnet ein modales Fenster: Das Hauptfenster bleibt bis zum Schließen gesperrt, Übertragungen laufen weiter. Änderungen gelten sofort; **Schließen** oder Escape macht sie nicht rückgängig. Befehlszeilenoptionen stehen grau unter den Bedienelementen. Mindestgröße: **800 × 740**; Hauptfenster, Fehlerbericht und Diagnose: **1100 × 600**.
 
-Die vier Reiter heißen **Einstellungen**, **Tastenkürzel**, **Geschwindigkeitslimits** und **Stapelabschluss**. Die Limits umfassen die globale Grenze und den Standard für neue Aufträge. Bestehende Aufträge ändern Sie über die ausgewählten Zeilen und **Rechtsklick → Geschwindigkeit des Auftrags begrenzen…**. Das Limit steht in **Details**, auch bei Ordnern; bei unbegrenzter Geschwindigkeit entfällt der Zusatz.
+Die fünf Reiter sind Einstellungen, Tastenkürzel, Geschwindigkeitsbegrenzungen, Stapelabschluss und Ausschlüsse. Befehlszeilenparameter erscheinen grau. Das Limit eines bestehenden Stapels wird im Kontextmenü seiner Zeilen geändert und in der Detailspalte angezeigt.
+
+## Elemente hinzufügen, Tastenkürzel und Ausschlüsse
+
+Das Menü **Elemente hinzufügen** enthält **Dateien hinzufügen…** (Strg+Umschalt+O), **Ordner hinzufügen…** (Strg+O) und **Zwischenablage-Dateien** (Strg+V). Kopieren oder Ausschneiden bleibt erhalten. Im Leerlauf warten alle Ergänzungen innerhalb von Gad auf **Starten**; bei bereits gestarteten Übertragungen werden sie eingereiht. Nur externes Einfügen aus dem Dateimanager startet automatisch.
+
+**Strg+F** öffnet die Suche. **Strg+Q** fordert das Beenden an; bei aktiven Übertragungen wird es verweigert. **Strg+Alt+W** blendet das Fenster aus, ohne Übertragungen anzuhalten. Die Flagge neben Profile ändert sofort die Sprache. Hauptfenster-Schaltflächen besitzen Kurzinfos.
