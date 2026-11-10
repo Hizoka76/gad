@@ -804,8 +804,11 @@ mod tests {
                 } else {
                     "ext4"
                 };
-                writeln!(text, "{id} 0 8:1 / /mount/{id} rw,relatime - {kind} /dev/example rw")
-                    .expect("write mount fixture to String");
+                let result = writeln!(
+                    text,
+                    "{id} 0 8:1 / /mount/{id} rw,relatime - {kind} /dev/example rw"
+                );
+                result.expect("write mount fixture to String");
             }
             let id = if scenario == "kio" { 128 } else { 3 };
             assert_eq!(is_kio_fuse_mount(&text, id), scenario == "kio");
