@@ -796,16 +796,17 @@ mod tests {
     #[ignore = "benchmark explicite de l'identification KIO Fuse"]
     fn benchmark_kio_mount_detection() {
         for scenario in ["local", "local-with-fuse", "kio"] {
-            let text = (1..=128)
-                .map(|id| {
-                    let kind = if id == 128 && scenario != "local" {
-                        "fuse.kio-fuse"
-                    } else {
-                        "ext4"
-                    };
-                    format!("{id} 0 8:1 / /mount/{id} rw,relatime - {kind} /dev/example rw\n")
-                })
-                .collect::<String>();
+            use std::fmt::Write as _;
+            let mut text = String::new();
+            for id in 1..=128 {
+                let kind = if id == 128 && scenario != "local" {
+                    "fuse.kio-fuse"
+                } else {
+                    "ext4"
+                };
+                writeln!(text, "{id} 0 8:1 / /mount/{id} rw,relatime - {kind} /dev/example rw")
+                    .expect("write mount fixture to String");
+            }
             let id = if scenario == "kio" { 128 } else { 3 };
             assert_eq!(is_kio_fuse_mount(&text, id), scenario == "kio");
             for trial in 0..3 {
