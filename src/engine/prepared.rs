@@ -27,22 +27,36 @@ impl Engine {
                     return Err("Wait for file preparation to finish before starting".into());
                 }
             }
+            state.pending_starts.extend(ids.iter().copied());
             for job in &mut state.jobs {
                 if ids.contains(&job.id) {
                     job.start_required = false;
                 }
             }
         }
-        if let Err(error) = self.save() {
+        self.commit_prepared_start(&ids)?;
+        Ok(json!({"ok":true,"started":ids.len()}))
+    }
+    /// L’ordonnanceur ne libère l’autorisation qu’après sauvegarde ; un refus rend les lots à leur préparation.
+    pub(super) fn commit_prepared_start(
+        &self,
+        ids: &std::collections::BTreeSet<u64>,
+    ) -> Result<(), String> {
+        let result = self.save();
+        {
             let mut state = self.shared.state.lock().unwrap();
-            for job in &mut state.jobs {
-                if ids.contains(&job.id) && job.state == TransferState::Waiting {
-                    job.start_required = true;
+            if result.is_err() {
+                for job in &mut state.jobs {
+                    if ids.contains(&job.id) {
+                        job.start_required = true;
+                    }
                 }
             }
-            return Err(error);
+            for id in ids {
+                state.pending_starts.remove(id);
+            }
         }
         self.shared.wake.notify_all();
-        Ok(json!({"ok":true,"started":ids.len()}))
+        result
     }
 }

@@ -1,3 +1,4 @@
+#include "rate_spinbox.h"
 #include "i18n.h"
 #include "documentation.h"
 #include "protocol.h"
@@ -216,8 +217,8 @@ Window::Window(bool background):deferHiddenTree(background){
     });
     auto *options = new QHBoxLayout;
     // Le plafond global s’applique immédiatement à la somme des transferts, même déjà démarrés.
-    globalRate=new QDoubleSpinBox;globalRate->setObjectName("globalRateLimit");
-    globalRate->setRange(0,1048576);globalRate->setDecimals(2);globalRate->setSingleStep(1);
+    globalRate=new SpeedLimitSpinBox;globalRate->setObjectName("globalRateLimit");
+    globalRate->setSingleStep(1);
     I18n::bindProperty(globalRate,"suffix",[=]{return GAD_TR(" MiB/s");});I18n::bindProperty(globalRate,"specialValueText",[=]{return GAD_TR("Unlimited");});globalRate->setKeyboardTracking(false);
     I18n::bindProperty(globalRate,"toolTip",[=]{return GAD_TR("Total speed limit for copies and moves that copy data.\n0 = unlimited.\nCan be changed during transfers; fast renames are not throttled.");});
     globalRate->setValue(QSettings().value("rateLimit",0).toLongLong()/1048576.0);
@@ -234,7 +235,7 @@ Window::Window(bool background):deferHiddenTree(background){
     ratesLayout->addLayout(options);
     ratesLayout->addWidget(commandHint("globalRate","--rate-limit MiB/s"));
     // Le plafond par défaut est capturé à la soumission, distinct de la limite globale active.
-    requestRate=new QDoubleSpinBox;requestRate->setObjectName("defaultRequestRateLimit");requestRate->setRange(0,1048576);requestRate->setDecimals(2);requestRate->setKeyboardTracking(false);
+    requestRate=new SpeedLimitSpinBox;requestRate->setObjectName("defaultRequestRateLimit");requestRate->setKeyboardTracking(false);
     I18n::bindProperty(requestRate,"suffix",[]{return GAD_TR(" MiB/s");});I18n::bindProperty(requestRate,"specialValueText",[]{return GAD_TR("Unlimited");});
     I18n::bindProperty(requestRate,"toolTip",[]{return GAD_TR("Applies to new requests only.\nExisting requests and the global speed limit stay unchanged.");});
     requestRate->setValue(QSettings().value("requestRateLimit",0).toLongLong()/1048576.0);
@@ -530,8 +531,24 @@ Window::Window(bool background):deferHiddenTree(background){
         controlDesktopTransfers(action);
     },this,QGuiApplication::platformName()!="offscreen" && QGuiApplication::platformName()!="minimal");
     desktopTransfers->setObjectName("desktopTransfers");desktopTransfers->setProgressMessage(progressMessage->isChecked());
-    auto *timer = new QTimer(this); timer->setInterval(400); connect(timer, &QTimer::timeout, this, [this] { refresh(); }); timer->start();
-    connect(tray,&QSystemTrayIcon::messageClicked,this,[this]{showMainWindow();if(auto *dialog=findChild<QDialog *>("completionCountdown")){dialog->show();dialog->raise();dialog->activateWindow();}});
+    // Le compte à rebours garde son annulation séparée de celle des transferts.
+    completionNotification=new TransferNotifications([this](const QString &action){
+        if(action=="cancel")cancelCompletion();
+    },this,QGuiApplication::platformName()!="offscreen" && QGuiApplication::platformName()!="minimal");
+    completionNotification->setObjectName("completionNotification");
+    auto *timer = new QTimer(this);timer->setObjectName("queueRefreshTimer");timer->setInterval(400);
+    // Les petits renommages sont affichés vite ; les grands arbres gardent une cadence modérée pour préserver le moteur.
+    connect(timer,&QTimer::timeout,this,[this,timer]{
+        refresh();bool quick=false;
+        for(const auto &value:state["jobs"].toArray()) {
+            const auto job=value.toObject();const auto status=job["state"].toString();
+            quick |= status==Protocol::State::Scanning ||
+                (!paused && !job["paused"].toBool() && !job["start_required"].toBool() && !job["cancel"].toBool() && job["fast_move"].toBool() && job["entries"].toArray().size()<=2048 &&
+                 (status==Protocol::State::Waiting || status==Protocol::State::Running || status==Protocol::State::Verifying));
+        }
+        timer->setInterval(quick?50:400);
+    });timer->start();
+    connect(tray,&QSystemTrayIcon::messageClicked,this,[this]{showMainWindow();});
     qApp->installEventFilter(this);
     I18n::onChange(tree,"headers",[transferTree]{transferTree->updateHeaderIndicators();},false);
     setupProfiles(settingsRow);
@@ -687,7 +704,7 @@ void Window::closeEvent(QCloseEvent *event){
         QMessageBox::information(this, "Gad", GAD_TR("Transfers are still queued or running. Let them finish or cancel the operations before quitting."));
         event->ignore(); return;
     }
-    if(profileApplying){error(GAD_TR("A transfer profile is already being applied."));event->ignore();return;}
+    if(profileApplying){error(GAD_TR("Settings are already being applied."));event->ignore();return;}
     const auto shutdown=engine({{"command", Protocol::Command::Shutdown}});
     if (shutdown.contains("error")) { error(shutdown["error"].toString()); event->ignore(); return; }
     closing = true; event->accept();

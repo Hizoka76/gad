@@ -1,5 +1,6 @@
 """Installe les guides HTML/Markdown déjà générés et les images des sources Markdown."""
 import json
+from atomic_files import publish_bytes
 from pathlib import Path
 from doc_catalog import GUIDES, LANGUAGES, portal, runtime_catalog
 
@@ -13,8 +14,8 @@ def install(destination, source=None):
         if not original.is_file():return False
         target=destination/relative;target.parent.mkdir(parents=True,exist_ok=True)
         data=original.read_bytes()
-        if not target.exists() or target.read_bytes()!=data:
-            staged=target.with_name('.'+target.name+'.install');staged.write_bytes(data);staged.replace(target)
+        if target.is_symlink() or not target.exists() or target.read_bytes()!=data:
+            publish_bytes(target,data)
         return True
     for guide in catalog['guides']:
         for kind in ('html','md'):copied+=int(copy(guide[kind]))
@@ -30,5 +31,5 @@ def install(destination, source=None):
         try:old.rmdir()
         except OSError:pass
     destination.mkdir(parents=True,exist_ok=True)
-    staged=destination/'.catalog.json.install';staged.write_text(json.dumps(catalog,ensure_ascii=False,indent=2)+'\n');staged.replace(destination/'catalog.json')
+    publish_bytes(destination/'catalog.json',(json.dumps(catalog,ensure_ascii=False,indent=2)+'\n').encode('utf-8'))
     print(f'Documentation installée : {copied} fichiers HTML/Markdown')

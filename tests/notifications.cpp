@@ -224,6 +224,28 @@ int main(int argc,char **argv){
     rapid.sync(rapidState,true);rapid.setProgressMessage(false);rapid.setProgressMessage(true);rapid.sync(rapidState,true);
     QTRY_COMPARE_WITH_TIMEOUT(jobs.requests,beforeRapid+2,2000);auto *obsolete=jobs.views[jobs.views.size()-2];auto *current=jobs.views.last();
     QTRY_VERIFY_WITH_TIMEOUT(obsolete->terminated,2000);QTRY_VERIFY_WITH_TIMEOUT(current->updates>0,2000);check(!current->terminated,"La nouvelle vue reste active après une ancienne réponse");rapid.setProgressMessage(false);QTRY_VERIFY_WITH_TIMEOUT(current->terminated,2000);
+    // Le compte à rebours partage le protocole natif, mais n’expose que l’annulation.
+    QString countdownCommand;TransferNotifications countdown([&](const QString &action){countdownCommand=action;});
+    const int beforeCountdown=jobs.requests;
+    countdown.showCountdown("Suspend",30,30);
+    QTRY_COMPARE_WITH_TIMEOUT(jobs.requests,beforeCountdown+1,2000);
+    auto *countdownView=jobs.views.last();QTRY_VERIFY_WITH_TIMEOUT(countdownView->updates>0,2000);
+    check(jobs.capabilities==1,"Le compte à rebours est annulable sans pause");
+    check(countdownView->properties["percent"].toUInt()==0,"Le compte à rebours commence à zéro");
+    countdown.showCountdown("Suspend",15,30);
+    QTRY_COMPARE_WITH_TIMEOUT(countdownView->properties["percent"].toUInt(),50u,2000);
+    QTest::qWait(20);const auto countdownUpdates=countdownView->updates;
+    for(int i=0;i<10;++i)countdown.showCountdown("Suspend",15,30);
+    QTest::qWait(20);check(countdownView->updates==countdownUpdates,"Les rafraîchissements identiques ne republient pas le compte à rebours");
+    check(jobs.requests==beforeCountdown+1,"Une seule notification pendant le compte à rebours");
+    Q_EMIT countdownView->suspendRequested();QTest::qWait(20);check(countdownCommand.isEmpty(),"Aucune pause des transferts depuis le compte à rebours");
+    Q_EMIT countdownView->cancelRequested();QTRY_COMPARE_WITH_TIMEOUT(countdownCommand,QString("cancel"),2000);
+    countdown.closeCountdown();QTRY_VERIFY_WITH_TIMEOUT(countdownView->terminated,2000);
+    check(countdown.properties().isEmpty(),"Annuler efface le compte à rebours");
+    countdownCommand.clear();Q_EMIT countdownView->cancelRequested();QTest::qWait(20);check(countdownCommand.isEmpty(),"Une ancienne notification ne commande plus rien");
+    countdown.showCountdown("Suspend",5,5);countdown.closeCountdown();
+    QTRY_COMPARE_WITH_TIMEOUT(jobs.requests,beforeCountdown+2,2000);
+    QTRY_VERIFY_WITH_TIMEOUT(jobs.views.last()->terminated,2000);
     for(const auto *published:jobs.views) {
         check(published->properties["infoMessage"].toString().count("gad://show")==1,"Chaque état du suivi possède exactement un lien");
         if(published->terminated)check(published->errorText.count("gad://show")==1,"Chaque bilan final possède exactement un lien");

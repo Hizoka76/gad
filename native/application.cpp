@@ -96,9 +96,10 @@ extern "C" int sc_gui(int argc, char **argv) {
     const bool explicitMd5 = !configuring && args.removeAll("--md5") > 0;
     const bool explicitProperties=!configuring && args.removeAll("--properties")>0;
     if (args.size() == 3 && args[1] == "--export-icons") {if(!profile.isNull())return 2;return exportIcons(args[2]);}
-    if (args.contains("--help") || args.contains("-h")) {
+    // L’aide est une commande : un opérande -h peut être un nom ou un motif valide.
+    if (args.size()==2 && (args[1]=="--help" || args[1]=="-h")) {
         std::puts(qPrintable(GAD_TR("Gad copies. — File transfer manager for KDE\n  gad\n  gad --background\n  gad --paste FOLDER\n  gad --copy SOURCE… --to FOLDER\n  gad --move SOURCE… --to FOLDER\n  gad --status\n  gad --smoke-test\n  Add --md5 to verify file contents.")));
-        std::puts("  gad --paste-current\n  gad --paste-context URL...\n  gad --dolphin [URL...]\n  gad --profile NAME [--copy SOURCE... --to FOLDER | --move SOURCE... --to FOLDER | --paste FOLDER]\n  gad --configure [--md5|--no-md5] [--properties|--no-properties]\n    [--verify-fast-move|--no-verify-fast-move] [--verify-space|--no-verify-space] [--keep-history|--no-keep-history]\n    [--progress-message|--no-progress-message]\n    [--resume-interrupted|--no-resume-interrupted] [--include-hidden|--no-include-hidden]\n    [--allow-duplication|--no-allow-duplication] [--autostart|--no-autostart]\n    [--dolphin-ctrl-v|--no-dolphin-ctrl-v]\n    [--krusader-ctrl-v|--no-krusader-ctrl-v]\n    [--konqueror-ctrl-v|--no-konqueror-ctrl-v] [--language LOCALE]\n    [--rate-limit MIB_PER_SECOND] [--request-rate-limit MIB_PER_SECOND] [--exclude-folder PATTERN] [--exclude-file PATTERN]\n    [--completion-action none|notify|quit|suspend|poweroff] [--completion-delay SECONDS] [--clear-exclusions] [--conflict-policy ask|skip|newer|rename]");
+        std::puts("  gad --paste-current\n  gad --paste-context URL...\n  gad --dolphin [URL...]\n  gad --profile NAME [--copy SOURCE... --to FOLDER | --move SOURCE... --to FOLDER | --paste FOLDER]\n  gad --configure [--md5|--no-md5] [--properties|--no-properties]\n    [--verify-fast-move|--no-verify-fast-move] [--verify-space|--no-verify-space] [--keep-history|--no-keep-history]\n    [--progress-message|--no-progress-message]\n    [--resume-interrupted|--no-resume-interrupted] [--include-hidden|--no-include-hidden]\n    [--allow-duplication|--no-allow-duplication] [--autostart|--no-autostart]\n    [--dolphin-ctrl-v|--no-dolphin-ctrl-v]\n    [--krusader-ctrl-v|--no-krusader-ctrl-v]\n    [--konqueror-ctrl-v|--no-konqueror-ctrl-v] [--language LOCALE]\n    [--rate-limit MIB_PER_SECOND] [--request-rate-limit MIB_PER_SECOND] [--exclude-folder PATTERN] [--exclude-file PATTERN]\n    [--completion-action none|notify|clear|quit|suspend|poweroff] [--completion-delay SECONDS] [--clear-exclusions] [--conflict-policy ask|skip|newer|rename]");
         std::printf("  --properties: %s\n",qPrintable(GAD_TR("Verify properties")));return 0;
     }
     const bool smoke = args.size() == 2 && args[1] == "--smoke-test";
@@ -148,14 +149,23 @@ extern "C" int sc_gui(int argc, char **argv) {
         if (initial.contains("profile") || initial["command"]==Protocol::Command::Configure || initial["verify_space"].toBool() || initial["mode"] == "move" || initial["verify_md5"].toBool() || initial["verify_properties"].toBool() || SourceUrls::needsResolution(initial)) {
             QLocalSocket probe; probe.connectToServer(endpoint);
             if (!probe.waitForConnected(500)) return 1;
-            probe.write("{\"command\":\"status\"}\n"); probe.waitForBytesWritten(1000);
+            probe.write("{\"command\":\"status\",\"summary\":true}\n"); probe.waitForBytesWritten(1000);
             QByteArray status;
             QElapsedTimer probeTimeout; probeTimeout.start();
             while (!status.contains('\n') && probeTimeout.elapsed() < 3000) {
                 if (probe.bytesAvailable() || probe.waitForReadyRead(200)) status += probe.readAll();
+                else if(probe.state()==QLocalSocket::UnconnectedState)break;
+            }
+            // Une sonde tronquée ou invalide n’identifie aucune version : échouer sans dialogue de compatibilité.
+            QJsonParseError probeError;const auto end=status.indexOf('\n');
+            const auto response=QJsonDocument::fromJson(status.left(end),&probeError);
+            const auto version=response.object().value("protocol_version");
+            const int availableVersion=version.toInt(-1);
+            if(end<0 || probeError.error!=QJsonParseError::NoError || !response.isObject() || !version.isDouble() || availableVersion<1) {
+                std::fprintf(stderr,"%s",qPrintable(GAD_TR("Gad is not responding\n")));return 1;
             }
             const int requiredVersion = initial["command"]==Protocol::Command::Configure?Protocol::Command::Version:qMax(SourceUrls::requiredProtocol(initial),initial["verify_md5"].toBool() ? 3 : 2);
-            if (QJsonDocument::fromJson(status.trimmed()).object()["protocol_version"].toInt() < requiredVersion) {
+            if (availableVersion < requiredVersion) {
                 const QString message = GAD_TR("An older version of Gad is still running. Let its transfers finish, then quit and restart Gad to enable this feature. No transfer has been added.");
                 std::fprintf(stderr, "%s\n", qPrintable(message));
                 QMessageBox::warning(nullptr, "Gad", message);
@@ -166,13 +176,22 @@ extern "C" int sc_gui(int argc, char **argv) {
         if (!client.waitForBytesWritten(3000)) return 1;
         QByteArray reply;
         QElapsedTimer timeout; timeout.start();
-        while (!reply.contains('\n') && timeout.elapsed() < (initial.contains("profile")?30000:10000)) {
+        // Les intégrations et restaurations disposent de 60 s ; la résolution KIO a son propre délai de 30 s.
+        const int responseTimeout=initial.contains("profile") || initial["command"]==Protocol::Command::Configure?60000:
+            SourceUrls::needsResolution(initial)?35000:10000;
+        while (!reply.contains('\n') && timeout.elapsed() < responseTimeout) {
             if (client.bytesAvailable() || client.waitForReadyRead(500)) reply += client.readAll();
             else if (client.state() == QLocalSocket::UnconnectedState) break;
         }
-        if (reply.isEmpty()) { std::fprintf(stderr, "%s", qPrintable(GAD_TR("Gad is not responding\n"))); return 1; }
-        std::fputs(reply.constData(), stdout);
-        return QJsonDocument::fromJson(reply.trimmed()).object().contains("error") ? 1 : 0;
+        // Une déconnexion ou un délai peut laisser des octets sans réponse complète et valide.
+        QJsonParseError replyError;
+        const auto newline=reply.indexOf('\n');
+        const auto response=QJsonDocument::fromJson(reply.left(newline),&replyError);
+        if (newline<0 || replyError.error!=QJsonParseError::NoError || !response.isObject()) {
+            std::fprintf(stderr, "%s", qPrintable(GAD_TR("Gad is not responding\n"))); return 1;
+        }
+        std::fputs(reply.left(newline+1).constData(), stdout);
+        return response.object().contains("error") ? 1 : 0;
     };
     // Le client --status ne doit jamais créer un second moteur si aucun serveur n’est disponible.
     const int forwarded = forward(); if (forwarded >= 0) return forwarded;

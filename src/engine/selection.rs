@@ -115,6 +115,17 @@ impl Engine {
             for job in &mut state.jobs {
                 if jobs.contains(&job.id) {
                     if cancel_only {
+                        // Une interruption récupérable reste annulable bien que son état soit terminal.
+                        if job.resume_pending && job.state == TransferState::Error {
+                            job.resume_pending = false;
+                            job.cancel = true;
+                            job.state = TransferState::Cancelled;
+                            for entry in &mut job.entries {
+                                if entry.interrupted {
+                                    entry.state = TransferState::Cancelled;
+                                }
+                            }
+                        }
                         if !terminal(&job.state) {
                             job.cancel = true;
                             job.resume_pending = false;
@@ -148,7 +159,7 @@ impl Engine {
                     }
                     continue;
                 }
-                let selected_entries = entries
+                let mut selected_entries = entries
                     .iter()
                     .filter(|(id, _)| *id == job.id)
                     .map(|(_, i)| *i)
@@ -156,30 +167,24 @@ impl Engine {
                 if selected_entries.is_empty() {
                     continue;
                 }
-                // Développer une sélection de dossier par préfixe de Path inclut ses vrais descendants.
-                let roots = selected_entries
+                let directories = selected_entries
                     .iter()
-                    .map(|i| {
-                        (
-                            *i,
-                            job.entries[*i].source.clone(),
-                            job.entries[*i].destination.clone(),
-                            job.entries[*i].kind == "directory",
-                        )
-                    })
-                    .collect::<Vec<_>>();
+                    .copied()
+                    .filter(|index| job.entries[*index].kind == "directory")
+                    .collect::<HashSet<_>>();
+                controls::expand_directories(job, &directories, &mut selected_entries);
                 let stopped = terminal(&job.state);
+                let interrupted = job.resume_pending && job.state == TransferState::Error;
                 let mut undo_indices = Vec::new();
                 for (index, entry) in job.entries.iter_mut().enumerate() {
-                    if !roots.iter().any(|(i, root, target, directory)| {
-                        *i == index
-                            || (*directory
-                                && entry.source.starts_with(root)
-                                && entry.destination.starts_with(target))
-                    }) {
+                    if !selected_entries.contains(&index) {
                         continue;
                     }
                     if cancel_only {
+                        if interrupted && entry.interrupted && entry.state == TransferState::Error {
+                            entry.cancel = true;
+                            entry.state = TransferState::Cancelled;
+                        }
                         if !terminal(&entry.state) && entry.state != TransferState::Skipped {
                             entry.cancel = true;
                             if entry.state == TransferState::Waiting {
@@ -206,6 +211,20 @@ impl Engine {
                     } else {
                         entry.cancel = true;
                     }
+                }
+                // Une sélection partielle laisse les autres fichiers récupérables ; le dernier annule le lot.
+                if cancel_only
+                    && interrupted
+                    && !job.entries.iter().any(|entry| {
+                        entry.interrupted
+                            && entry.state == TransferState::Error
+                            && !entry.cancel
+                            && !entry.hidden
+                    })
+                {
+                    job.resume_pending = false;
+                    job.cancel = true;
+                    job.state = TransferState::Cancelled;
                 }
                 if !undo_indices.is_empty() {
                     job.undo_entries = Some(undo_indices);

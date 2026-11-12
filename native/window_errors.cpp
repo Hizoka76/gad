@@ -47,10 +47,11 @@ void Window::showErrorReport() {
         const auto fresh=engine({{"command",Protocol::Command::ErrorReport}});
         if(fresh.contains("error")){summary->setText(I18n::message(fresh["error"].toString()));return;}
         QSignalBlocker blocker(rows);rows->setSortingEnabled(false);rows->clear();detail->clear();*report=fresh;
+        const auto metadata=ErrorReport::jobs(fresh);
         int retryable=0,index=0;
         for(const auto &value:fresh["records"].toArray()){
-            const auto record=value.toObject();auto *row=new QTreeWidgetItem(rows);
-            const QStringList values={QString::number(record["job"].toInteger()),record["mode"]=="move"?GAD_TR("Move"):GAD_TR("Copy"),ErrorReport::source(fresh,record),ErrorReport::destination(fresh,record),label(record["state"].toString()),I18n::message(record["error"].toString())};
+            const auto record=value.toObject();const auto owner=metadata.value(record["job"].toInteger());auto *row=new QTreeWidgetItem(rows);
+            const QStringList values={QString::number(record["job"].toInteger()),record["mode"]=="move"?GAD_TR("Move"):GAD_TR("Copy"),ErrorReport::sourceForJob(owner,record),ErrorReport::destinationForJob(owner,record),label(record["state"].toString()),I18n::message(record["error"].toString())};
             for(int c=0;c<values.size();++c){auto display=values[c];display.replace('\n'," ↵ ");display.replace('\r'," ");display.replace('\t'," ");row->setText(c,display);row->setToolTip(c,values[c]);}
             row->setData(0,Qt::UserRole,index++);if(record["retryable"].toBool())++retryable;
         }

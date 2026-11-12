@@ -91,7 +91,7 @@ TEXT={'fr': ('Documentation',
 
 def main():
     for lang in LANGUAGES:
-        t=TEXT[lang];lines=['# Gad — '+t[0],'','Version 0.3.0 · '+LABELS[lang]['language'],'','## '+t[1],'',t[8],'','| '+' | '.join(t[2:5])+' |','| --- | --- | --- |']
+        t=TEXT[lang];lines=['# Gad — '+t[0],'','Version 0.4.0 · '+LABELS[lang]['language'],'','## '+t[1],'',t[8],'','| '+' | '.join(t[2:5])+' |','| --- | --- | --- |']
         for guide in GUIDES:
             if guide.language==lang:lines.append('| '+guide.title+' | [Markdown]('+guide.source+') | [HTML](html/'+guide.slug+'.html) |')
         testing='TESTING.md' if lang=='fr' else 'TESTING.'+lang+'.md'

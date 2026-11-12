@@ -1,3 +1,4 @@
+#include "rate_spinbox.h"
 #include "window.h"
 #include "bridge.h"
 #include "protocol.h"
@@ -13,14 +14,14 @@ TransferProfiles::Profile Window::currentTransferProfile() const {
 
 /// Une configuration validée groupe les options internes ; les deux actions externes ont leur propre retour arrière.
 static QJsonObject profileConfiguration(const TransferProfiles::Profile &profile) {
-    auto request=profile.options;auto gui=profile.gui;gui.remove("autostart");gui.remove("dolphin_ctrl_v");gui["request_rate_limit"]=profile.rate;
+    auto request=profile.options;auto gui=profile.gui;gui.remove("autostart");gui.remove("dolphin_ctrl_v");gui.remove("krusader_ctrl_v");gui["request_rate_limit"]=profile.rate;
     request["command"]=Protocol::Command::Configure;request["gui_settings"]=gui;return request;
 }
 
 /// Empêcher les changements concurrents de réglages pendant le traitement asynchrone du raccourci.
 void Window::setProfileApplying(bool applying) {
     profileApplying=applying;
-    for(const auto &name:QStringList{"profilesButton","languageMenuButton","settingsPanel","shortcutsPanel","ratesPanel","completionPanel"})if(auto *widget=findChild<QWidget *>(name))widget->setEnabled(!applying);
+    for(const auto &name:QStringList{"profilesButton","languageMenuButton","settingsPanel","shortcutsPanel","ratesPanel","completionPanel","exclusionsPanel"})if(auto *widget=findChild<QWidget *>(name))widget->setEnabled(!applying);
     if(auto *dialog=findChild<QDialog *>("profilesDialog"))dialog->setEnabled(!applying);
 }
 
@@ -28,19 +29,43 @@ void Window::setProfileApplying(bool applying) {
 bool Window::applyTransferProfile(const QString &id,std::function<void(QJsonObject)> reply) {
     const auto fail=[this,reply](const QString &message){if(reply)reply({{"error",message}});else error(message);return false;};
     if(completionExecuting){return fail(GAD_TR("A completion action is being dispatched; no operation was added"));}
-    if(profileApplying){return fail(GAD_TR("A transfer profile is already being applied."));}
+    if(profileApplying){return fail(GAD_TR("Settings are already being applied."));}
     QString failure;const auto profiles=TransferProfiles::load(failure);if(!failure.isEmpty()){return fail(failure);}
     auto found=std::find_if(profiles.begin(),profiles.end(),[&](const auto &profile){return profile.id==id;});
     if(found==profiles.end()){return fail(GAD_TR("This transfer profile no longer exists."));}
-    const auto profile=*found;
+    return applyTransferSettings(*found,std::move(reply));
+}
+
+/// Profils et configurations partielles partagent le même verrou logique et le même retour arrière.
+bool Window::applyTransferSettings(const TransferProfiles::Profile &profile,std::function<void(QJsonObject)> reply,QJsonObject patch,QSet<QString> externalFields) {
+    const auto fail=[this,reply](const QString &message){if(reply)reply({{"error",message}});else error(message);return false;};
+    if(completionExecuting)return fail(GAD_TR("A completion action is being dispatched; no operation was added"));
+    if(profileApplying)return fail(GAD_TR("Settings are already being applied."));
     if(!languageAvailable(profile.gui["language"].toString())){return fail(GAD_TR("The language saved in this profile is unavailable."));}
     auto *dolphin=findChild<QCheckBox *>("dolphinShortcut");
-    if(dolphin->property("configuring").toBool() || findChild<QCheckBox *>("krusaderShortcut")->property("configuring").toBool()){return fail(GAD_TR("A transfer profile is already being applied."));}
-    const auto previous=currentTransferProfile();const bool changeDolphin=profile.gui["dolphin_ctrl_v"].toBool()!=previous.gui["dolphin_ctrl_v"].toBool();
-    const bool changeKrusader=profile.gui.contains("krusader_ctrl_v") && profile.gui["krusader_ctrl_v"]!=previous.gui["krusader_ctrl_v"];
-    const bool changeStartup=profile.gui["autostart"].toBool()!=autostartEnabled();
+    if(dolphin->property("configuring").toBool() || findChild<QCheckBox *>("krusaderShortcut")->property("configuring").toBool()){return fail(GAD_TR("Settings are already being applied."));}
+    const auto previous=currentTransferProfile();const bool changeDolphin=externalFields.contains("dolphin_ctrl_v") || profile.gui["dolphin_ctrl_v"].toBool()!=previous.gui["dolphin_ctrl_v"].toBool();
+    const bool changeKrusader=externalFields.contains("krusader_ctrl_v") || (profile.gui.contains("krusader_ctrl_v") && profile.gui["krusader_ctrl_v"]!=previous.gui["krusader_ctrl_v"]);
+    const bool changeStartup=(patch.isEmpty() || externalFields.contains("autostart")) && profile.gui["autostart"].toBool()!=autostartEnabled();
     const bool startupExisted=QFileInfo::exists(autostartPath());QByteArray startupBytes;QFileDevice::Permissions startupPermissions{};
     if(changeStartup && startupExisted){QFile file(autostartPath());if(!file.open(QIODevice::ReadOnly) || file.size()>1024*1024){return fail(GAD_TR("Unable to change Gad's startup setting."));}startupBytes=file.readAll();startupPermissions=file.permissions();if(file.error()!=QFile::NoError){return fail(GAD_TR("Unable to change Gad's startup setting."));}}
+    const auto applying=patch.isEmpty()?profileConfiguration(profile):patch;
+    auto restoring=profileConfiguration(previous);
+    if(!patch.isEmpty()) {
+        // Rétablir seulement les champs demandés : un changement de raccourci ne désarme pas une fin de lot.
+        restoring={{"command",Protocol::Command::Configure}};
+        for(auto field=patch.begin();field!=patch.end();++field) {
+            if(previous.options.contains(field.key()))restoring[field.key()]=previous.options[field.key()];
+            else if(field.key()=="exclusion_patch")restoring["exclusions"]=previous.options["exclusions"];
+        }
+        QJsonObject gui;const auto fields=patch.value("gui_settings").toObject();
+        for(auto field=fields.begin();field!=fields.end();++field)gui[field.key()]=field.key()=="request_rate_limit"?QJsonValue(previous.rate):previous.gui[field.key()];
+        if(patch.contains("gui_settings"))restoring["gui_settings"]=gui;
+    }
+    const auto submit=[this](const QJsonObject &request){
+        if(request.size()==1 || (request.size()==2 && request.contains("gui_settings") && request["gui_settings"].toObject().isEmpty()))return QJsonObject{{"ok",true}};
+        QScopedValueRollback<bool> guard(profileCommitting,true);return handle(request);
+    };
     setProfileApplying(true);
     const auto finish=[this,reply](const QString &message){setProfileApplying(false);refreshProfilesList();if(reply)reply(message.isEmpty()?QJsonObject{{"ok",true}}:QJsonObject{{"error",message}});else if(!message.isEmpty())error(message);};
     auto startupApplied=std::make_shared<bool>(false);
@@ -49,11 +74,11 @@ bool Window::applyTransferProfile(const QString &id,std::function<void(QJsonObje
         if(!startupExisted)return !QFileInfo::exists(autostartPath()) || QFile::remove(autostartPath());
         QSaveFile file(autostartPath());return file.open(QIODevice::WriteOnly) && file.write(startupBytes)==startupBytes.size() && file.setPermissions(startupPermissions) && file.commit();
     };
-    const auto rollback=[this,previous,changeDolphin,changeKrusader,restoreStartup,finish](QString message,bool engineChanged){
+    const auto rollback=[this,previous,changeDolphin,changeKrusader,restoreStartup,finish,submit,restoring](QString message,bool engineChanged){
         bool restored=restoreStartup();
-        if(engineChanged){QScopedValueRollback<bool> guard(profileCommitting,true);if(handle(profileConfiguration(previous)).contains("error"))restored=false;}
+        if(engineChanged && submit(restoring).contains("error"))restored=false;
         {auto *startup=findChild<QCheckBox *>("launchAtStartup");QSignalBlocker blocker(startup);startup->setChecked(autostartEnabled());}
-        const auto done=[finish,message,restored](QJsonObject result){auto text=message;if(!restored || result.contains("error"))text+="\n"+GAD_TR("Some settings could not be restored after the profile failed. Check the options.");finish(text);};
+        const auto done=[finish,message,restored](QJsonObject result){auto text=message;if(!restored || result.contains("error"))text+="\n"+GAD_TR("Some settings could not be restored after the change failed. Check the options.");finish(text);};
         const auto restoreDolphin=[this,previous,changeDolphin,done](QJsonObject krusader){
             const auto final=[done,krusader](QJsonObject result){done(krusader.contains("error")?krusader:result);};
             if(changeDolphin)configureDolphin(previous.gui["dolphin_ctrl_v"].toBool(),final);else final({{"ok",true}});
@@ -61,10 +86,10 @@ bool Window::applyTransferProfile(const QString &id,std::function<void(QJsonObje
         if(changeKrusader)configureKrusader(previous.gui["krusader_ctrl_v"].toBool(),restoreDolphin);else restoreDolphin({{"ok",true}});
     };
     auto completed=std::make_shared<bool>(true);
-    const auto commit=[this,profile,changeStartup,startupApplied,rollback,finish,completed](QJsonObject external){
+    const auto commit=[this,profile,changeStartup,startupApplied,rollback,finish,completed,submit,applying](QJsonObject external){
         if(external.contains("error")){*completed=false;rollback(external["error"].toString(),false);return;}
         if(changeStartup){if(!setAutostart(profile.gui["autostart"].toBool())){*completed=false;rollback(GAD_TR("Unable to change Gad's startup setting."),false);return;}*startupApplied=true;}
-        const auto result=[&]{QScopedValueRollback<bool> guard(profileCommitting,true);return handle(profileConfiguration(profile));}();
+        const auto result=submit(applying);
         if(result.contains("error")){*completed=false;rollback(result["error"].toString(),true);return;}
         {auto *startup=findChild<QCheckBox *>("launchAtStartup");QSignalBlocker blocker(startup);startup->setChecked(autostartEnabled());}
         finish({});
@@ -76,7 +101,7 @@ bool Window::applyTransferProfile(const QString &id,std::function<void(QJsonObje
 
 /// Résumé complet des paramètres sauvegardés ; aucun chemin ne fait partie du profil.
 QString Window::transferProfileDescription(const TransferProfiles::Profile &profile) const {
-    const auto speed=[](qint64 rate){return rate?QLocale().toString(rate/1048576.0,'f',2)+GAD_TR(" MiB/s"):GAD_TR("Unlimited");};
+    const auto speed=[](qint64 rate){return rate?SpeedLimitSpinBox::rateText(rate)+GAD_TR(" MiB/s"):GAD_TR("Unlimited");};
     QStringList completionLines{GAD_TR("Batch completion")+": "+Completion::label(profile.gui["completion_action"].toString()),QString(GAD_TR("Countdown: %1 s…")).arg(profile.gui["completion_delay"].toInt())};
     QStringList lines{GAD_TR("File conflicts:")+" "+conflictPolicy->itemText(conflictPolicy->findData(profile.options["conflict_policy"].toString())),GAD_TR("Global speed limit:")+" "+speed(profile.options["rate_limit"].toInteger()),GAD_TR("Default limit for new requests:")+" "+speed(profile.rate)};
     const auto flag=[&](bool enabled,const QString &text){lines.append((enabled?QString::fromUtf8("✓ "):QString::fromUtf8("— "))+text);};

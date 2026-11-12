@@ -1,6 +1,6 @@
 # Gad — Quick Start
 
-**Gad, il copie. · Advanced Duplication Manager · Version 0.3.0**
+**Gad, il copie. · Advanced Duplication Manager · Version 0.4.0**
 
 [User Guide](USER_GUIDE.en-US.md) · [Developer Guide](DEVELOPER_GUIDE.en-US.md) · [All languages](README.en-US.md)
 

@@ -1,6 +1,6 @@
 # Gad — Guide développeur
 
-Version documentée : **0.3.0**, protocole **33**, 8 novembre 2026.
+Version documentée : **0.4.0**, protocole **35**, 12 novembre 2026.
 
 Ce guide décrit le fonctionnement présent dans le dépôt. Il complète le [guide utilisateur](GUIDE_UTILISATEUR.md), le [guide de tests](../TESTING.md) et les instructions de compilation du [README](../README.md). Gad signifie **Gestionnaire Avancé de Duplication** ; son slogan est « Gad, il copie. »
 
@@ -701,7 +701,7 @@ Les régressions sont dans `src/engine/tests/integrity.rs` : sources éditées �
 
 Le schéma QSettings `transferProfiles` version 5 sépare `options`, `gui` et `request_rate_limit`, sans champ de destination. Le chargement de la version 1 conserve ses options existantes, complète celles qui manquent avec les préférences courantes, supprime la destination et écrit le format 5 une seule fois. Un document invalide ou inconnu reste intact.
 
-`currentTransferProfile` capture tous les contrôles du dialogue Options. L’application vérifie la langue disponible, prépare le raccourci Dolphin de façon asynchrone, sauvegarde exactement l’entrée de démarrage puis applique la configuration interne. En cas de refus, elle tente de restaurer configuration, démarrage et raccourci ; un retour arrière incomplet est signalé. Les modifications concurrentes de paramètres et la fermeture sont bloquées durant cette étape. Les envois de fichiers restent possibles et ne sont pas déclenchés par le profil. Le protocole est 33 ; le schéma local des profils est indépendant du protocole moteur.
+`currentTransferProfile` capture tous les contrôles du dialogue Options. L’application vérifie la langue disponible, prépare le raccourci Dolphin de façon asynchrone, sauvegarde exactement l’entrée de démarrage puis applique la configuration interne. En cas de refus, elle tente de restaurer configuration, démarrage et raccourci ; un retour arrière incomplet est signalé. Les modifications concurrentes de paramètres et la fermeture sont bloquées durant cette étape. Les envois de fichiers restent possibles et ne sont pas déclenchés par le profil. Le protocole est 35 ; le schéma local des profils est indépendant du protocole moteur.
 
 Les tests Qt couvrent migration, suppression de toute destination, capture de toutes les options, échecs Dolphin/moteur, restauration exacte du démarrage, configuration concurrente, langue indisponible et persistance.
 
@@ -760,7 +760,7 @@ La mise en veille et l’extinction utilisent logind et respectent ses autorisat
 
 ## Préparer les transferts dans la liste principale {#preparing-transfers}
 
-Le protocole courant est **33**. `Job.start_required` est persisté ; `prepare_only` distingue les préparations manuelles des demandes externes. L’ordonnanceur ignore les préparations non validées. Le contrôle unique envoie `pause` avec `paused=false` pour démarrer ou reprendre. `staging.rs` crée les temporaires visibles ; `resume.rs` vérifie leur identité et leur préfixe avant reprise. Les commandes de simulation en lecture seule restent internes au moteur, sans fenêtre dédiée.
+Le protocole courant est **35**. `Job.start_required` est persisté ; `prepare_only` distingue les préparations manuelles des demandes externes. L’ordonnanceur ignore les préparations non validées. Le contrôle unique envoie `pause` avec `paused=false` pour démarrer ou reprendre. `staging.rs` crée les temporaires visibles ; `resume.rs` vérifie leur identité et leur préfixe avant reprise. Les commandes de simulation en lecture seule restent internes au moteur, sans fenêtre dédiée.
 
 
 ## Index temporaire des dossiers

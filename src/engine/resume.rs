@@ -17,14 +17,15 @@ impl Version {
     fn read(path: &Path) -> Result<Self, String> {
         let meta = fs::symlink_metadata(path).map_err(reconnect::io_error)?;
         Ok(Self {
-            stamp: undo::Stamp::read(path)?,
+            stamp: undo::Stamp::from_metadata(path, &meta)?,
             ctime: (meta.ctime(), meta.ctime_nsec()),
         })
     }
     fn matches(&self, path: &Path) -> bool {
-        self.stamp.matches(path)
-            && fs::symlink_metadata(path)
-                .is_ok_and(|meta| (meta.ctime(), meta.ctime_nsec()) == self.ctime)
+        fs::symlink_metadata(path).is_ok_and(|meta| {
+            (meta.ctime(), meta.ctime_nsec()) == self.ctime
+                && self.stamp.matches_metadata(path, &meta)
+        })
     }
 }
 
@@ -133,6 +134,64 @@ fn own_partial(record: &undo::Record, path: &Path, meta: &fs::Metadata) -> Resul
     Ok(())
 }
 
+/// Rouvre seulement la version du préfixe qui a réellement été vérifiée, sans encore la tronquer.
+fn reopen_verified(
+    record: &undo::Record,
+    path: &Path,
+    input: &fs::File,
+    verified: &fs::Metadata,
+) -> Result<fs::File, String> {
+    use std::os::unix::fs::PermissionsExt;
+    let current = input.metadata().map_err(reconnect::io_error)?;
+    own_partial(record, path, &current)?;
+    if !same_version(verified, &current) {
+        return Err("Resume refused: temporary file changed during verification".into());
+    }
+    let mut expected = current.clone();
+    if current.mode() & 0o200 == 0 {
+        input
+            .set_permissions(fs::Permissions::from_mode(
+                (current.mode() & 0o7777) | 0o200,
+            ))
+            .map_err(reconnect::io_error)?;
+        expected = input.metadata().map_err(reconnect::io_error)?;
+        // chmod change légitimement ctime, mais ne peut changer ni identité, ni taille, ni contenu daté.
+        if !current.is_file()
+            || (
+                current.dev(),
+                current.ino(),
+                current.len(),
+                current.uid(),
+                current.gid(),
+            ) != (
+                expected.dev(),
+                expected.ino(),
+                expected.len(),
+                expected.uid(),
+                expected.gid(),
+            )
+            || current.modified().ok() != expected.modified().ok()
+        {
+            return Err("Resume refused: temporary file changed during verification".into());
+        }
+    }
+    let output = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .custom_flags(0x20000 | 0x800)
+        .open(path)
+        .map_err(reconnect::io_error)?;
+    let opened = output.metadata().map_err(reconnect::io_error)?;
+    own_partial(record, path, &opened)?;
+    if !same_version(&expected, &opened)
+        || (expected.mode(), expected.uid(), expected.gid())
+            != (opened.mode(), opened.uid(), opened.gid())
+    {
+        return Err("Resume refused: temporary file changed during verification".into());
+    }
+    Ok(output)
+}
+
 impl Engine {
     /// Synchronise d’abord les octets et le nom du temporaire ; le JSON ne promet jamais des octets non durables.
     pub(super) fn save_copy_point(
@@ -145,9 +204,19 @@ impl Engine {
         hash: &md5::Context,
     ) -> Result<(), String> {
         let (id, index) = position;
-        let Some(point) = record.resume.as_mut() else {
+        if record.resume.is_none() {
             return Ok(());
-        };
+        }
+        let path = record
+            .staging
+            .as_deref()
+            .ok_or("Temporaire de reprise absent")?;
+        own_partial(
+            record,
+            path,
+            &output.metadata().map_err(reconnect::io_error)?,
+        )?;
+        let point = record.resume.as_mut().ok_or("Point de reprise absent")?;
         point.environment(entry)?;
         output
             .sync_all()
@@ -167,7 +236,6 @@ impl Engine {
         index: usize,
         entry: &Entry,
     ) -> Result<Partial, String> {
-        use std::os::unix::fs::PermissionsExt;
         let (path, record, point) = partial_path(id, index, entry)?;
         let mut source = OpenOptions::new()
             .read(true)
@@ -222,9 +290,12 @@ impl Engine {
             }
             hash.consume(&b[..count]);
             left -= count as u64;
-            self.update(id, |job| {
-                job.entries[index].resume_checked = point.bytes - left
-            });
+            self.progress(
+                id,
+                index,
+                snapshot::Counter::ResumeChecked,
+                point.bytes - left,
+            );
         }
         if format!("{:x}", hash.clone().finalize()) != point.digest {
             return Err("Resume refused: digest of the previously written portion differs".into());
@@ -238,23 +309,8 @@ impl Engine {
             return Err("Resume refused: temporary file changed during verification".into());
         }
         self.checkpoint_entry(id, index)?;
-        // Après la vérification seulement : rendre le temporaire privé inscriptible si les permissions source étaient déjà appliquées.
-        if now.mode() & 0o200 == 0 {
-            input
-                .set_permissions(fs::Permissions::from_mode((now.mode() & 0o7777) | 0o200))
-                .map_err(reconnect::io_error)?;
-        }
-        let mut output = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .custom_flags(0x20000 | 0x800)
-            .open(path)
-            .map_err(reconnect::io_error)?;
-        let opened = output.metadata().map_err(reconnect::io_error)?;
-        own_partial(record, path, &opened)?;
-        if (opened.dev(), opened.ino()) != (now.dev(), now.ino()) {
-            return Err("Temporary file replaced before resuming; kept".into());
-        }
+        // Une pause peut être intervenue depuis le dernier contrôle du préfixe.
+        let mut output = reopen_verified(record, path, &input, &now)?;
         output.set_len(point.bytes).map_err(reconnect::io_error)?;
         output
             .seek(SeekFrom::Start(point.bytes))
@@ -465,6 +521,33 @@ pub(super) fn due(total: u64, saved: u64, since: Instant) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    /// La réouverture ne tronque jamais un préfixe modifié et accepte un temporaire valide en lecture seule.
+    fn reopen_checks_verified_contents_and_readonly_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = undo::private_directory(&std::env::temp_dir(), "resume-reopen-test").unwrap();
+        let path = dir.join("partial");
+        fs::write(&path, b"verified").unwrap();
+        let input = fs::File::open(&path).unwrap();
+        let record = undo::Record {
+            staging: Some(path.clone()),
+            staging_stamp: Some(undo::Stamp::read(&path).unwrap()),
+            ..Default::default()
+        };
+        let verified = input.metadata().unwrap();
+        fs::write(&path, b"changed contents").unwrap();
+        assert!(reopen_verified(&record, &path, &input, &verified).is_err());
+        assert_eq!(fs::read(&path).unwrap(), b"changed contents");
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o400)).unwrap();
+        let verified = input.metadata().unwrap();
+        let output = reopen_verified(&record, &path, &input, &verified).unwrap();
+        assert_eq!(output.metadata().unwrap().mode() & 0o200, 0o200);
+        assert_eq!(fs::read(&path).unwrap(), b"changed contents");
+        drop(output);
+        drop(input);
+        fs::remove_dir_all(dir).unwrap();
+    }
+
     #[test]
     /// Un point exige de nouveaux octets ; le volume ou le temps suffisent ensuite à le déclencher.
     fn resume_points_follow_bytes_or_elapsed_time() {

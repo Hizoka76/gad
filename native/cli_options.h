@@ -53,11 +53,18 @@ inline QJsonObject configure(const QStringList &arguments,QString &error) {
         else {
             if(supplied.contains(name)){error="Repeated option: --"+name;return {};}
             supplied.insert(name);
-            if(name=="completion-action"){if(!QStringList{"none","notify","quit","suspend","poweroff"}.contains(value)){error="Invalid completion action: "+value;return {};}gui["completion_action"]=value;}
+            if(name=="completion-action"){if(!QStringList{"none","notify","clear","quit","suspend","poweroff"}.contains(value)){error="Invalid completion action: "+value;return {};}gui["completion_action"]=value;}
             else if(name=="completion-delay"){bool ok=false;const auto seconds=value.toInt(&ok);if(!ok || seconds<5 || seconds>3600){error="Invalid countdown: use 5 to 3600 whole seconds.";return {};}gui["completion_delay"]=seconds;}
             else if(name=="conflict-policy"){if(!QStringList{"ask","skip","newer","rename"}.contains(value)){error="Invalid conflict policy: "+value;return {};}result["conflict_policy"]=value;}
             else if(name=="language")gui["language"]=value;
-            else {bool ok=false;const auto rate=value.toDouble(&ok);if(!ok || !std::isfinite(rate) || rate<0 || rate>1048576){error="Invalid --"+name+" (MiB/s): "+value;return {};}if(name=="request-rate-limit")gui["request_rate_limit"]=qRound64(rate*1048576);else result["rate_limit"]=qRound64(rate*1048576);}
+            else {
+                bool ok=false;const auto rate=value.toDouble(&ok);
+                if(!ok || !std::isfinite(rate) || rate<0 || rate>1048576){error="Invalid --"+name+" (MiB/s): "+value;return {};}
+                const auto bytes=qRound64(rate*1048576);
+                // Zéro seul signifie illimité : refuser les limites positives non représentables.
+                if(rate>0 && bytes==0){error="Invalid --"+name+" (MiB/s): "+value;return {};}
+                if(name=="request-rate-limit")gui["request_rate_limit"]=bytes;else result["rate_limit"]=bytes;
+            }
         }
     }
     if(result.size()==1 && patch.isEmpty() && gui.isEmpty() && profile.isNull()){error="--configure requires at least one setting";return {};}

@@ -1,6 +1,12 @@
 //! Déplacements locaux par renommage : aucun contenu n’est relu lorsque MD5 est désactivé.
 //! Une impossibilité de renommage rend la main à l’ordonnanceur avant toute copie classique.
 use super::*;
+use std::{ffi::CString, os::unix::ffi::OsStrExt};
+
+unsafe extern "C" {
+    /// Le chemin C et le pointeur de sortie restent valides pendant cet appel synchrone.
+    fn sc_path_mount_id(path: *const std::ffi::c_char, mount: *mut u64) -> i32;
+}
 
 /// Une entrée terminée ou à replanifier avec les réservations d’une copie ordinaire.
 #[derive(Debug, PartialEq)]
@@ -14,6 +20,29 @@ pub(super) enum EntryOutcome {
 /// Identifie le montage d’un chemin via un descripteur O_PATH sans suivre le dernier lien.
 /// Les parents de destination inexistants sont remontés sans créer de fichier.
 pub(super) fn mount_id(path: &Path) -> Option<u64> {
+    mount_id_using(path, |path, mount| unsafe { sc_path_mount_id(path, mount) })
+}
+
+/// Une seule requête statx remplace l’ouverture du fichier puis la lecture de /proc/self/fdinfo.
+/// Remonter les parents absents garde exactement la résolution historique des destinations.
+fn mount_id_using(
+    path: &Path,
+    probe: impl Fn(*const std::ffi::c_char, *mut u64) -> i32,
+) -> Option<u64> {
+    let mut current = path;
+    loop {
+        let c_path = CString::new(current.as_os_str().as_bytes()).ok()?;
+        let mut id = 0;
+        match probe(c_path.as_ptr(), &mut id) {
+            0 => return Some(id),
+            2 => current = current.parent()?, // ENOENT : aucune création pour sonder un futur chemin.
+            _ => return mount_id_fallback(current),
+        }
+    }
+}
+
+/// Repli pour les anciens noyaux, les masques non disponibles et les filtres de syscalls.
+fn mount_id_fallback(path: &Path) -> Option<u64> {
     let mut path = path;
     loop {
         match OpenOptions::new()
@@ -40,10 +69,14 @@ fn descriptor_mount_id(file: &fs::File) -> Option<u64> {
 
 /// KIO Fuse ne fournit pas de fsyncdir : son protocole confirme les opérations, sans durabilité POSIX du dossier.
 pub(super) fn descriptor_is_kio_fuse(file: &fs::File) -> bool {
-    let Some(id) = descriptor_mount_id(file) else {
+    let Ok(text) = fs::read_to_string("/proc/self/mountinfo") else {
         return false;
     };
-    fs::read_to_string("/proc/self/mountinfo").is_ok_and(|text| is_kio_fuse_mount(&text, id))
+    // Sans montage KIO, aucune lecture supplémentaire de fdinfo n’est utile.
+    if !text.contains("fuse.kio-fuse") {
+        return false;
+    }
+    descriptor_mount_id(file).is_some_and(|id| is_kio_fuse_mount(&text, id))
 }
 
 /// Lecture ciblée du type du montage ; la table est toujours fournie par la lecture courante.
@@ -394,6 +427,16 @@ fn preparation_mount(
 /// Tous les parents, y compris les montages imbriqués, doivent permettre un déplacement local.
 /// Une preuve absente laisse le lot dans le parcours classique, sans modifier les garanties MD5.
 pub(super) fn eligible(entries: &[Entry], moving: bool, verify_md5: bool) -> bool {
+    eligible_using(entries, moving, verify_md5, false)
+}
+
+/// Un renommage de dossier ne modifie pas le ctime des fichiers liés physiquement qu’il contient.
+/// Le contrôle par fichier reste strict si le déplacement du dossier complet n’est plus applicable.
+pub(super) fn eligible_for_job(entries: &[Entry], moving: bool, verify_md5: bool) -> bool {
+    eligible_using(entries, moving, verify_md5, true)
+}
+
+fn eligible_using(entries: &[Entry], moving: bool, verify_md5: bool, trees: bool) -> bool {
     if !moving || verify_md5 || entries.is_empty() {
         return false;
     }
@@ -405,6 +448,11 @@ pub(super) fn eligible(entries: &[Entry], moving: bool, verify_md5: bool) -> boo
     let mut parents = std::collections::HashSet::new();
     let mut mount_cache = std::collections::HashMap::new();
     let mut targets = std::collections::BTreeSet::new();
+    let directories: std::collections::HashSet<_> = entries
+        .iter()
+        .filter(|entry| trees && entry.kind == "directory")
+        .map(|entry| entry.source.as_path())
+        .collect();
     for entry in entries {
         if entry.hidden
             || entry.cancel
@@ -426,13 +474,23 @@ pub(super) fn eligible(entries: &[Entry], moving: bool, verify_md5: bool) -> boo
         }
         // Le renommage d’un autre lien physique changerait aussi le ctime du résultat suivi.
         // Garder la copie classique pour ces inodes évite de rendre leur restauration ambiguë.
-        if fs::symlink_metadata(&entry.source)
-            .map_or(true, |meta| meta.is_file() && meta.nlink() > 1)
-        {
+        if fs::symlink_metadata(&entry.source).map_or(true, |meta| {
+            meta.is_file()
+                && meta.nlink() > 1
+                && !entry
+                    .source
+                    .ancestors()
+                    .skip(1)
+                    .any(|parent| directories.contains(parent))
+        }) {
             return false;
         }
         // Fusion, remplacement et noms homonymes gardent le parcours classique et ses empreintes de contenu.
-        if fs::symlink_metadata(&entry.destination).is_ok() || !targets.insert(&entry.destination) {
+        let occupied = fs::symlink_metadata(&entry.destination).is_ok_and(|meta| {
+            // Une fusion de dossiers ne force pas la recopie des descendants encore absents.
+            !(trees && entry.kind == "directory" && meta.is_dir() && !meta.file_type().is_symlink())
+        });
+        if occupied || !targets.insert(&entry.destination) {
             return false;
         }
         let Some(source) = preparation_mount(&entry.source, &mut mount_cache) else {
@@ -754,6 +812,39 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn statx_mount_probe_matches_descriptor_and_has_a_safe_fallback() {
+        struct Cleanup(PathBuf);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                let _ = fs::remove_dir_all(&self.0);
+            }
+        }
+        let f = Cleanup(std::env::temp_dir().join(format!(
+            "gad-statx-{}-{}",
+            std::process::id(),
+            snapshot::touch()
+        )));
+        let root = f.0.join("source");
+        fs::create_dir_all(root.join("sub")).unwrap();
+        fs::write(root.join("sub/été\n.txt"), b"mount probe").unwrap();
+        let link = f.0.join("link");
+        std::os::unix::fs::symlink("missing-target", &link).unwrap();
+        for path in [
+            root.clone(),
+            root.join("sub/été\n.txt"),
+            link,
+            root.join("absent/deep/file"),
+        ] {
+            let expected = mount_id_fallback(&path);
+            assert!(expected.is_some());
+            assert_eq!(mount_id(&path), expected);
+            for errno in [1, 22, 38, 95] {
+                assert_eq!(mount_id_using(&path, |_, _| errno), expected);
+            }
+        }
+    }
 
     #[test]
     fn targeted_kio_detection_matches_full_parser_including_malformed_lines() {

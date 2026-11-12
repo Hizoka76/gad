@@ -12,6 +12,7 @@ import sys
 import tempfile
 import threading
 import time
+from private_test_session import run as run_private_session
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -53,7 +54,11 @@ def exercise():
         env = dict(os.environ, HOME=str(base / "home"), QT_QPA_PLATFORM="offscreen",
                    XDG_RUNTIME_DIR=str(base / "runtime"), XDG_CONFIG_HOME=str(base / "config"),
                    XDG_DATA_HOME=str(base / "data"), XDG_CACHE_HOME=str(base / "cache"))
-        binary = ROOT / "target/debug/gad"
+        env["DBUS_SYSTEM_BUS_ADDRESS"] = env["DBUS_SESSION_BUS_ADDRESS"]
+        settings = base / 'config/Gad/Gad.conf'
+        settings.parent.mkdir(parents=True)
+        settings.write_text('[General]\nprogressMessage=false\n')
+        binary = Path(os.environ.get("GAD_TEST_BINARY", ROOT / "target/debug/gad")).resolve()
         with (base / "gui.log").open("w+") as log:
             fuse = subprocess.Popen([fuse_binary, "-f", str(base / "mount")], env=env, stdout=log, stderr=log)
             gad = None
@@ -170,12 +175,12 @@ def exercise():
 
 def main():
     """Un bus D-Bus neuf empêche toute activation du KIO Fuse de la session utilisateur."""
-    if importlib.util.find_spec("pyftpdlib") is None:
-        raise SystemExit("Ce test optionnel nécessite le module Python pyftpdlib")
     if sys.argv[1:] == ["--private-session"]:
+        if importlib.util.find_spec("pyftpdlib") is None:
+            raise SystemExit("Ce test optionnel nécessite le module Python pyftpdlib")
         exercise()
     else:
-        subprocess.run(["dbus-run-session", "--", sys.executable, __file__, "--private-session"], check=True)
+        run_private_session(__file__)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # Gad — Entwicklerhandbuch {#gad-developer-guide}
 
-Dokumentierte Version: **0.3.0**, Protokoll **33**, 8. November 2026.
+Dokumentierte Version: **0.4.0**, Protokoll **35**, 12. November 2026.
 
 Gad bedeutet **Gestionnaire Avancé de Duplication**; Sein Slogan lautet **Gad, il copie.**. Dieser Leitfaden beschreibt die Implementierung in diesem Repository. Der Code bleibt maßgeblich für die genauen Felder und Standardeinstellungen.
 
@@ -98,7 +98,7 @@ Argumente werden zu einem Befehl, bei Bedarf mit Zwischenablage und URL-Verarbei
 
 Der Socket ist `gad.sock` im Laufzeitverzeichnis des Benutzers. Anfragen werden mit Zeilenumbrüchen beendet (JSON), eine Antwort pro Verbindung, mit einem Limit von 16 MiB für eingehende Anfragen und Zugriff nur für Benutzer. `--status` ohne Instanz muss fehlschlagen, anstatt eine grafische Engine zu starten.
 
-Es werden nur die eigenen Einstellungen und Journalspeicherorte von Gad verwendet. Die aktuelle Protokollversion ist **33**. Fähigkeits-/Versionsprüfungen verhindern, dass eine Verschiebung, ein Remote-Endpunkt oder eine Verifizierungsanforderung stillschweigend an eine ältere Instanz gesendet wird, die diese nicht implementieren kann. Eine neu installierte ausführbare Datei kontaktiert möglicherweise immer noch einen älteren Prozess. Aktualisieren Sie eine inaktive Instanz durch normales Herunterfahren.
+Es werden nur die eigenen Einstellungen und Journalspeicherorte von Gad verwendet. Die aktuelle Protokollversion ist **35**. Fähigkeits-/Versionsprüfungen verhindern, dass eine Verschiebung, ein Remote-Endpunkt oder eine Verifizierungsanforderung stillschweigend an eine ältere Instanz gesendet wird, die diese nicht implementieren kann. Eine neu installierte ausführbare Datei kontaktiert möglicherweise immer noch einen älteren Prozess. Aktualisieren Sie eine inaktive Instanz durch normales Herunterfahren.
 
 ```bash
 gad
@@ -358,7 +358,7 @@ Eine gescheiterte leere Analyse verwendet die vollständige Wurzelvalidierung un
 
 ## Protokollreferenz {#protocol-reference}
 
-`native/protocol.def` ist der geteilte Vokabular; Rust-Strukturen und Validierungser definieren genaue Verträge. Aktuelle Version ist **33**. GUI-spezifische Befehle werden von Qt und Motorbefehlen von Rust geleitet.
+`native/protocol.def` ist der geteilte Vokabular; Rust-Strukturen und Validierungser definieren genaue Verträge. Aktuelle Version ist **35**. GUI-spezifische Befehle werden von Qt und Motorbefehlen von Rust geleitet.
 
 | Befehl | Hauptparameter | Verhalten |
 |---|---|---|
@@ -622,7 +622,7 @@ Passive Vorgabe: `gad --configure --completion-action suspend --completion-delay
 
 ## Übertragungen in der Hauptliste vorbereiten {#preparing-transfers}
 
-Das aktuelle Protokoll ist **33**. `Job.start_required` wird gespeichert; `prepare_only` unterscheidet manuelle Vorbereitung von externen Anforderungen. Die Planung überspringt unbestätigte Vorbereitungen. Die einzelne Steuerung sendet `pause` mit `paused=false` zum Starten oder Fortsetzen. `staging.rs` erstellt sichtbare Teildateien; `resume.rs` prüft Identität und Präfix. Schreibgeschützte Simulationsbefehle bleiben intern, ohne eigenes Fenster.
+Das aktuelle Protokoll ist **35**. `Job.start_required` wird gespeichert; `prepare_only` unterscheidet manuelle Vorbereitung von externen Anforderungen. Die Planung überspringt unbestätigte Vorbereitungen. Die einzelne Steuerung sendet `pause` mit `paused=false` zum Starten oder Fortsetzen. `staging.rs` erstellt sichtbare Teildateien; `resume.rs` prüft Identität und Präfix. Schreibgeschützte Simulationsbefehle bleiben intern, ohne eigenes Fenster.
 
 
 ## Temporärer Verzeichnisindex

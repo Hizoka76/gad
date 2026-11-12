@@ -6,6 +6,7 @@ import shlex
 import shutil
 import subprocess
 from xdg_paths import data_home
+from desktop_entry import executable
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -57,7 +58,7 @@ def install(binary):
     # L’entrée dédiée évite de masquer les réglages et le lanceur Konqueror de l’utilisateur.
     desktop=data/'applications/org.hizoka.gad.konqueror.desktop'
     desktop.parent.mkdir(parents=True,exist_ok=True)
-    command='"'+str(launcher).replace('\\','\\\\').replace('"','\\"').replace('`','\\`').replace('$','\\$').replace('%','%%')+'"'
+    command=executable(launcher)
     desktop.write_text('[Desktop Entry]\nType=Application\nName=Konqueror with Gad\nName[fr]=Konqueror avec Gad\n'
                        f'Exec={command} %U\nIcon=konqueror\nTerminal=false\nCategories=System;FileManager;\n')
     print('Konqueror : utiliser le lanceur « Konqueror avec Gad » pour Ctrl+V ; les menus contextuels sont communs.')

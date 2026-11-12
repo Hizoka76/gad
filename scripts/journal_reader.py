@@ -86,10 +86,11 @@ def read_journal(path):
         if record["sequence"] != sequence + 1:
             raise ValueError("Séquence du journal discontinue")
         ids = record["ids"]
-        if len(ids) != len(set(ids)):
+        id_set = set(ids)
+        if len(ids) != len(id_set):
             raise ValueError("Identifiant répété")
-        jobs = {key: value for key, value in jobs.items() if key in ids}
-        raw_jobs = {key: value for key, value in raw_jobs.items() if key in ids}
+        jobs = {key: value for key, value in jobs.items() if key in id_set}
+        raw_jobs = {key: value for key, value in raw_jobs.items() if key in id_set}
         if record.get("format") is None and isinstance(record.get("jobs"), list) and not record.get("full_jobs") and not record.get("patches"):
             field = "jobs"
         elif type(record.get("format")) is int and record["format"] == 2 and record.get("jobs") is None:
@@ -99,13 +100,13 @@ def read_journal(path):
         updated = set()
         for job, raw in _raw_jobs(payload, field):
             key = job["id"]
-            if key not in ids or key in updated:
+            if key not in id_set or key in updated:
                 raise ValueError("Lot hors de l’ordre ou répété")
             updated.add(key)
             jobs[key], raw_jobs[key] = job, raw
         for patch in record.get("patches", []):
             key = patch["id"]
-            if key not in ids or key in updated or key not in raw_jobs:
+            if key not in id_set or key in updated or key not in raw_jobs:
                 raise ValueError("Base du delta absente ou répétée")
             updated.add(key)
             jobs[key], raw_jobs[key] = _patch(patch, raw_jobs[key])

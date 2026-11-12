@@ -1,6 +1,6 @@
 # Gad — Démarrage rapide
 
-**Gad, il copie. · Gestionnaire Avancé de Duplication · Version 0.3.0**
+**Gad, il copie. · Gestionnaire Avancé de Duplication · Version 0.4.0**
 
 [Guide utilisateur](GUIDE_UTILISATEUR.md) · [Guide développeur](GUIDE_DEVELOPPEUR.md) · [Toutes les langues](README.md)
 

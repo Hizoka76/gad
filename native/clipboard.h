@@ -39,8 +39,9 @@ inline Files decode(const QStringList &types, const Read &read) {
     else if (types.contains("x-special/gnome-copied-files")) {
         payload = read("x-special/gnome-copied-files");
         const auto newline = payload.indexOf('\n');
-        if (newline < 0) { result.error = GAD_TR("Invalid clipboard file list."); return result; }
-        result.mode = payload.left(newline).trimmed() == "cut" ? "move" : "copy";
+        const auto action=payload.left(newline).trimmed();
+        if (newline < 0 || (action!="cut" && action!="copy")) { result.error = GAD_TR("Invalid clipboard file list."); return result; }
+        result.mode = action == "cut" ? "move" : "copy";
         payload = payload.mid(newline + 1);
     } else {
         result.error = GAD_TR("The clipboard does not contain a file list. Copy or cut files in your file manager.");
@@ -64,6 +65,20 @@ inline Files decode(const QStringList &types, const Read &read) {
         result.sources << (url.isLocalFile()?SourceUrls::localPath(url):url.toString(QUrl::FullyEncoded));
     }
     result.sources.removeDuplicates();
+    // GTK propose souvent les deux listes : les URI ne contiennent pas l’intention Couper.
+    // Sans marqueur KDE, lire l’intention GNOME seulement si elle décrit les mêmes fichiers.
+    if(!types.contains("application/x-kde-cutselection") && types.contains("x-special/gnome-copied-files")
+        && (types.contains("text/uri-list") || types.contains("application/x-kde4-urilist"))) {
+        const auto encoded=read("x-special/gnome-copied-files");
+        // Le sous-décodage ne propose que GNOME : il ne repasse jamais dans cette branche.
+        const auto operation=decode({"x-special/gnome-copied-files"},[&](const QString &){return encoded;});
+        if(!operation.error.isEmpty()){result.sources.clear();result.error=operation.error;return result;}
+        if(QSet<QString>(operation.sources.cbegin(),operation.sources.cend())!=QSet<QString>(result.sources.cbegin(),result.sources.cend())
+            || read("x-special/gnome-copied-files")!=encoded) {
+            result.sources.clear();result.error=GAD_TR("The clipboard changed while being read. Paste again.");return result;
+        }
+        result.mode=operation.mode;
+    }
     if (result.sources.isEmpty()) result.error = GAD_TR("The clipboard file list is empty or inaccessible.");
     return result;
 }

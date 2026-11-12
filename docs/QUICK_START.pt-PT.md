@@ -1,6 +1,6 @@
 # Gad — Início rápido {#gad-quick-start}
 
-**Gad, il copie. · Gestor avançado de duplicação · Versão 0.3.0**
+**Gad, il copie. · Gestor avançado de duplicação · Versão 0.4.0**
 
 [Guia do utilizador](USER_GUIDE.pt-PT.md) · [Guia do desenvolvedor](DEVELOPER_GUIDE.pt-PT.md) · [Todos os idiomas](README.pt-PT.md)
 

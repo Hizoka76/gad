@@ -4,13 +4,35 @@ use super::*;
 type Prepared = (PathBuf, Vec<Entry>, scheduling::Disks);
 /// Une préparation travaille sur un instantané ; les commandes reçues entre-temps gardent leurs effets.
 pub(super) fn preserve_controls(entries: &mut [Entry], previous: &[Entry]) {
-    for (entry, old) in entries.iter_mut().zip(previous) {
-        if entry.source != old.source
-            || entry.destination != old.destination
-            || entry.kind != old.kind
-        {
+    // Une reconnexion ou un filtrage peut décaler les indices de l’analyse précédente.
+    let mut controls = std::collections::HashMap::new();
+    let mut next = vec![usize::MAX; previous.len()];
+    // Chaîner les occurrences dans leur ordre initial, sans allocation par chemin unique.
+    for (index, entry) in previous.iter().enumerate().rev() {
+        next[index] = controls
+            .insert(
+                (
+                    entry.source.as_path(),
+                    entry.destination.as_path(),
+                    entry.kind.as_str(),
+                ),
+                index,
+            )
+            .unwrap_or(usize::MAX);
+    }
+    for entry in entries {
+        let Some(index) = controls.get_mut(&(
+            entry.source.as_path(),
+            entry.destination.as_path(),
+            entry.kind.as_str(),
+        )) else {
+            continue;
+        };
+        if *index == usize::MAX {
             continue;
         }
+        let old = &previous[*index];
+        *index = next[*index];
         entry.paused = old.paused;
         entry.hidden |= old.hidden;
         entry.cancel |= old.cancel;
@@ -143,7 +165,7 @@ impl Engine {
                     .map(|(moving, md5)| {
                         let paths = fast_move::reservations(&entries);
                         (
-                            paths.is_some() && fast_move::eligible(&entries, moving, md5),
+                            paths.is_some() && fast_move::eligible_for_job(&entries, moving, md5),
                             paths,
                         )
                     })

@@ -76,12 +76,11 @@ impl Engine {
                 };
                 self.checkpoint_entry(id, start + offset)?;
                 safe_parents(&path)?;
-                if !seen.insert(path.clone()) || !item.stamp.matches_fast_move(&path) {
-                    return Err("Fast-move verification failed; moved result kept.".into());
-                }
                 let meta = fs::symlink_metadata(&path)
                     .map_err(|_| "Fast-move verification failed; moved result kept.")?;
-                if (meta.dev(), meta.ino()) != item.entry.identity
+                if !seen.insert(path.clone())
+                    || !item.stamp.matches_fast_metadata(&path, &meta)
+                    || (meta.dev(), meta.ino()) != item.entry.identity
                     || item
                         .ctime
                         .is_some_and(|ctime| ctime != (meta.ctime(), meta.ctime_nsec()))

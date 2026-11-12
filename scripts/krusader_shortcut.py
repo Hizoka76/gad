@@ -83,7 +83,9 @@ def configure(enabled, binary):
                     if is_user and node is not None:
                         raise ValueError('An existing gad_paste action is preserved; rename it first.')
                     saved[name] = {'original': node.toxml() if node else None}
-                elif node is not None and node.toxml() != saved[name]['installed']:
+                # Une interruption peut laisser l’ancienne valeur après publication du reçu.
+                # Seuls les états exacts connus (avant/après) peuvent être repris.
+                elif node is not None and node.toxml() not in (saved[name]['installed'], saved[name]['original']):
                     raise ValueError('Krusader Gad settings were modified; configuration preserved.')
                 if is_user:
                     if node is not None:parent.removeChild(node)

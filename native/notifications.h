@@ -19,7 +19,7 @@ class TransferNotifications : public QObject {
     // Chronomètre monotone entre deux mesures, indépendant de l’horloge civile.
     QElapsedTimer speedClock;
     // Compteurs précédents par couple lot/indice pour les deltas de débit.
-    QHash<QString, qulonglong> previousCopied;
+    QHash<qint64, QVector<qulonglong>> previousCopied;
     // Dernière mesure positive, conservée pour les détails du transfert terminé.
     qulonglong lastSpeed = 0;
     // Chemin D-Bus obtenu de KDE ; vide tant que la demande asynchrone est en cours.
@@ -30,7 +30,7 @@ class TransferNotifications : public QObject {
     // Dernier état complet à renvoyer aussi si KDE demande une actualisation.
     QVariantMap latest;
     // État de la session et de la demande distante ; enabled désactive les publications dans certains tests.
-    bool showProgress=true;
+    bool showProgress=true, countdown=false;
     bool enabled, requesting = false, complete = false, announced = false;
     // Code natif : zéro en réussite, un pour l’annulation, autre valeur pour l’erreur.
     uint finishCode = 0;
@@ -73,7 +73,7 @@ class TransferNotifications : public QObject {
         const auto requestedOwner=interface?interface->serviceOwner("org.kde.JobViewServer").value():QString();
         // La vue native affiche immédiatement les compteurs déjà connus, même si l’analyse continue.
         auto hints=latest;hints["immediate"]=true;
-        auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(method("org.kde.JobViewServer","/JobViewServer","org.kde.JobViewServerV2","requestView",{"org.hizoka.gad",3,hints})),this);
+        auto *watcher=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(method("org.kde.JobViewServer","/JobViewServer","org.kde.JobViewServerV2","requestView",{"org.hizoka.gad",countdown?1:3,hints})),this);
         connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,generation,requestedOwner] {
             QDBusPendingReply<QDBusObjectPath> reply=*watcher;watcher->deleteLater();
             if(generation!=viewGeneration) {
@@ -92,7 +92,7 @@ class TransferNotifications : public QObject {
             bus.connect("org.kde.JobViewServer",viewPath,"org.kde.JobViewV3","cancelRequested",this,SLOT(cancelRequested()));
             bus.connect("org.kde.JobViewServer",viewPath,"org.kde.JobViewV3","updateRequested",this,SLOT(updateRequested()));
             sendView("update",{latest});
-            if(complete){terminateView();tracked.clear();announced=false;}
+            if(complete){terminateView();tracked.clear();previousCopied.clear();announced=false;}
         });
     }
 public:
@@ -126,6 +126,24 @@ public:
             sendView("terminate",{uint(1),withGadLink(GAD_TR("Transfer tracking closed.")),QVariantMap{}});viewPath.clear();
         }
     }
+    /// Publie le compte à rebours dans une vue KDE annulable, sans commande de pause.
+    void showCountdown(const QString &action,int remaining,int total) {
+        countdown=true;complete=false;
+        const auto previous=latest;
+        latest={{"title",GAD_TR("Batch completion countdown")},
+            {"infoMessage",withGadLink(QString(GAD_TR("%1 in %2 seconds")).arg(action).arg(remaining))},
+            {"percent",uint(qBound(0,(total-remaining)*100/qMax(1,total),100))},
+            {"suspended",false}};
+        if(!enabled)return;
+        if(!viewPath.isEmpty()){if(previous!=latest)sendView("update",{latest});}
+        else if(!requesting && (!viewRetryClock.isValid() || viewRetryClock.elapsed()>=2000))requestView();
+    }
+    /// Invalide également les réponses tardives pour ne laisser aucune notification orpheline.
+    void closeCountdown() {
+        if(!countdown)return;
+        countdown=false;complete=true;latest.clear();
+        setProgressMessage(false);setProgressMessage(true);
+    }
     /// Retient aussi un lot très court qui pourrait déjà être terminé au premier rafraîchissement.
     void begin(qint64 id) { if(id>0)tracked.insert(id); }
     /// Indique si la session contient encore des lots suivis.
@@ -151,7 +169,7 @@ public:
         qulonglong files=0,doneFiles=0,total=0,copied=0,dirs=0,doneDirs=0;
         long double work=0,processed=0;
         qulonglong byteDelta=0;
-        QHash<QString,qulonglong> currentCopied;
+        QHash<qint64,QVector<qulonglong>> currentCopied;
         int batches=0,doneBatches=0,activeBatches=0,waiting=0,errors=0,cancelled=0;
         bool deviceWaiting=false;
         bool suspended=true,scanning=false,verifying=false,conflict=false,restoring=false;
@@ -166,8 +184,11 @@ public:
             restoring |= status==Protocol::State::Undoing||status==Protocol::State::UndoWaiting;
             bool filePause=false,hasPending=false,allPendingPaused=true;
             int entryIndex=0;
-            for(const auto &entryValue:job["entries"].toArray()) {
-                const auto key=QString::number(job["id"].toInteger())+"/"+QString::number(entryIndex++);
+            const auto entries=job["entries"].toArray();
+            const auto previous=previousCopied.value(job["id"].toInteger());
+            auto &current=currentCopied[job["id"].toInteger()];current.reserve(entries.size());
+            for(const auto &entryValue:entries) {
+                const auto index=entryIndex++;
                 const auto e=entryValue.toObject();const auto s=e["state"].toString();
                 const bool finished=s==Protocol::State::Done||s==Protocol::State::Skipped||s==Protocol::State::Undone;
                 const bool activeEntry=s==Protocol::State::Running||s==Protocol::State::Verifying||s==Protocol::State::Conflict;
@@ -176,16 +197,16 @@ public:
                     if(s==Protocol::State::Waiting || (e["kind"]!="directory" && activeEntry)){hasPending=true;allPendingPaused &= e["paused"].toBool();}
                     filePause |= activeEntry && e["paused"].toBool();
                 }
-                if(e["kind"]=="directory"){++dirs;if(finished)++doneDirs;continue;}
+                if(e["kind"]=="directory"){current.append(0);++dirs;if(finished)++doneDirs;continue;}
                 ++files;if(finished)++doneFiles;
                 const auto size=qulonglong(e["size"].toDouble());
                 // La différence par entrée évite une pointe artificielle quand un compteur est remis à zéro.
                 const auto transferred=qMin(size,qulonglong(e["copied"].toDouble()));
                 // Un renommage avance les octets logiques, sans représenter un débit de lecture/écriture.
                 const auto measured=e["undo"].toObject()["rename_move"].toBool()?qulonglong(0):transferred;
-                currentCopied.insert(key,measured);
-                const auto previous=previousCopied.value(key,0);
-                if(measured>previous)byteDelta+=measured-previous;
+                current.append(measured);
+                const auto before=previous.value(index,0);
+                if(measured>before)byteDelta+=measured-before;
                 total+=size;copied+=transferred;
                 // Une vérification relit source et cible : son travail total vaut deux tailles en plus de la copie.
                 const bool md5=job["verify_md5"].toBool()&&e["kind"]=="file";
@@ -216,6 +237,7 @@ public:
         // Plasma ouvre ce lien avec le lanceur Gad, qui relève l’instance existante.
         info=withGadLink(info);
         // Les noms de propriétés correspondent au contrat org.kde.JobViewV3 attendu par Plasma.
+        const auto previous=latest;
         latest={{"title",GAD_TR("Gad transfers")},{"infoMessage",info},{"descriptionLabel1",GAD_TR("Batches")},{"descriptionValue1",QString(GAD_TR("%1 / %2 completed")).arg(doneBatches).arg(batches)},{"descriptionLabel2",GAD_TR("Files")},{"descriptionValue2",QString(GAD_TR("%1 / %2 processed")).arg(doneFiles).arg(files)},{"totalBytes",QVariant::fromValue(total)},{"processedBytes",QVariant::fromValue(copied)},{"totalFiles",QVariant::fromValue(files)},{"processedFiles",QVariant::fromValue(doneFiles)},{"totalDirectories",QVariant::fromValue(dirs)},{"processedDirectories",QVariant::fromValue(doneDirs)},{"speed",QVariant::fromValue(activeBatches>0?speed:lastSpeed)},{"percent",uint(percent)},{"suspended",activeBatches>0&&suspended}};
         complete=activeBatches==0;
         finishCode=errors?uint(100):(cancelled?uint(1):uint(0));
@@ -228,17 +250,17 @@ public:
         if(enabled && showProgress) {
             // Réessayer au plus toutes les deux secondes après un échec, ou immédiatement après un redémarrage.
             if(viewPath.isEmpty() && !requesting && (starting || (!complete && (!viewRetryClock.isValid() || viewRetryClock.elapsed()>=2000))))requestView();
-            else if(!viewPath.isEmpty())sendView("update",{latest});
+            else if(!viewPath.isEmpty() && previous!=latest)sendView("update",{latest});
             if(complete && !viewPath.isEmpty())terminateView();
         }
         // Keep the session until an outstanding request has received its path.
-        if(complete&&!requesting){tracked.clear();announced=false;}
+        if(complete&&!requesting){tracked.clear();previousCopied.clear();announced=false;}
     }
 private Q_SLOTS:
     /// Relaie une pause uniquement pour une session native encore active.
-    void suspendRequested(){if(!viewPath.isEmpty()&&!complete)control("pause");}
+    void suspendRequested(){if(!countdown&&!viewPath.isEmpty()&&!complete)control("pause");}
     /// Relaie la reprise des lots concernés par la session.
-    void resumeRequested(){if(!viewPath.isEmpty()&&!complete)control("resume");}
+    void resumeRequested(){if(!countdown&&!viewPath.isEmpty()&&!complete)control("resume");}
     /// Relaie l’annulation des lots du suivi sans effectuer elle-même de suppression de fichier.
     void cancelRequested(){if(!viewPath.isEmpty()&&!complete)control("cancel");}
     /// Renvoie les dernières propriétés si KDE en demande une synchronisation.

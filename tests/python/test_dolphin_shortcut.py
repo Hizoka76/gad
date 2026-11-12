@@ -4,6 +4,7 @@ import io
 from pathlib import Path
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 from xml.dom import minidom
@@ -31,6 +32,31 @@ class DolphinShortcutTest(unittest.TestCase):
 
     def actions(self):
         return {node.getAttribute("name"): node for node in minidom.parse(str(self.path)).getElementsByTagName("Action")}
+
+    def test_atomic_writers_use_separate_temporary_files(self):
+        self.write('initial')
+        self.path.chmod(0o640)
+        barrier = threading.Barrier(2)
+        sync = shortcut.os.fsync
+        failures = []
+        payloads = [b'A' * 512, b'B' * 512]
+        def synced(descriptor):
+            sync(descriptor)
+            barrier.wait(timeout=5)
+        def write(payload):
+            try:
+                shortcut.atomic_write(self.path, payload)
+            except Exception as error:
+                failures.append(error)
+        with patch.object(shortcut.os, 'fsync', side_effect=synced):
+            workers = [threading.Thread(target=write, args=(payload,), daemon=True) for payload in payloads]
+            for worker in workers: worker.start()
+            for worker in workers: worker.join(timeout=10)
+        self.assertTrue(all(not worker.is_alive() for worker in workers))
+        self.assertEqual(failures, [])
+        self.assertIn(self.path.read_bytes(), payloads)
+        self.assertEqual(self.path.stat().st_mode & 0o777, 0o640)
+        self.assertEqual(list(self.path.parent.glob(self.path.name + '.gad-paste.*')), [])
 
     def test_install_is_idempotent_and_preserves_unrelated_settings_and_backup(self):
         original = '<gui name="dolphin"><ActionProperties scheme="Default"><Action name="other" shortcut="Ctrl+X"/></ActionProperties></gui>'

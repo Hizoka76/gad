@@ -4,6 +4,7 @@ import os
 import json
 from pathlib import Path
 from xdg_paths import data_home
+from desktop_entry import executable
 import shutil
 import subprocess
 from dolphin_integration import install as install_dolphin, protect_launcher
@@ -24,18 +25,6 @@ staged = bin_dir / ".gad.install"
 shutil.copy2(project / "target/release/gad", staged)
 staged.chmod(0o755)
 staged.replace(binary)
-
-
-def executable(path):
-    """Encode un chemin pour le champ Exec d’une entrée Desktop.
-
-    Les règles d’arguments et les échappements du format Desktop sont deux étapes distinctes.
-    """
-    # Exec argument quoting, then Desktop Entry value escaping.
-    value = str(path)
-    for char in ['\\', '"', '`', '$']:
-        value = value.replace(char, '\\' + char)
-    return '"' + value.replace('\\', '\\\\') + '"'
 
 
 # Le lanceur principal porte l’identifiant de fenêtre Wayland ; l’action KIO transmet le contexte local.

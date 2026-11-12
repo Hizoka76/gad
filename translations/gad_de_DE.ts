@@ -24,7 +24,7 @@ Modified: </source>
 Geändert: </translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="111" />
+      <location filename="../native/clipboard.h" line="126" />
       <source>
 If files are visible in the KDE clipboard, check that wl-paste (the wl-clipboard package) is installed.</source>
       <translation>
@@ -38,22 +38,22 @@ A conflict needs your decision</source>
 Ein Konflikt braucht Ihre Entscheidung</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="118" />
+      <location filename="../native/kio_sources.h" line="119" />
       <source>
 Check the connection and whether the kio-fuse package is installed.</source>
       <translation>
 Überprüfen Sie die Verbindung und ob das Kio-Fuse-Paket installiert ist.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="79" />
-      <location filename="../native/window_commands.cpp" line="416" />
-      <location filename="../native/window.cpp" line="238" />
-      <location filename="../native/window.cpp" line="221" />
+      <location filename="../native/window_profiles.cpp" line="104" />
+      <location filename="../native/window_commands.cpp" line="467" />
+      <location filename="../native/window.cpp" line="239" />
+      <location filename="../native/window.cpp" line="222" />
       <source> MiB/s</source>
       <translation> MiB/s</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="212" />
+      <location filename="../native/notifications.h" line="233" />
       <source> · %1 batch(es) queued</source>
       <translation> · %1 Auftrag/Aufträge in der Warteschlange</translation>
     </message>
@@ -63,17 +63,17 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation> · &lt;a href="gad://show"&gt;Gad anzeigen&lt;/a&gt;</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="211" />
+      <location filename="../native/notifications.h" line="232" />
       <source> · Scanning…</source>
       <translation> · Dateien werden erfasst…</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="214" />
+      <location filename="../native/notifications.h" line="235" />
       <source> · Conflict: open Gad</source>
       <translation> · Konflikt: Gad öffnen</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="210" />
+      <location filename="../native/notifications.h" line="231" />
       <source> · Waiting for device</source>
       <translation> · Warten auf Gerät</translation>
     </message>
@@ -93,12 +93,12 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation> · MD5-Zeit noch nicht geschätzt</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="215" />
+      <location filename="../native/notifications.h" line="236" />
       <source> · Restoring</source>
       <translation> · Wiederherstellung läuft</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="213" />
+      <location filename="../native/notifications.h" line="234" />
       <source> · MD5 verification</source>
       <translation> · MD5-Verifizierung</translation>
     </message>
@@ -128,17 +128,17 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation> · Die gesamte verbleibende Zeit ist noch nicht abgeschätzt</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="219" />
+      <location filename="../native/notifications.h" line="241" />
       <source>%1 / %2 completed</source>
       <translation>%1 / %2 abgeschlossen</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="219" />
+      <location filename="../native/notifications.h" line="241" />
       <source>%1 / %2 processed</source>
       <translation>%1 / %2 verarbeitet</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="283" />
+      <location filename="../native/window.cpp" line="284" />
       <source>%1 older operation(s) have no journal and cannot be restored. Other operations will be restored.</source>
       <translation>%1 ältere Vorgänge haben kein Journal und können nicht wiederhergestellt werden. Andere Vorgänge werden wiederhergestellt.</translation>
     </message>
@@ -148,7 +148,7 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>Zu lösende %1-Dateinamenkonflikte</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="57" />
+      <location filename="../native/window_errors.cpp" line="58" />
       <source>%1 error(s) · %2 retryable item(s). Retrying keeps completed files and respects the global pause.</source>
       <translation>%1-Fehler · %2 wiederholbare(r) Artikel. Beim erneuten Versuch bleiben abgeschlossene Dateien erhalten und die globale Pause wird berücksichtigt.</translation>
     </message>
@@ -163,7 +163,7 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>%1 d %2 h</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="223" />
+      <location filename="../native/notifications.h" line="245" />
       <source>%1 batch(es) failed.</source>
       <translation>%1 Auftrag/Aufträge fehlgeschlagen.</translation>
     </message>
@@ -183,12 +183,12 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>%1 s</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="101" />
+      <location filename="../native/window_rows.cpp" line="104" />
       <source>%1 item(s) already queued: not added</source>
       <translation>%1 Artikel bereits in der Warteschlange: nicht hinzugefügt</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="209" />
+      <location filename="../native/notifications.h" line="230" />
       <source>%1/%2 batch(es) completed · %3/%4 file(s)</source>
       <translation>%1/%2-Charge(n) abgeschlossen · %3/%4-Datei(en)</translation>
     </message>
@@ -198,12 +198,12 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>0 Bytes/s · verbleibende Zeit unbekannt</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="631" />
+      <location filename="../native/window.cpp" line="648" />
       <source>&lt;h2&gt;Gad&lt;/h2&gt;&lt;p&gt;&lt;b&gt;G&lt;/b&gt;estionnaire &lt;b&gt;A&lt;/b&gt;vancé de &lt;b&gt;D&lt;/b&gt;uplication&lt;br&gt;Advanced Duplication Manager&lt;/p&gt;&lt;p&gt;Gad, il copie. (Gad copies.)&lt;/p&gt;</source>
       <translation>&lt;h2&gt;Gad&lt;/h2&gt;&lt;p&gt;&lt;b&gt;G&lt;/b&gt;estionnaire &lt;b&gt;A&lt;/b&gt;vancé de &lt;b&gt;D&lt;/b&gt;uplication&lt;br&gt;Erweiterter Duplizierungsmanager&lt;/p&gt;&lt;p&gt;Gad, il copie. (Gad kopiert.)&lt;/p&gt;</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="152" />
+      <location filename="../native/window_commands.cpp" line="162" />
       <source>Accessing remote files… %1 batch(es) being prepared</source>
       <translation>Auf Remote-Dateien zugreifen… %1 Stapel werden vorbereitet</translation>
     </message>
@@ -213,18 +213,17 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>Aktualisieren</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="71" />
-      <location filename="../native/window.cpp" line="508" />
+      <location filename="../native/window.cpp" line="509" />
       <source>Show Gad</source>
       <translation>Gad anzeigen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="58" />
+      <location filename="../native/window.cpp" line="59" />
       <source>Add files…</source>
       <translation>Dateien hinzufügen…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="61" />
+      <location filename="../native/window.cpp" line="62" />
       <source>Add folder…</source>
       <translation>Ordner hinzufügen…</translation>
     </message>
@@ -234,32 +233,32 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>Scannen... · Warteschlange pausiert</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="302" />
+      <location filename="../native/window_rows.cpp" line="305" />
       <source>Older operation · restoration unavailable</source>
       <translation>Ältere Operation · Wiederherstellung nicht verfügbar</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="266" />
+      <location filename="../native/window.cpp" line="267" />
       <source>Cancellation</source>
       <translation>Abbrechen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="344" />
+      <location filename="../native/window.cpp" line="345" />
       <source>Cancel and restore</source>
       <translation>Abbrechen und wiederherstellen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="287" />
+      <location filename="../native/window.cpp" line="288" />
       <source>Cancel selected operations</source>
       <translation>Ausgewählte Vorgänge abbrechen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="343" />
+      <location filename="../native/window.cpp" line="344" />
       <source>Cancel and keep completed files</source>
       <translation>Abbrechen und abgeschlossene Dateien behalten</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="288" />
+      <location filename="../native/window.cpp" line="289" />
       <source>Cancel, delete, and move back</source>
       <translation>Abbrechen, löschen und zurück verschieben</translation>
     </message>
@@ -270,7 +269,7 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>Abgebrochen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="348" />
+      <location filename="../native/window.cpp" line="349" />
       <source>Applies a limit to all rows in the selected requests.
 The global limit still applies.</source>
       <translation>Wendet einen Grenzwert auf alle Zeilen in den ausgewählten Anforderungen an.
@@ -282,12 +281,12 @@ Es gilt weiterhin das globale Limit.</translation>
       <translation>Wenden Sie diese Auswahl auf zukünftige Konflikte im Batch #%1 an</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="271" />
+      <location filename="../native/window.cpp" line="272" />
       <source>Stops active and queued copies and moves, keeping files already transferred.</source>
       <translation>Stoppt aktive und in der Warteschlange befindliche Kopien und Verschiebungen und behält bereits übertragene Dateien bei.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="289" />
+      <location filename="../native/window.cpp" line="290" />
       <source>Stops selected operations, deletes their copies, and moves files back to their source.
 Also restores replaced files.
 Files changed since the transfer are kept with an explicit error.</source>
@@ -296,12 +295,12 @@ Stellt auch ersetzte Dateien wieder her.
 Seit der Übertragung geänderte Dateien bleiben mit einem expliziten Fehler erhalten.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="279" />
+      <location filename="../native/window.cpp" line="280" />
       <source>Stops all operations and restores copies, moves, and replacements still in history, from newest to oldest.</source>
       <translation>Stoppt alle Vorgänge und stellt Kopien, Verschiebungen und Ersetzungen, die sich noch im Verlauf befinden, vom neuesten zum ältesten wieder her.</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="85" />
+      <location filename="../native/window_commands.cpp" line="95" />
       <source>Wait for the batch to finish before reactivating its canceled rows.</source>
       <translation>Warten Sie, bis der Stapel abgeschlossen ist, bevor Sie die abgebrochenen Zeilen erneut aktivieren.</translation>
     </message>
@@ -311,7 +310,7 @@ Seit der Übertragung geänderte Dateien bleiben mit einem expliziten Fehler erh
       <translation>Kein aktives Dolphin-Fenster. Beginnen Sie mit dem Einfügen vom Zielordner in Dolphin.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="120" />
+      <location filename="../native/window.cpp" line="121" />
       <source>Before each batch, estimates the space needed for queued files on each volume.
 Previous destinations remain accounted for so they can be restored.
 Prevents starting if space is insufficient.
@@ -324,17 +323,17 @@ Wenn der Speicherplatz nicht überprüft werden kann, wird eine Warnung angezeig
 Vorhandene Aufträge behalten ihre Einstellungen.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="457" />
+      <location filename="../native/window.cpp" line="458" />
       <source>Error report…</source>
       <translation>Fehlerbericht…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="38" />
+      <location filename="../native/window.cpp" line="39" />
       <source>Local path or sftp://, ftp://, smb://, kdeconnect:// address</source>
       <translation>Lokaler Pfad oder sftp://, ftp://, smb://, kdeconnect:// Adresse</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="111" />
+      <location filename="../native/window.cpp" line="112" />
       <source>Compares visible owner, group, permissions, ACLs, and extended attributes.
 Reports differences or incomplete checks.
 Copies are kept with a warning; a regular move keeps the source if verification fails.
@@ -345,35 +344,35 @@ Kopien werden mit einer Warnung aufbewahrt; Bei einer regulären Verschiebung bl
 Repliziert diese Eigenschaften nicht.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="130" />
+      <location filename="../native/window.cpp" line="131" />
       <source>Keeps operations between sessions.
 Replaced files are retained for restoration; clearing history removes this possibility.</source>
       <translation>Hält Vorgänge zwischen Sitzungen aufrecht.
 Ersetzte Dateien bleiben zur Wiederherstellung erhalten; Durch das Löschen des Verlaufs wird diese Möglichkeit beseitigt.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="439" />
+      <location filename="../native/window.cpp" line="440" />
       <source>Keep existing file</source>
       <translation>Bestehende Datei beibehalten</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="128" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="129" />
       <source>Keep history</source>
       <translation>Verlauf speichern</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="174" />
+      <location filename="../native/kio_sources.h" line="175" />
       <source>Empty destination context</source>
       <translation>Leerer Zielkontext</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="384" />
+      <location filename="../native/window_rows.cpp" line="387" />
       <source>Checking the source and previously written bytes before resuming</source>
       <translation>Überprüfen Sie die Quelle und die zuvor geschriebenen Bytes, bevor Sie fortfahren</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="363" />
+      <location filename="../native/window_rows.cpp" line="366" />
       <source>Checking resume data…</source>
       <translation>Fortsetzungsdaten werden geprüft…</translation>
     </message>
@@ -383,14 +382,14 @@ Ersetzte Dateien bleiben zur Wiederherstellung erhalten; Durch das Löschen des 
       <translation>Fortsetzungsdaten werden geprüft… · Restzeit wird geschätzt</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="394" />
+      <location filename="../native/window_rows.cpp" line="397" />
       <source>Property check incomplete</source>
       <translation>Immobilienprüfung unvollständig</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="94" />
-      <location filename="../native/window_errors.cpp" line="53" />
-      <location filename="../native/error_report.h" line="22" />
+      <location filename="../native/window_errors.cpp" line="95" />
+      <location filename="../native/window_errors.cpp" line="54" />
+      <location filename="../native/error_report.h" line="32" />
       <source>Copy</source>
       <translation>Kopieren</translation>
     </message>
@@ -400,7 +399,7 @@ Ersetzte Dateien bleiben zur Wiederherstellung erhalten; Durch das Löschen des 
       <translation>Kopie: </translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="140" />
+      <location filename="../native/window.cpp" line="141" />
       <source>Creates durable checkpoints and resumes new batches after a crash or restart.
 Deliberately canceled operations are never restarted.
 Existing batches keep their settings.</source>
@@ -409,12 +408,12 @@ Absichtlich abgebrochene Vorgänge werden niemals wieder aufgenommen.
 Vorhandene Aufträge behalten ihre Einstellungen.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="442" />
+      <location filename="../native/window.cpp" line="443" />
       <source>Creates a copy using an available name, such as “file (copy 1).ext”.</source>
       <translation>Erstellt eine Kopie unter Verwendung eines verfügbaren Namens, z. B. „Datei (Kopie 1).ext“.</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
       <location filename="../native/window_diagnostics.cpp" line="14" />
       <location filename="../native/transfer_diagnostics.h" line="35" />
@@ -422,7 +421,7 @@ Vorhandene Aufträge behalten ihre Einstellungen.</translation>
       <translation>Auftrag</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="21" />
+      <location filename="../native/error_report.h" line="31" />
       <source>Request #%1 · %2 · %3
 Source: %4
 Destination: %5
@@ -440,31 +439,31 @@ Fehler: %6
       <translation>Auftrag #%1 · %2%3</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="687" />
+      <location filename="../native/window.cpp" line="704" />
       <source>Transfers are still queued or running. Let them finish or cancel the operations before quitting.</source>
       <translation>Übertragungen befinden sich noch in der Warteschlange oder werden ausgeführt. Lassen Sie sie die Vorgänge beenden oder abbrechen, bevor Sie den Vorgang beenden.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="334" />
+      <location filename="../native/window.cpp" line="335" />
       <source>Move down</source>
       <translation>Nach unten</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/window.cpp" line="33" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/window.cpp" line="34" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Destination</source>
       <translation>Ziel</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="45" />
+      <location filename="../native/window.cpp" line="46" />
       <source>Copy destination</source>
       <translation>Ziel kopieren</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="311" />
+      <location filename="../native/window_rows.cpp" line="314" />
       <source>Remote destination · permissions and dates set by the service · automatic resume unavailable</source>
       <translation>Remote-Ziel · Vom Dienst festgelegte Berechtigungen und Daten · Automatische Wiederaufnahme nicht verfügbar</translation>
     </message>
@@ -474,42 +473,42 @@ Fehler: %6
       <translation>Dolphin stellte keinen nutzbaren vollständigen Pfad bereit. Aktivieren Sie den vollständigen Pfad in der Titelleiste oder verwenden Sie „Einfügen mit Gad“ aus dem Kontextmenü.</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="25" />
+      <location filename="../native/error_report.h" line="35" />
       <source>Resumable data: %1 bytes
 </source>
       <translation>Fortsetzbare Daten: %1 Bytes
 </translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="369" />
+      <location filename="../native/window_rows.cpp" line="372" />
       <location filename="../native/window_conflicts.cpp" line="15" />
-      <location filename="../native/error_report.h" line="23" />
+      <location filename="../native/error_report.h" line="33" />
       <source>Folder</source>
       <translation>Ordner</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="39" />
+      <location filename="../native/window.cpp" line="40" />
       <source>Destination folder</source>
       <translation>Zielordner</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="380" />
+      <location filename="../native/window_rows.cpp" line="383" />
       <source>Folder moved by renaming</source>
       <translation>Ordner durch Umbenennung verschoben</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="62" />
+      <location filename="../native/window.cpp" line="63" />
       <source>Folder to copy</source>
       <translation>Ordner zum Kopieren</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="81" />
-      <location filename="../native/window.cpp" line="232" />
+      <location filename="../native/window_profiles.cpp" line="106" />
+      <location filename="../native/window.cpp" line="233" />
       <source>Global speed limit:</source>
       <translation>Globale Geschwindigkeitsbegrenzung:</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="247" />
+      <location filename="../native/window.cpp" line="248" />
       <source>Speeds measured over the last five seconds of activity.
 Remaining time covers the whole request; if MD5 speed is unknown, only copy time is estimated.
 Times are approximate.</source>
@@ -518,7 +517,7 @@ Die verbleibende Zeit deckt die gesamte Anfrage ab; Wenn die MD5-Geschwindigkeit
 Die Zeiten sind ungefähre Angaben.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="435" />
+      <location filename="../native/window.cpp" line="436" />
       <source>Already at destination</source>
       <translation>Schon am Ziel</translation>
     </message>
@@ -528,45 +527,47 @@ Die Zeiten sind ungefähre Angaben.</translation>
       <translation>Zeitüberschreitung beim Lesen von Dolphin</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="94" />
-      <location filename="../native/window_errors.cpp" line="53" />
-      <location filename="../native/error_report.h" line="22" />
+      <location filename="../native/window_errors.cpp" line="95" />
+      <location filename="../native/window_errors.cpp" line="54" />
+      <location filename="../native/error_report.h" line="32" />
       <source>Move</source>
       <translation>Verschieben</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="307" />
+      <location filename="../native/window_rows.cpp" line="310" />
       <source>Fast move · folder renamed as a whole</source>
       <translation>Schneller Umzug · Ordner als Ganzes umbenannt</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="304" />
+      <location filename="../native/window_rows.cpp" line="307" />
       <source>Fast move · local rename</source>
       <translation>Schneller Umzug · lokale Umbenennung</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="382" />
+      <location filename="../native/window_rows.cpp" line="385" />
       <source>Fast move · no data copied</source>
       <translation>Schneller Umzug · keine Daten kopiert</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="332" />
+      <location filename="../native/window.cpp" line="333" />
       <source>Reorder queue</source>
       <translation>Warteschlange neu anordnen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Details</source>
       <translation>Details</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="296" />
+      <location filename="../native/window_completion.cpp" line="25" />
+      <location filename="../native/window_completion.cpp" line="9" />
+      <location filename="../native/window.cpp" line="297" />
       <source>Clears completed operations and the backups needed to restore them.</source>
       <translation>Löscht abgeschlossene Vorgänge und die zur Wiederherstellung erforderlichen Sicherungen.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="294" />
+      <location filename="../native/window.cpp" line="295" />
       <source>Clear completed operations</source>
       <translation>Löschen Sie abgeschlossene Vorgänge</translation>
     </message>
@@ -617,7 +618,7 @@ Die Zeiten sind ungefähre Angaben.</translation>
       <translation>Pausiert · verbleibende Zeit ausgesetzt</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
       <location filename="../native/presentation.h" line="52" />
       <source>Error</source>
@@ -629,7 +630,7 @@ Die Zeiten sind ungefähre Angaben.</translation>
       <translation>Fehler</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="87" />
+      <location filename="../native/window_errors.cpp" line="88" />
       <source>Export failed: </source>
       <translation>Export fehlgeschlagen: </translation>
     </message>
@@ -639,7 +640,7 @@ Die Zeiten sind ungefähre Angaben.</translation>
       <translation>Exportiert den vollständigen Bericht als Text oder JSON, einschließlich der durch den Filter ausgeblendeten Zeilen.</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="83" />
+      <location filename="../native/window_errors.cpp" line="84" />
       <source>Export error report</source>
       <translation>Fehlerbericht exportieren</translation>
     </message>
@@ -649,16 +650,16 @@ Die Zeiten sind ungefähre Angaben.</translation>
       <translation>Export…</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="173" />
+      <location filename="../native/window_profiles.cpp" line="198" />
       <location filename="../native/window_errors.cpp" line="31" />
       <location filename="../native/window_diagnostics.cpp" line="13" />
-      <location filename="../native/window.cpp" line="642" />
-      <location filename="../native/window.cpp" line="95" />
+      <location filename="../native/window.cpp" line="659" />
+      <location filename="../native/window.cpp" line="96" />
       <source>Close</source>
       <translation>Schließen</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="23" />
+      <location filename="../native/error_report.h" line="33" />
       <source>File</source>
       <translation>Datei</translation>
     </message>
@@ -668,13 +669,13 @@ Die Zeiten sind ungefähre Angaben.</translation>
       <translation>Datei nicht verfügbar</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="24" />
+      <location filename="../native/error_report.h" line="34" />
       <source>Partial file: </source>
       <translation>Teildatei: </translation>
     </message>
     <message>
       <location filename="../native/window_conflicts.cpp" line="35" />
-      <location filename="../native/window.cpp" line="434" />
+      <location filename="../native/window.cpp" line="435" />
       <source>File to copy</source>
       <translation>Datei zum Kopieren</translation>
     </message>
@@ -684,12 +685,12 @@ Die Zeiten sind ungefähre Angaben.</translation>
       <translation>Zu verschiebende Datei</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="219" />
+      <location filename="../native/notifications.h" line="241" />
       <source>Files</source>
       <translation>Dateien</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="59" />
+      <location filename="../native/window.cpp" line="60" />
       <source>Files to copy</source>
       <translation>Dateien zum Kopieren</translation>
     </message>
@@ -699,20 +700,21 @@ Die Zeiten sind ungefähre Angaben.</translation>
       <translation>Filtern Sie nach Anfrage, Datei, Ziel oder Nachricht …</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="18" />
+      <location filename="../native/window.cpp" line="19" />
       <source>Gad - Advanced Duplication Manager</source>
       <translation>Gad – Erweiterter Duplikationsmanager</translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="187" />
-      <location filename="../native/application.cpp" line="173" />
+      <location filename="../native/application.cpp" line="206" />
+      <location filename="../native/application.cpp" line="191" />
+      <location filename="../native/application.cpp" line="165" />
       <source>Gad is not responding
 </source>
       <translation>Gad antwortet nicht
 </translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="179" />
+      <location filename="../native/application.cpp" line="198" />
       <source>Gad is not running
 </source>
       <translation>Gad läuft nicht
@@ -733,7 +735,7 @@ Dateien: %5 aktiv · %6 in der Warteschlange</translation>
       <translation>Gad – Fehlerbericht</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="34" />
+      <location filename="../native/error_report.h" line="45" />
       <source>Gad — Error report
 Date: %1
 %2 error(s)
@@ -746,7 +748,7 @@ Datum: %1
 </translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="100" />
+      <location filename="../native/application.cpp" line="101" />
       <source>Gad copies. — File transfer manager for KDE
   gad
   gad --background
@@ -767,7 +769,7 @@ Datum: %1
   Mit --md5 werden Dateiinhalte überprüft.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="439" />
+      <location filename="../native/window.cpp" line="440" />
       <source>Keep both</source>
       <translation>Beide behalten</translation>
     </message>
@@ -777,30 +779,30 @@ Datum: %1
       <translation>Übersprungen</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="79" />
-      <location filename="../native/window_commands.cpp" line="416" />
-      <location filename="../native/window.cpp" line="238" />
-      <location filename="../native/window.cpp" line="221" />
+      <location filename="../native/window_profiles.cpp" line="104" />
+      <location filename="../native/window_commands.cpp" line="467" />
+      <location filename="../native/window.cpp" line="239" />
+      <location filename="../native/window.cpp" line="222" />
       <location filename="../native/transfer_diagnostics.h" line="33" />
       <source>Unlimited</source>
       <translation>Unbegrenzt</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="93" />
+      <location filename="../native/clipboard.h" line="108" />
       <source>Unable to read files from the Wayland clipboard. Paste again.</source>
       <translation>Dateien aus der Wayland-Zwischenablage können nicht gelesen werden. Nochmals einfügen.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="66" />
-      <location filename="../native/window_profiles.cpp" line="43" />
-      <location filename="../native/window_profiles.cpp" line="43" />
-      <location filename="../native/window_commands.cpp" line="366" />
-      <location filename="../native/window.cpp" line="155" />
+      <location filename="../native/window_profiles.cpp" line="91" />
+      <location filename="../native/window_profiles.cpp" line="51" />
+      <location filename="../native/window_profiles.cpp" line="51" />
+      <location filename="../native/window_commands.cpp" line="410" />
+      <location filename="../native/window.cpp" line="156" />
       <source>Unable to change Gad's startup setting.</source>
       <translation>Die Starteinstellungen von Gad können nicht geändert werden.</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="118" />
+      <location filename="../native/kio_sources.h" line="119" />
       <source>Unable to access remote files through KIO Fuse: </source>
       <translation>Zugriff auf Remote-Dateien über KIO Fuse nicht möglich: </translation>
     </message>
@@ -820,7 +822,7 @@ Datum: %1
       <translation>Datei kann nicht geöffnet werden: </translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="120" />
+      <location filename="../native/kio_sources.h" line="121" />
       <source>KIO Fuse did not provide a valid file path.</source>
       <translation>KIO Fuse hat keinen gültigen Dateipfad angegeben.</translation>
     </message>
@@ -830,46 +832,46 @@ Datum: %1
       <translation>Das Ziel ist leer.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="563" />
+      <location filename="../native/window.cpp" line="580" />
       <source>The language changes immediately without interrupting transfers.</source>
       <translation>Die Sprache ändert sich sofort, ohne dass die Übertragung unterbrochen wird.</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="67" />
+      <location filename="../native/clipboard.h" line="82" />
       <source>The clipboard file list is empty or inaccessible.</source>
       <translation>Die Dateiliste der Zwischenablage ist leer oder nicht zugänglich.</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="134" />
+      <location filename="../native/kio_sources.h" line="135" />
       <location filename="../native/application.cpp" line="55" />
       <source>The selection does not share a single destination folder</source>
       <translation>Die Auswahl teilt keinen einzigen Zielordner</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="150" />
+      <location filename="../native/window.cpp" line="151" />
       <source>Starts Gad in the system tray when you sign in.</source>
       <translation>Startet Gad in der Taskleiste, wenn Sie sich anmelden.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="89" />
-      <location filename="../native/window.cpp" line="148" />
+      <location filename="../native/window_profiles.cpp" line="114" />
+      <location filename="../native/window.cpp" line="149" />
       <source>Launch at startup</source>
       <translation>Bei der Anmeldung starten</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="317" />
+      <location filename="../native/window.cpp" line="318" />
       <source>Open file</source>
       <translation>Datei öffnen</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="92" />
-      <location filename="../native/window.cpp" line="563" />
-      <location filename="../native/window.cpp" line="562" />
+      <location filename="../native/window_profiles.cpp" line="117" />
+      <location filename="../native/window.cpp" line="580" />
+      <location filename="../native/window.cpp" line="579" />
       <source>Language</source>
       <translation>Sprache</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="447" />
+      <location filename="../native/window_commands.cpp" line="498" />
       <source>The remote mount path has changed; restore the original mount or add the files again.</source>
       <translation>Der Remote-Mount-Pfad hat sich geändert; Stellen Sie die ursprüngliche Bereitstellung wieder her oder fügen Sie die Dateien erneut hinzu.</translation>
     </message>
@@ -886,27 +888,28 @@ Datum: %1
       <translation>Der von Dolphin bereitgestellte Ordner ist nicht mehr geöffnet. Nochmals einfügen.</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="53" />
+      <location filename="../native/clipboard.h" line="78" />
+      <location filename="../native/clipboard.h" line="54" />
       <source>The clipboard changed while being read. Paste again.</source>
       <translation>Die Zwischenablage hat sich beim Lesen geändert. Nochmals einfügen.</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="108" />
+      <location filename="../native/clipboard.h" line="123" />
       <source>The clipboard is inaccessible. Try again with the Gad window active.</source>
       <translation>Auf die Zwischenablage kann nicht zugegriffen werden. Versuchen Sie es erneut mit aktivem Gad-Fenster.</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="46" />
+      <location filename="../native/clipboard.h" line="47" />
       <source>The clipboard does not contain a file list. Copy or cut files in your file manager.</source>
       <translation>Die Zwischenablage enthält keine Dateiliste. Kopieren oder schneiden Sie Dateien in Ihrem Dateimanager aus.</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="383" />
+      <location filename="../native/window_rows.cpp" line="386" />
       <source>Reading and comparing source and destination contents</source>
       <translation>Quell- und Zielinhalte lesen und vergleichen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="290" />
+      <location filename="../native/window.cpp" line="291" />
       <source>Menu commands apply to operations.
 Delete handles each selected row according to its state.
 Backspace also restores completed rows.</source>
@@ -915,7 +918,7 @@ Löschen behandelt jede ausgewählte Zeile entsprechend ihrem Status.
 Die Rücktaste stellt auch abgeschlossene Zeilen wieder her.</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="23" />
+      <location filename="../native/error_report.h" line="33" />
       <source>Symbolic link</source>
       <translation>Symbolischer Link</translation>
     </message>
@@ -925,7 +928,7 @@ Die Rücktaste stellt auch abgeschlossene Zeilen wieder her.</translation>
       <translation>Symbolischer Link → </translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="222" />
+      <location filename="../native/window.cpp" line="223" />
       <source>Total speed limit for copies and moves that copy data.
 0 = unlimited.
 Can be changed during transfers; fast renames are not throttled.</source>
@@ -934,17 +937,17 @@ Can be changed during transfers; fast renames are not throttled.</source>
 Kann während der Übertragung geändert werden; Schnelle Umbenennungen werden nicht gedrosselt.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="346" />
+      <location filename="../native/window.cpp" line="347" />
       <source>Limit request speed…</source>
       <translation>Geschwindigkeit des Auftrags begrenzen…</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="414" />
+      <location filename="../native/window_commands.cpp" line="465" />
       <source>Limit request speed</source>
       <translation>Geschwindigkeit des Auftrags begrenzen</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="42" />
+      <location filename="../native/clipboard.h" line="43" />
       <source>Invalid clipboard file list.</source>
       <translation>Ungültige Dateiliste in der Zwischenablage.</translation>
     </message>
@@ -954,17 +957,17 @@ Kann während der Übertragung geändert werden; Schnelle Umbenennungen werden n
       <translation>Auftrag #%1 — %2</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="219" />
+      <location filename="../native/notifications.h" line="241" />
       <source>Batches</source>
       <translation>Aufträge</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="111" />
+      <location filename="../native/kio_sources.h" line="112" />
       <source>Remote access is taking too long to respond. Check the connection.</source>
       <translation>Der Fernzugriff dauert zu lange, um zu reagieren. Überprüfen Sie die Verbindung.</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="368" />
+      <location filename="../native/window_rows.cpp" line="371" />
       <source>MD5 </source>
       <translation>MD5 </translation>
     </message>
@@ -974,69 +977,69 @@ Kann während der Übertragung geändert werden; Schnelle Umbenennungen werden n
       <translation>MD5: </translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="373" />
+      <location filename="../native/window_rows.cpp" line="376" />
       <source>MD5 OK · </source>
       <translation>MD5 OK · </translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="350" />
+      <location filename="../native/window.cpp" line="351" />
       <source>Pause</source>
       <translation>Pause</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="336" />
+      <location filename="../native/window.cpp" line="337" />
       <source>Changes the priority of queued rows.
 Folders keep their descendants; destinations and active transfers are unchanged.</source>
       <translation>Ändert die Priorität von Zeilen in der Warteschlange.
 Ordner behalten ihre Nachkommen; Ziele und aktive Transfers bleiben unverändert.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="333" />
+      <location filename="../native/window.cpp" line="334" />
       <source>Move up</source>
       <translation>Nach oben</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="442" />
+      <location filename="../native/window.cpp" line="443" />
       <source>Skips this file and keeps its source, including during moves.</source>
       <translation>Überspringt diese Datei und behält ihre Quelle bei, auch beim Verschieben.</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
       <source>Operation</source>
       <translation>Vorgang</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="92" />
+      <location filename="../native/window_commands.cpp" line="102" />
       <source>Opens with the associated application:
 </source>
       <translation>Öffnet mit der zugehörigen Anwendung:
 </translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="91" />
+      <location filename="../native/window_commands.cpp" line="101" />
       <source>Opens a file's parent folder, the selected folder, or a batch destination.
 Duplicates are grouped together.</source>
       <translation>Öffnet den übergeordneten Ordner einer Datei, den ausgewählten Ordner oder ein Batch-Ziel.
 Duplikate werden gruppiert.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="316" />
+      <location filename="../native/window.cpp" line="317" />
       <source>Open containing folder</source>
       <translation>Öffnen Sie den enthaltenden Ordner</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="41" />
+      <location filename="../native/window.cpp" line="42" />
       <source>Browse…</source>
       <translation>Durchsuchen…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="335" />
+      <location filename="../native/window.cpp" line="336" />
       <source>Move to end of queue</source>
       <translation>Zum Ende der Warteschlange wechseln</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="415" />
+      <location filename="../native/window_commands.cpp" line="466" />
       <source>Limit for each of the %1 selected request(s).
 Applies to all their rows. The global limit still applies.
 0 = unlimited.</source>
@@ -1050,41 +1053,41 @@ Gilt für alle ihre Zeilen. Es gilt weiterhin das globale Limit.
       <translation>Es scheinen mehrere Dolphin-Fenster aktiv zu sein. Erneut aus dem Zielfenster einfügen.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Progress</source>
       <translation>Fortschritt</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="28" />
+      <location filename="../native/error_report.h" line="38" />
       <source>Properties:
 </source>
       <translation>Eigenschaften:
 </translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="458" />
-      <location filename="../native/window_rows.cpp" line="409" />
+      <location filename="../native/window_rows.cpp" line="461" />
+      <location filename="../native/window_rows.cpp" line="412" />
       <source>Properties: %1 warning(s)</source>
       <translation>Eigenschaften: %1-Warnung(en)</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="394" />
+      <location filename="../native/window_rows.cpp" line="397" />
       <source>Properties differ</source>
       <translation>Eigenschaften unterscheiden sich</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="394" />
+      <location filename="../native/window_rows.cpp" line="397" />
       <source>Visible properties match</source>
       <translation>Sichtbare Eigenschaften stimmen überein</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="458" />
+      <location filename="../native/window_rows.cpp" line="461" />
       <source>Properties verified: %1</source>
       <translation>Verifizierte Eigenschaften: %1</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="249" />
+      <location filename="../native/window.cpp" line="250" />
       <source>Ready to copy</source>
       <translation>Bereit zum Kopieren</translation>
     </message>
@@ -1094,23 +1097,23 @@ Gilt für alle ihre Zeilen. Es gilt weiterhin das globale Limit.
       <translation>Gerät getrennt · pausiert</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="515" />
-      <location filename="../native/completion_plan.h" line="10" />
+      <location filename="../native/window.cpp" line="516" />
+      <location filename="../native/completion_plan.h" line="11" />
       <source>Quit Gad</source>
       <translation>Gad beenden</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="82" />
+      <location filename="../native/window_errors.cpp" line="83" />
       <source>Text report (*.txt)</source>
       <translation>Textbericht (*.txt)</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="83" />
+      <location filename="../native/window_errors.cpp" line="84" />
       <source>Text report (*.txt);;JSON report (*.json)</source>
       <translation>Textbericht (*.txt);;JSON-Bericht (*.json)</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="102" />
+      <location filename="../native/window.cpp" line="103" />
       <source>Reads and compares source and destination contents before marking each file complete.
 Applies to new transfers, including those started from Dolphin.</source>
       <translation>Liest und vergleicht Quell- und Zielinhalte, bevor jede Datei als abgeschlossen markiert wird.
@@ -1122,7 +1125,7 @@ Gilt für neue Transfers, einschließlich solcher, die von Dolphin aus gestartet
       <translation>Wiederhergestellt</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="301" />
+      <location filename="../native/window_rows.cpp" line="304" />
       <source>Restoration requested · waiting for active transfers to finish</source>
       <translation>Wiederherstellung angefordert · Warten auf den Abschluss aktiver Übertragungen</translation>
     </message>
@@ -1142,14 +1145,14 @@ Gilt für neue Transfers, einschließlich solcher, die von Dolphin aus gestartet
       <translation>Wiederherstellung…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="442" />
+      <location filename="../native/window.cpp" line="443" />
       <source>Replaces the destination with the source.
 The previous destination is retained in the restoration journal.</source>
       <translation>Ersetzt das Ziel durch die Quelle.
 Das bisherige Ziel bleibt im Wiederherstellungsjournal erhalten.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="439" />
+      <location filename="../native/window.cpp" line="440" />
       <source>Replace existing file</source>
       <translation>Vorhandene Datei ersetzen</translation>
     </message>
@@ -1159,13 +1162,13 @@ Das bisherige Ziel bleibt im Wiederherstellungsjournal erhalten.</translation>
       <translation>Lokales Umbenennen · keine Daten kopiert</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="351" />
+      <location filename="../native/window.cpp" line="352" />
       <source>Resume</source>
       <translation>Fortsetzen</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="138" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="139" />
       <source>Resume after interruption</source>
       <translation>Fortsetzung nach Unterbrechung</translation>
     </message>
@@ -1176,24 +1179,24 @@ Das bisherige Ziel bleibt im Wiederherstellungsjournal erhalten.</translation>
       <translation>Warteschlange fortsetzen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="355" />
+      <location filename="../native/window.cpp" line="356" />
       <source>Resume interrupted batches</source>
       <translation>Unterbrochene Aufträge fortsetzen</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="387" />
+      <location filename="../native/window_rows.cpp" line="390" />
       <source>Resumed from </source>
       <translation>Fortgesetzt ab </translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="370" />
+      <location filename="../native/window_rows.cpp" line="373" />
       <source>Resume </source>
       <translation>Fortsetzen </translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="272" />
-      <location filename="../native/window_commands.cpp" line="227" />
-      <location filename="../native/application.cpp" line="215" />
+      <location filename="../native/window_commands.cpp" line="313" />
+      <location filename="../native/window_commands.cpp" line="268" />
+      <location filename="../native/application.cpp" line="234" />
       <source>Invalid request</source>
       <translation>Ungültige Anfrage</translation>
     </message>
@@ -1203,29 +1206,29 @@ Das bisherige Ziel bleibt im Wiederherstellungsjournal erhalten.</translation>
       <translation>Restaurierung unvollständig</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="371" />
+      <location filename="../native/window.cpp" line="372" />
       <source>Remove from list / stop</source>
       <translation>Aus Liste entfernen/stoppen</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="85" />
+      <location filename="../native/window_commands.cpp" line="95" />
       <source>Reactivates canceled rows after preparing their restoration.</source>
       <translation>Reaktiviert abgebrochene Zeilen nach der Vorbereitung ihrer Wiederherstellung.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="352" />
+      <location filename="../native/window.cpp" line="353" />
       <source>Reactivate canceled rows</source>
       <translation>Abgebrochene Zeilen reaktivieren</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="29" />
+      <location filename="../native/error_report.h" line="39" />
       <source>Retry available (recognized remnants will be restored before copying again).
 </source>
       <translation>Wiederholen möglich (erkannte Reste werden vor dem erneuten Kopieren wiederhergestellt).
 </translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="29" />
+      <location filename="../native/error_report.h" line="39" />
       <source>Retry unavailable: </source>
       <translation>Wiederholung nicht möglich: </translation>
     </message>
@@ -1245,42 +1248,42 @@ Die globale Pause gilt weiterhin.</translation>
     </message>
     <message>
       <location filename="../native/window_errors.cpp" line="26" />
-      <location filename="../native/window.cpp" line="353" />
+      <location filename="../native/window.cpp" line="354" />
       <source>Retry failed files only</source>
       <translation>Nur fehlgeschlagene Dateien erneut versuchen</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/window.cpp" line="29" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/window.cpp" line="30" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Source</source>
       <translation>Quelle</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="163" />
+      <location filename="../native/kio_sources.h" line="164" />
       <source>Invalid copy source.</source>
       <translation>Ungültige Kopierquelle.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="311" />
+      <location filename="../native/window.cpp" line="312" />
       <source>Delete: removes completed rows, cancels active rows, and removes queued rows. Backspace: restores selected completed copies and moves; otherwise acts like Delete. Two operations can run together on separate disks. Right-click: Process next and Reorder queue change the order of queued batches.</source>
       <translation>Löschen: Entfernt abgeschlossene Zeilen, storniert aktive Zeilen und entfernt Zeilen in der Warteschlange. Rücktaste: stellt ausgewählte abgeschlossene Kopien und Verschiebungen wieder her; Ansonsten verhält es sich wie Löschen. Zwei Vorgänge können gleichzeitig auf separaten Festplatten ausgeführt werden. Klicken Sie mit der rechten Maustaste: „Weiter verarbeiten“ und „Warteschlange neu anordnen“, um die Reihenfolge der in der Warteschlange befindlichen Stapel zu ändern.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="91" />
-      <location filename="../native/window.cpp" line="547" />
+      <location filename="../native/window_profiles.cpp" line="116" />
+      <location filename="../native/window.cpp" line="564" />
       <source>System</source>
       <translation>System</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="322" />
+      <location filename="../native/window.cpp" line="323" />
       <source>Select entire batch</source>
       <translation>Gesamten Stapel auswählen</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="92" />
+      <location filename="../native/window_commands.cpp" line="102" />
       <source>Select a single file to open it.</source>
       <translation>Wählen Sie eine einzelne Datei aus, um sie zu öffnen.</translation>
     </message>
@@ -1302,35 +1305,35 @@ Die globale Pause gilt weiterhin.</translation>
       <translation>Alle Dateien</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="269" />
+      <location filename="../native/window.cpp" line="270" />
       <source>Cancel all</source>
       <translation>Alles abbrechen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="277" />
+      <location filename="../native/window.cpp" line="278" />
       <source>Cancel all and restore</source>
       <translation>Alles abbrechen und wiederherstellen</translation>
     </message>
     <message>
       <location filename="../native/window_rows.cpp" line="76" />
       <location filename="../native/window_rows.cpp" line="58" />
-      <location filename="../native/window.cpp" line="510" />
-      <location filename="../native/window.cpp" line="256" />
+      <location filename="../native/window.cpp" line="511" />
+      <location filename="../native/window.cpp" line="257" />
       <source>Pause all</source>
       <translation>Alles pausieren</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="331" />
+      <location filename="../native/window.cpp" line="332" />
       <source>Process next</source>
       <translation>Als nächstes verarbeiten</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="219" />
+      <location filename="../native/notifications.h" line="241" />
       <source>Gad transfers</source>
       <translation>Gad-Übertragungen</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="23" />
+      <location filename="../native/error_report.h" line="33" />
       <source>Type: %1
 Copied: %2 / %3 bytes
 </source>
@@ -1339,7 +1342,7 @@ Kopiert: %2 / %3 Bytes
 </translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="26" />
+      <location filename="../native/error_report.h" line="36" />
       <source>A file has already been created; it will be verified before any retry.
 </source>
       <translation>Es wurde bereits eine Datei erstellt. Es wird vor jedem erneuten Versuch überprüft.
@@ -1351,12 +1354,12 @@ Kopiert: %2 / %3 Bytes
       <translation>Eine Datei existiert bereits</translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="159" />
+      <location filename="../native/application.cpp" line="169" />
       <source>An older version of Gad is still running. Let its transfers finish, then quit and restart Gad to enable this feature. No transfer has been added.</source>
       <translation>Eine ältere Version von Gad läuft noch. Lassen Sie die Übertragungen abschließen, beenden Sie dann Gad und starten Sie es neu, um diese Funktion zu aktivieren. Es wurde keine Übertragung hinzugefügt.</translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="194" />
+      <location filename="../native/application.cpp" line="213" />
       <source>An instance is starting or not responding
 </source>
       <translation>Eine Instanz startet oder antwortet nicht
@@ -1373,7 +1376,7 @@ Kopiert: %2 / %3 Bytes
       <translation>Verwenden Sie eine lokale Datei oder eine kdeconnect://-, ftp://-, sftp://- oder smb://-Adresse.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="633" />
+      <location filename="../native/window.cpp" line="650" />
       <source>Version: %1
 Build date: %2</source>
       <translation>Version: %1
@@ -1385,7 +1388,7 @@ Erstellungsdatum: %2</translation>
       <translation>In Liste anzeigen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="418" />
+      <location filename="../native/window.cpp" line="419" />
       <source>Show file in list</source>
       <translation>Datei in Liste anzeigen</translation>
     </message>
@@ -1395,31 +1398,31 @@ Erstellungsdatum: %2</translation>
       <translation>MD5 wird überprüft…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="357" />
+      <location filename="../native/window.cpp" line="358" />
       <source>Verifies and resumes interrupted batches containing the selected rows, without copying completed files again.</source>
       <translation>Überprüft unterbrochene Stapel mit den ausgewählten Zeilen und setzt sie fort, ohne abgeschlossene Dateien erneut zu kopieren.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="100" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="101" />
       <source>Verify files using MD5</source>
       <translation>Überprüfen Sie Dateien mit MD5</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="109" />
-      <location filename="../native/application.cpp" line="102" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="110" />
+      <location filename="../native/application.cpp" line="103" />
       <source>Verify properties</source>
       <translation>Eigenschaften überprüfen</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="118" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="119" />
       <source>Check available space</source>
       <translation>Verfügbaren Speicherplatz prüfen</translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="140" />
+      <location filename="../native/application.cpp" line="141" />
       <source>XDG_RUNTIME_DIR not found
 </source>
       <translation>XDG_RUNTIME_DIR nicht gefunden
@@ -1436,7 +1439,7 @@ Erstellungsdatum: %2</translation>
       <translation>unbekannt</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="633" />
+      <location filename="../native/window.cpp" line="650" />
       <source>not specified</source>
       <translation>nicht angegeben</translation>
     </message>
@@ -1451,21 +1454,21 @@ Erstellungsdatum: %2</translation>
       <translation>Entscheidung erforderlich · verbleibende Zeit unbekannt</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="453" />
+      <location filename="../native/window.cpp" line="454" />
       <source>About</source>
       <translation>Über</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="627" />
+      <location filename="../native/window.cpp" line="644" />
       <source>About Gad</source>
       <translation>Über Gad</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
       <location filename="../native/window_diagnostics.cpp" line="14" />
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Status</source>
       <translation>Status</translation>
     </message>
@@ -1482,64 +1485,64 @@ Erstellungsdatum: %2</translation>
       <translation>Übertragungsverfolgung geschlossen.</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="224" />
+      <location filename="../native/notifications.h" line="246" />
       <source>%1 batch(es) canceled.</source>
       <translation>%1 Charge(n) abgebrochen.</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="225" />
+      <location filename="../native/notifications.h" line="247" />
       <source>%1 batch(es) completed.</source>
       <translation>%1 Charge(n) abgeschlossen.</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="156" />
+      <location filename="../native/transfer_tree.h" line="158" />
       <source>Sort ascending</source>
       <translation>Aufsteigend sortieren</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="158" />
+      <location filename="../native/transfer_tree.h" line="160" />
       <source>Sort descending</source>
       <translation>Absteigend sortieren</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="160" />
+      <location filename="../native/transfer_tree.h" line="162" />
       <source>Transfer queue order</source>
       <translation>Reihenfolge der Übertragungswarteschlange</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="166" />
+      <location filename="../native/transfer_tree.h" line="168" />
       <source>Contains…</source>
       <translation>Enthält…</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="166" />
+      <location filename="../native/transfer_tree.h" line="168" />
       <source>Filter this column</source>
       <translation>Diese Spalte filtern</translation>
     </message>
     <message>
       <location filename="../native/window_history.cpp" line="22" />
-      <location filename="../native/transfer_tree.h" line="178" />
-      <location filename="../native/transfer_tree.h" line="169" />
+      <location filename="../native/transfer_tree.h" line="180" />
+      <location filename="../native/transfer_tree.h" line="171" />
       <source>All statuses</source>
       <translation>Alle Status</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="182" />
+      <location filename="../native/transfer_tree.h" line="184" />
       <source>Progress range (%)</source>
       <translation>Fortschrittsbereich (%)</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="192" />
+      <location filename="../native/transfer_tree.h" line="194" />
       <source>Clear this column's filter</source>
       <translation>Löschen Sie den Filter dieser Spalte</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="193" />
+      <location filename="../native/transfer_tree.h" line="195" />
       <source>Clear header filters</source>
       <translation>Header-Filter löschen</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="199" />
+      <location filename="../native/transfer_tree.h" line="201" />
       <source>Click to sort; Ctrl+click to add a sort column; right-click for filters.
 Numbers show sort priority.
 Restore transfer queue order to drag rows.</source>
@@ -1548,33 +1551,33 @@ Zahlen zeigen die Sortierpriorität an.
 Stellen Sie die Reihenfolge der Übertragungswarteschlange wieder her, um Zeilen zu ziehen.</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="186" />
+      <location filename="../native/transfer_tree.h" line="188" />
       <source>Minimum progress</source>
       <translation>Minimaler Fortschritt</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="186" />
+      <location filename="../native/transfer_tree.h" line="188" />
       <source>Maximum progress</source>
       <translation>Maximaler Fortschritt</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="162" />
+      <location filename="../native/transfer_tree.h" line="164" />
       <source>Remove this column from sorting</source>
       <translation>Diese Spalte aus der Sortierung entfernen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Order</source>
       <translation>Reihenfolge</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="177" />
+      <location filename="../native/window_rows.cpp" line="180" />
       <source>Batch #%1</source>
       <translation>Auftrag #%1</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="108" />
+      <location filename="../native/transfer_tree.h" line="110" />
       <source>Position in the queue, including retained history, independent of display sorting and filters.
 This is not a completion order; transfers may run in parallel.</source>
       <translation>Position in der Warteschlange, einschließlich beibehaltener Historie, unabhängig von Anzeigesortierung und Filtern.
@@ -1586,13 +1589,13 @@ Dies ist kein Abschlussauftrag; Übertragungen können parallel erfolgen.</trans
       <translation>Limit: %1 MiB/s</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="85" />
-      <location filename="../native/window.cpp" line="187" />
+      <location filename="../native/window_profiles.cpp" line="110" />
+      <location filename="../native/window.cpp" line="188" />
       <source>Include hidden items</source>
       <translation>Versteckte Elemente einschließen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="188" />
+      <location filename="../native/window.cpp" line="189" />
       <source>Hidden items have a name starting with a dot.
 This option applies to new copies and moves only.</source>
       <translation>Versteckte Elemente haben einen Namen, der mit einem Punkt beginnt.
@@ -1608,17 +1611,17 @@ Ausgeschlossene Ordner werden nicht durchsucht.
 Ausgeschlossene Elemente bleiben während der Verschiebung an der Quelle.</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="462" />
+      <location filename="../native/window_commands.cpp" line="513" />
       <source>%1 folder rule(s) · %2 file rule(s)</source>
       <translation>%1 Ordnerregel(n) · %2 Dateiregel(en)</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="462" />
+      <location filename="../native/window_commands.cpp" line="513" />
       <source>No name exclusions</source>
       <translation>Keine Namensausschlüsse</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="480" />
+      <location filename="../native/window_commands.cpp" line="531" />
       <source>One name pattern per line, at any depth.
 * matches any text; ? matches one character.
 Folder exclusions skip their entire contents.
@@ -1629,30 +1632,30 @@ Bei Ordnerausschlüssen wird der gesamte Inhalt übersprungen.
 Die Regeln gelten nur für Neuübertragungen; Ausgeschlossene Elemente bleiben während der Verschiebung an der Quelle.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="87" />
-      <location filename="../native/window_commands.cpp" line="484" />
+      <location filename="../native/window_profiles.cpp" line="112" />
+      <location filename="../native/window_commands.cpp" line="535" />
       <source>Excluded folders</source>
       <translation>Ausgeschlossene Ordner</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="87" />
-      <location filename="../native/window_commands.cpp" line="485" />
+      <location filename="../native/window_profiles.cpp" line="112" />
+      <location filename="../native/window_commands.cpp" line="536" />
       <source>Excluded files and symbolic links</source>
       <translation>Ausgeschlossene Dateien und symbolische Links</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="300" />
+      <location filename="../native/window_rows.cpp" line="303" />
       <source>No items to transfer after exclusions.</source>
       <translation>Nach Ausschlüssen sind keine Elemente zu übertragen.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="190" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="191" />
       <source>Allow duplication in the same folder</source>
       <translation>Duplizieren im selben Ordner erlauben</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="191" />
+      <location filename="../native/window.cpp" line="192" />
       <source>Copying into the source folder creates name_copied1, name_copied2, etc.
 File extensions are preserved.
 Applies to new copies only; moves are not duplicated.</source>
@@ -1661,58 +1664,58 @@ Dateiendungen bleiben erhalten.
 Gilt nur für neue Kopien; Verschiebungen werden nicht dupliziert.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="87" />
-      <location filename="../native/window.cpp" line="82" />
-      <location filename="../native/window.cpp" line="77" />
+      <location filename="../native/window.cpp" line="88" />
+      <location filename="../native/window.cpp" line="83" />
+      <location filename="../native/window.cpp" line="78" />
       <source>Settings</source>
       <translation>Einstellungen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="79" />
+      <location filename="../native/window.cpp" line="80" />
       <source>Options…</source>
       <translation>Optionen…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="465" />
-      <location filename="../native/window.cpp" line="87" />
+      <location filename="../native/window.cpp" line="466" />
+      <location filename="../native/window.cpp" line="88" />
       <source>Shortcuts</source>
       <translation>Tastenkürzel</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="89" />
-      <location filename="../native/window.cpp" line="466" />
+      <location filename="../native/window_profiles.cpp" line="114" />
+      <location filename="../native/window.cpp" line="467" />
       <source>Ctrl+V with Gad in Dolphin</source>
       <translation>Strg+V mit Gad in Dolphin</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="89" />
-      <location filename="../native/window.cpp" line="475" />
+      <location filename="../native/window_profiles.cpp" line="114" />
+      <location filename="../native/window.cpp" line="476" />
       <source>Ctrl+V with Gad in Konqueror</source>
       <translation>Strg+V mit Gad in Konqueror</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="470" />
+      <location filename="../native/window.cpp" line="471" />
       <source>Restart Dolphin after changing its shortcut.</source>
       <translation>Starten Sie Dolphin nach Änderung des Tastenkürzels neu.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="476" />
+      <location filename="../native/window.cpp" line="477" />
       <source>Applies to Konqueror launched with Gad. Text pastes remain native.</source>
       <translation>Gilt für Konqueror, wenn er mit Gad gestartet wurde. Text wird weiterhin wie gewohnt eingefügt.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="479" />
+      <location filename="../native/window.cpp" line="480" />
       <source>Open Konqueror with Gad</source>
       <translation>Konqueror mit Gad öffnen</translation>
     </message>
     <message>
+      <location filename="../native/window_commands.cpp" line="199" />
       <location filename="../native/window_commands.cpp" line="189" />
-      <location filename="../native/window_commands.cpp" line="179" />
       <source>Unable to change the Dolphin shortcut.</source>
       <translation>Das Dolphin-Tastenkürzel konnte nicht geändert werden.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="481" />
+      <location filename="../native/window.cpp" line="482" />
       <source>Unable to start Konqueror.</source>
       <translation>Konqueror konnte nicht gestartet werden.</translation>
     </message>
@@ -1732,46 +1735,45 @@ Gilt nur für neue Kopien; Verschiebungen werden nicht dupliziert.</translation>
       <translation>Ein Profil mit diesem Namen ist bereits vorhanden.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="239" />
+      <location filename="../native/window.cpp" line="240" />
       <source>Applies to new requests only.
 Existing requests and the global speed limit stay unchanged.</source>
       <translation>Gilt nur für neue Aufträge.
 Bestehende Aufträge und das globale Limit bleiben unverändert.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="172" />
+      <location filename="../native/window_profiles.cpp" line="197" />
       <source>Apply profile</source>
       <translation>Profil anwenden</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="183" />
-      <location filename="../native/window_profiles.cpp" line="132" />
+      <location filename="../native/window_profiles.cpp" line="208" />
+      <location filename="../native/window_profiles.cpp" line="157" />
       <source>Cancel</source>
       <translation>Abbrechen</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="81" />
-      <location filename="../native/window.cpp" line="242" />
+      <location filename="../native/window_profiles.cpp" line="106" />
+      <location filename="../native/window.cpp" line="243" />
       <source>Default limit for new requests:</source>
       <translation>Standardlimit für neue Aufträge:</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="173" />
+      <location filename="../native/window_profiles.cpp" line="198" />
       <source>Delete profile</source>
       <translation>Profil löschen</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="226" />
+      <location filename="../native/window_commands.cpp" line="267" />
       <location filename="../native/transfer_profiles.h" line="38" />
       <source>Enter a profile name (up to 100 characters).</source>
       <translation>Geben Sie einen Profilnamen ein (höchstens 100 Zeichen).</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="280" />
-      <location filename="../native/window_commands.cpp" line="274" />
-      <location filename="../native/window_commands.cpp" line="256" />
-      <location filename="../native/window_commands.cpp" line="249" />
-      <location filename="../native/window_commands.cpp" line="244" />
+      <location filename="../native/window_commands.cpp" line="321" />
+      <location filename="../native/window_commands.cpp" line="315" />
+      <location filename="../native/window_commands.cpp" line="285" />
+      <location filename="../native/window_commands.cpp" line="235" />
       <location filename="../native/transfer_profiles.h" line="97" />
       <location filename="../native/transfer_profiles.h" line="93" />
       <location filename="../native/transfer_profiles.h" line="44" />
@@ -1782,46 +1784,46 @@ Bestehende Aufträge und das globale Limit bleiben unverändert.</translation>
       <translation>Ungültige Einstellungen im Übertragungsprofil.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="119" />
+      <location filename="../native/window_profiles.cpp" line="144" />
       <source>Manage profiles…</source>
       <translation>Profile verwalten…</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="183" />
-      <location filename="../native/window_profiles.cpp" line="128" />
+      <location filename="../native/window_profiles.cpp" line="208" />
+      <location filename="../native/window_profiles.cpp" line="153" />
       <source>Name:</source>
       <translation>Name:</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="117" />
+      <location filename="../native/window_profiles.cpp" line="142" />
       <source>No saved profiles</source>
       <translation>Keine gespeicherten Profile</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="97" />
+      <location filename="../native/window_profiles.cpp" line="122" />
       <source>Profiles</source>
       <translation>Profile</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="183" />
-      <location filename="../native/window_profiles.cpp" line="183" />
-      <location filename="../native/window_profiles.cpp" line="173" />
+      <location filename="../native/window_profiles.cpp" line="208" />
+      <location filename="../native/window_profiles.cpp" line="208" />
+      <location filename="../native/window_profiles.cpp" line="198" />
       <source>Rename profile…</source>
       <translation>Profil umbenennen…</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="172" />
-      <location filename="../native/window_profiles.cpp" line="118" />
+      <location filename="../native/window_profiles.cpp" line="197" />
+      <location filename="../native/window_profiles.cpp" line="143" />
       <source>Save current settings…</source>
       <translation>Aktuelle Einstellungen speichern…</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="131" />
+      <location filename="../native/window_profiles.cpp" line="156" />
       <source>Save profile</source>
       <translation>Profil speichern</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="125" />
+      <location filename="../native/window_profiles.cpp" line="150" />
       <source>Save transfer profile</source>
       <translation>Übertragungsprofil speichern</translation>
     </message>
@@ -1831,12 +1833,12 @@ Bestehende Aufträge und das globale Limit bleiben unverändert.</translation>
       <translation>Gespeicherte Profile sind ungültig und bleiben unverändert erhalten.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="34" />
+      <location filename="../native/window_profiles.cpp" line="35" />
       <source>This transfer profile no longer exists.</source>
       <translation>Dieses Übertragungsprofil ist nicht mehr vorhanden.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="168" />
+      <location filename="../native/window_profiles.cpp" line="193" />
       <source>Transfer profiles</source>
       <translation>Übertragungsprofile</translation>
     </message>
@@ -1851,81 +1853,82 @@ Bestehende Aufträge und das globale Limit bleiben unverändert.</translation>
       <translation>Es können höchstens 64 Übertragungsprofile gespeichert werden.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="172" />
+      <location filename="../native/window_profiles.cpp" line="197" />
       <source>Update from current settings</source>
       <translation>Mit aktuellen Einstellungen aktualisieren</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="38" />
-      <location filename="../native/window_profiles.cpp" line="31" />
-      <location filename="../native/window_commands.cpp" line="278" />
-      <location filename="../native/window_commands.cpp" line="236" />
-      <location filename="../native/window.cpp" line="690" />
-      <source>A transfer profile is already being applied.</source>
-      <translation>Ein Übertragungsprofil wird bereits angewendet.</translation>
+      <location filename="../native/window_profiles.cpp" line="46" />
+      <location filename="../native/window_profiles.cpp" line="43" />
+      <location filename="../native/window_profiles.cpp" line="32" />
+      <location filename="../native/window_commands.cpp" line="319" />
+      <location filename="../native/window_commands.cpp" line="277" />
+      <location filename="../native/window.cpp" line="707" />
+      <source>Settings are already being applied.</source>
+      <translation>Einstellungen werden bereits angewendet.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="36" />
+      <location filename="../native/window_profiles.cpp" line="44" />
       <source>The language saved in this profile is unavailable.</source>
       <translation>Die in diesem Profil gespeicherte Sprache ist nicht verfügbar.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="56" />
-      <source>Some settings could not be restored after the profile failed. Check the options.</source>
-      <translation>Einige Einstellungen konnten nach dem Fehler nicht wiederhergestellt werden. Prüfen Sie die Optionen.</translation>
+      <location filename="../native/window_profiles.cpp" line="81" />
+      <source>Some settings could not be restored after the change failed. Check the options.</source>
+      <translation>Nach der fehlgeschlagenen Änderung konnten einige Einstellungen nicht wiederhergestellt werden. Prüfen Sie die Optionen.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="99" />
+      <location filename="../native/window_profiles.cpp" line="124" />
       <source>Apply all saved options without changing the destination.</source>
       <translation>Alle gespeicherten Optionen anwenden, ohne das Ziel zu ändern.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="126" />
+      <location filename="../native/window_profiles.cpp" line="151" />
       <source>Save all current options.
 The destination is never included.</source>
       <translation>Alle aktuellen Optionen speichern.
 Das Ziel wird niemals gespeichert.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="169" />
+      <location filename="../native/window_profiles.cpp" line="194" />
       <source>Profiles save all options, including global settings.
 Applying a profile does not change the destination or start a transfer.</source>
       <translation>Profile speichern alle Optionen einschließlich globaler Einstellungen.
 Das Anwenden ändert weder das Ziel noch startet es eine Übertragung.</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="234" />
+      <location filename="../native/window_commands.cpp" line="275" />
       <source>Transfer profile not found.</source>
       <translation>Übertragungsprofil nicht gefunden.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="201" />
+      <location filename="../native/window.cpp" line="202" />
       <source>Ask</source>
       <translation>Nachfragen</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="81" />
-      <location filename="../native/window.cpp" line="202" />
+      <location filename="../native/window_profiles.cpp" line="106" />
+      <location filename="../native/window.cpp" line="203" />
       <source>File conflicts:</source>
       <translation>Dateikonflikte:</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="201" />
+      <location filename="../native/window.cpp" line="202" />
       <source>Keep both files</source>
       <translation>Beide Dateien behalten</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="201" />
+      <location filename="../native/window.cpp" line="202" />
       <source>Replace older files only</source>
       <translation>Nur ältere Dateien ersetzen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="201" />
+      <location filename="../native/window.cpp" line="202" />
       <source>Skip existing files</source>
       <translation>Vorhandene Dateien überspringen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="204" />
+      <location filename="../native/window.cpp" line="205" />
       <source>Applies to new requests and is saved in profiles.
 Existing folders are merged.
 Older means a strictly earlier modification time; equal or newer files are kept.
@@ -1972,12 +1975,12 @@ Unlesbare Datumsangaben oder symbolische Links stoppen die Datei, statt sie auto
       <translation>und</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="177" />
+      <location filename="../native/window_rows.cpp" line="180" />
       <source>Added:</source>
       <translation>Hinzugefügt:</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="176" />
+      <location filename="../native/window_rows.cpp" line="179" />
       <source>Unknown date (older history)</source>
       <translation>Datum unbekannt (alter Verlauf)</translation>
     </message>
@@ -2118,8 +2121,8 @@ Der Verlauf muss gespeichert sein; gelöschte Vorgänge sind nicht durchsuchbar.
     </message>
     <message>
       <location filename="../native/window_diagnostics.cpp" line="14" />
-      <location filename="../native/window.cpp" line="492" />
-      <location filename="../native/window.cpp" line="87" />
+      <location filename="../native/window.cpp" line="493" />
+      <location filename="../native/window.cpp" line="88" />
       <source>Speed limits</source>
       <translation>Geschwindigkeitslimits</translation>
     </message>
@@ -2129,7 +2132,7 @@ Der Verlauf muss gespeichert sein; gelöschte Vorgänge sind nicht durchsuchbar.
       <translation>Transferdiagnose</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="498" />
+      <location filename="../native/window.cpp" line="499" />
       <source>Transfer diagnostics…</source>
       <translation>Transferdiagnose…</translation>
     </message>
@@ -2174,13 +2177,13 @@ Der Verlauf muss gespeichert sein; gelöschte Vorgänge sind nicht durchsuchbar.
       <translation>Global</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="83" />
-      <location filename="../native/window.cpp" line="172" />
+      <location filename="../native/window_profiles.cpp" line="108" />
+      <location filename="../native/window.cpp" line="173" />
       <source>Verify fast moves</source>
       <translation>Schnelle Verschiebungen prüfen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="173" />
+      <location filename="../native/window.cpp" line="174" />
       <source>After a local rename, checks identity, type, size, modification time, permissions, owner/group, symbolic links, the complete tree and removal of the original path.
 Does not read file contents; MD5 remains a separate option that uses the copy path.
 A failed check keeps the moved result and its restoration journal.
@@ -2191,18 +2194,18 @@ Bei einem Fehler bleiben das verschobene Ergebnis und sein Wiederherstellungsjou
 Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="375" />
+      <location filename="../native/window_rows.cpp" line="378" />
       <location filename="../native/transfer_metrics.h" line="117" />
       <source>Verifying fast move · metadata and paths</source>
       <translation>Schnelle Verschiebung wird geprüft · Metadaten und Pfade</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="376" />
+      <location filename="../native/window_rows.cpp" line="379" />
       <source>Fast move verified · identity and metadata</source>
       <translation>Schnelle Verschiebung geprüft · Identität und Metadaten</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="378" />
+      <location filename="../native/window_rows.cpp" line="381" />
       <source>Checked path:</source>
       <translation>Geprüfter Pfad:</translation>
     </message>
@@ -2212,7 +2215,7 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>Ergebnis der schnellen Verschiebung wird geprüft: Identität, Metadaten, Baum und Verschwinden der Quelle. Inhalte werden nicht erneut gelesen.</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="75" />
+      <location filename="../native/notifications.h" line="134" />
       <source>%1 in %2 seconds</source>
       <translation>%1 in %2 Sekunden</translation>
     </message>
@@ -2222,14 +2225,15 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>%1 in %2 Sekunden. Zum Abbrechen Gad öffnen.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="30" />
-      <location filename="../native/window_commands.cpp" line="267" />
-      <location filename="../native/window_commands.cpp" line="223" />
+      <location filename="../native/window_profiles.cpp" line="42" />
+      <location filename="../native/window_profiles.cpp" line="31" />
+      <location filename="../native/window_commands.cpp" line="308" />
+      <location filename="../native/window_commands.cpp" line="264" />
       <source>A completion action is being dispatched; no operation was added</source>
       <translation>Eine Abschlussaktion wird gesendet; es wurde kein Vorgang hinzugefügt</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="42" />
+      <location filename="../native/completion_plan.h" line="43" />
       <source>A tracked request disappeared. The completion action was canceled.</source>
       <translation>Ein überwachter Auftrag ist verschwunden. Die Abschlussaktion wurde abgebrochen.</translation>
     </message>
@@ -2239,7 +2243,7 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>Aktion:</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="92" />
+      <location filename="../native/window_completion.cpp" line="85" />
       <source>All tracked transfers finished successfully.</source>
       <translation>Alle überwachten Transfers wurden erfolgreich abgeschlossen.</translation>
     </message>
@@ -2264,17 +2268,17 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>Abbrechen stoppt diese Aktion ohne Änderung der Transfers. Neue Aufträge starten nach erneutem Abschluss einen vollständigen Countdown.</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="87" />
+      <location filename="../native/window_completion.cpp" line="78" />
       <source>Click to open Gad.</source>
       <translation>Klicken, um Gad zu öffnen.</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="65" />
+      <location filename="../native/window_completion.cpp" line="64" />
       <source>Completion action canceled</source>
       <translation>Abschlussaktion abgebrochen</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="81" />
+      <location filename="../native/window_completion.cpp" line="72" />
       <source>Completion action failed</source>
       <translation>Abschlussaktion fehlgeschlagen</translation>
     </message>
@@ -2284,36 +2288,38 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>Countdown (Sekunden):</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="80" />
+      <location filename="../native/window_profiles.cpp" line="105" />
       <location filename="../native/window_completion.cpp" line="28" />
       <source>Countdown: %1 s…</source>
       <translation>Countdown: %1 s…</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="13" />
+      <location filename="../native/completion_plan.h" line="14" />
       <source>Do nothing</source>
       <translation>Nichts tun</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="93" />
+      <location filename="../native/window_completion.cpp" line="86" />
       <source>Gad could not close. No power action was requested.</source>
       <translation>Gad konnte nicht geschlossen werden. Es wurde keine Systemaktion angefordert.</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="94" />
-      <location filename="../native/window_commands.cpp" line="275" />
-      <location filename="../native/window_commands.cpp" line="245" />
+      <location filename="../native/window_completion.cpp" line="87" />
+      <location filename="../native/window_commands.cpp" line="316" />
+      <location filename="../native/window_commands.cpp" line="286" />
+      <location filename="../native/window_commands.cpp" line="244" />
       <source>Invalid completion action</source>
       <translation>Ungültige Abschlussaktion</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="276" />
-      <location filename="../native/window_commands.cpp" line="246" />
+      <location filename="../native/window_commands.cpp" line="317" />
+      <location filename="../native/window_commands.cpp" line="287" />
+      <location filename="../native/window_commands.cpp" line="245" />
       <source>Invalid countdown: use 5 to 3600 whole seconds.</source>
       <translation>Ungültiger Countdown: ganze Sekunden von 5 bis 3600 verwenden.</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="46" />
+      <location filename="../native/completion_plan.h" line="47" />
       <source>No successful transfer was observed. The completion action was canceled.</source>
       <translation>Kein erfolgreicher Transfer beobachtet. Die Abschlussaktion wurde abgebrochen.</translation>
     </message>
@@ -2328,7 +2334,7 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>Nach Abschluss: %1 (aktiviert)</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="12" />
+      <location filename="../native/completion_plan.h" line="13" />
       <source>Power off the computer</source>
       <translation>Computer ausschalten</translation>
     </message>
@@ -2364,17 +2370,17 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>Einstellungen und Profile aktivieren nie eine Aktion. Im Abschlussmenü wird sie einmal aktiviert. Fehler, Abbrüche oder entfernte Aufträge brechen die Aktion ab. Neue Aufträge starten den vollständigen Countdown erneut.</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="11" />
+      <location filename="../native/completion_plan.h" line="12" />
       <source>Suspend the computer</source>
       <translation>Computer in Bereitschaft versetzen</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="36" />
+      <location filename="../native/completion_plan.h" line="37" />
       <source>The completion action was canceled because operations were canceled, removed or restored.</source>
       <translation>Die Abschlussaktion wurde abgebrochen, weil Vorgänge abgebrochen, entfernt oder wiederhergestellt wurden.</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="100" />
+      <location filename="../native/window_completion.cpp" line="93" />
       <source>The power action request did not complete.</source>
       <translation>Die Anforderung der Systemaktion wurde nicht abgeschlossen.</translation>
     </message>
@@ -2384,7 +2390,7 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>Die Warteschlange enthält einen Fehler oder Abbruch. Die Abschlussaktion wurde abgebrochen.</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="98" />
+      <location filename="../native/window_completion.cpp" line="91" />
       <source>This session cannot perform the requested power action.</source>
       <translation>Diese Sitzung kann die angeforderte Systemaktion nicht ausführen.</translation>
     </message>
@@ -2394,19 +2400,19 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>Nach Abschluss der Warteschlange…</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="90" />
-      <location filename="../native/window.cpp" line="482" />
+      <location filename="../native/window_profiles.cpp" line="115" />
+      <location filename="../native/window.cpp" line="483" />
       <source>Ctrl+V with Gad in Krusader</source>
       <translation>Strg+V mit Gad in Krusader</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="486" />
+      <location filename="../native/window.cpp" line="487" />
       <source>Restart Krusader after changing its shortcut. Gad pastes files into the active panel. F5 and F6 remain unchanged.</source>
       <translation>Starten Sie Krusader nach dem Ändern des Tastenkürzels neu. Gad fügt Dateien im aktiven Fensterbereich ein. F5 und F6 bleiben unverändert.</translation>
     </message>
     <message>
+      <location filename="../native/window_commands.cpp" line="224" />
       <location filename="../native/window_commands.cpp" line="214" />
-      <location filename="../native/window_commands.cpp" line="204" />
       <source>Unable to change the Krusader shortcut.</source>
       <translation>Das Krusader-Tastenkürzel konnte nicht geändert werden.</translation>
     </message>
@@ -2622,8 +2628,8 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>Starten</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="360" />
-      <location filename="../native/window_rows.cpp" line="289" />
+      <location filename="../native/window_rows.cpp" line="363" />
+      <location filename="../native/window_rows.cpp" line="292" />
       <location filename="../native/transfer_diagnostics.h" line="36" />
       <source>Ready to start</source>
       <translation>Startbereit</translation>
@@ -2639,7 +2645,7 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>Startet manuell hinzugefügte Dateien, sobald die Listen bereit sind. Einfügen aus der Zwischenablage startet automatisch. Die globale Pause wird weiterhin beachtet.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="258" />
+      <location filename="../native/window.cpp" line="259" />
       <source>Starts the prepared queue, pauses active transfers, or resumes the paused queue.</source>
       <translation>Startet die vorbereitete Warteschlange, pausiert aktive Übertragungen oder setzt die Warteschlange fort.</translation>
     </message>
@@ -2649,7 +2655,7 @@ Gilt für neue Aufträge und wird in Profilen gespeichert.</translation>
       <translation>Nichts rückgängig zu machen</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="197" />
+      <location filename="../native/window_rows.cpp" line="200" />
       <source>Limit: %1</source>
       <translation>Limit: %1</translation>
     </message>
@@ -2746,7 +2752,7 @@ Ein Fehler, eine abgebrochene Übertragung oder ein entfernter Auftrag deaktivie
     </message>
     <message>
       <location filename="../native/window_completion.cpp" line="53" />
-      <location filename="../native/completion_plan.h" line="33" />
+      <location filename="../native/completion_plan.h" line="34" />
       <source>Batch completion guard unavailable. Restart Gad before arming an action.</source>
       <translation>Abschluss-Schutz nicht verfügbar. Gad vor dem Aktivieren einer Aktion neu starten.</translation>
     </message>
@@ -2761,97 +2767,97 @@ Ein Fehler, eine abgebrochene Übertragung oder ein entfernter Auftrag deaktivie
       <translation>Abbrechen stoppt diese Aktion ohne Änderung der Transfers. Neue Aufträge starten nach erneutem Abschluss einen vollständigen Countdown.</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="73" />
+      <location filename="../native/notifications.h" line="133" />
       <source>Batch completion countdown</source>
       <translation>Abschluss-Countdown</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="92" />
+      <location filename="../native/window_completion.cpp" line="85" />
       <source>Batch finished</source>
       <translation>Stapel abgeschlossen</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="43" />
+      <location filename="../native/completion_plan.h" line="44" />
       <source>The batch contains an error or cancellation. The completion action was canceled.</source>
       <translation>Der Stapel enthält einen Fehler oder Abbruch. Die Abschlussaktion wurde abgebrochen.</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="80" />
-      <location filename="../native/window.cpp" line="492" />
-      <location filename="../native/window.cpp" line="87" />
+      <location filename="../native/window_profiles.cpp" line="105" />
+      <location filename="../native/window.cpp" line="493" />
+      <location filename="../native/window.cpp" line="88" />
       <source>Batch completion</source>
       <translation>Stapelabschluss</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="88" />
-      <location filename="../native/window.cpp" line="175" />
+      <location filename="../native/window_profiles.cpp" line="113" />
+      <location filename="../native/window.cpp" line="176" />
       <source>Show transfer progress in KDE</source>
       <translation>Übertragungsfortschritt in KDE anzeigen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="176" />
+      <location filename="../native/window.cpp" line="177" />
       <source>Shows the KDE progress message, including when Gad is hidden.
 Disabling it hides the message without pausing or canceling transfers.</source>
       <translation>Zeigt den KDE-Fortschritt auch bei ausgeblendetem Gad.
 Deaktivieren blendet die Meldung aus, ohne Übertragungen zu pausieren oder abzubrechen.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="68" />
+      <location filename="../native/window.cpp" line="69" />
       <source>Clipboard files</source>
       <translation>Zwischenablage-Dateien</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="43" />
+      <location filename="../native/window.cpp" line="44" />
       <source>Choose the destination folder.</source>
       <translation>Zielordner auswählen.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="72" />
+      <location filename="../native/window.cpp" line="73" />
       <source>Add files copied or cut to the clipboard, using the current destination.</source>
       <translation>Kopierte oder ausgeschnittene Dateien aus der Zwischenablage zum aktuellen Ziel hinzufügen.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="80" />
+      <location filename="../native/window.cpp" line="81" />
       <source>Configure transfer options, shortcuts, speed limits and completion actions.</source>
       <translation>Übertragungen, Tastenkürzel, Geschwindigkeitslimits und Abschlussaktionen konfigurieren.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="455" />
+      <location filename="../native/window.cpp" line="456" />
       <source>Show the version, license and documentation.</source>
       <translation>Version, Lizenz und Dokumentation anzeigen.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="458" />
+      <location filename="../native/window.cpp" line="459" />
       <source>View transfer errors, retry failed files or export the report.</source>
       <translation>Fehler anzeigen, fehlgeschlagene Dateien erneut versuchen oder den Bericht exportieren.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="499" />
+      <location filename="../native/window.cpp" line="500" />
       <source>Explain transfer progress and waiting times.</source>
       <translation>Fortschritt und Wartezeiten der Übertragungen erklären.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="420" />
+      <location filename="../native/window.cpp" line="421" />
       <source>Select the file awaiting conflict resolution in the list.</source>
       <translation>Die Datei mit ausstehender Konfliktlösung in der Liste auswählen.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="66" />
+      <location filename="../native/window.cpp" line="67" />
       <source>Choose files to add to the transfer list.</source>
       <translation>Dateien zum Hinzufügen zur Übertragungsliste auswählen.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="67" />
+      <location filename="../native/window.cpp" line="68" />
       <source>Add a folder and its contents to the transfer list.</source>
       <translation>Einen Ordner mit seinem Inhalt zur Übertragungsliste hinzufügen.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="49" />
+      <location filename="../native/window.cpp" line="50" />
       <source>Add items</source>
       <translation>Elemente hinzufügen</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="51" />
+      <location filename="../native/window.cpp" line="52" />
       <source>Add files, a folder or clipboard files to the transfer list.</source>
       <translation>Dateien, einen Ordner oder Dateien aus der Zwischenablage zur Übertragungsliste hinzufügen.</translation>
     </message>
@@ -2866,10 +2872,15 @@ Deaktivieren blendet die Meldung aus, ohne Übertragungen zu pausieren oder abzu
       <translation>Eine Aktion nach erfolgreichem Abschluss aller Übertragungen wählen, mit abbrechbarem Countdown.</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="497" />
-      <location filename="../native/window.cpp" line="87" />
+      <location filename="../native/window.cpp" line="498" />
+      <location filename="../native/window.cpp" line="88" />
       <source>Exclusions</source>
       <translation>Ausschlüsse</translation>
+    </message>
+    <message>
+      <location filename="../native/completion_plan.h" line="10" />
+      <source>Clear the list</source>
+      <translation>Liste leeren</translation>
     </message>
   </context>
   <context>
@@ -3421,6 +3432,14 @@ Deaktivieren blendet die Meldung aus, ohne Übertragungen zu pausieren oder abzu
     <message>
       <source>A completion action is being dispatched; no operation was added</source>
       <translation>Eine Abschlussaktion wird gesendet; es wurde kein Vorgang hinzugefügt</translation>
+    </message>
+    <message>
+      <source>Temporary file changed before finalization</source>
+      <translation>Die temporäre Datei wurde vor dem Abschluss verändert</translation>
+    </message>
+    <message>
+      <source>Invalid pause value: expected true or false</source>
+      <translation>Ungültiger Pausenwert: true oder false erwartet.</translation>
     </message>
   </context>
 </TS>

@@ -5,6 +5,16 @@
 use super::*;
 use std::collections::{HashMap, HashSet};
 
+/// L’absence du champ conserve la commande historique « mettre en pause » ; une valeur fournie doit être booléenne.
+pub(super) fn pause_value(value: &Value) -> Result<bool, String> {
+    match value.get("paused") {
+        None => Ok(true),
+        Some(value) => value
+            .as_bool()
+            .ok_or_else(|| "Invalid pause value: expected true or false".into()),
+    }
+}
+
 // Expand directories while retaining stable journal/GUI entry indices.
 /// Valide les identifiants et développe les dossiers en indices d’entrées stables.
 /// Le booléen distingue la sélection d’un lot entier de celle de ses enfants.
@@ -13,14 +23,16 @@ pub(super) fn selection(
     value: &Value,
 ) -> Result<HashMap<u64, (bool, HashSet<usize>)>, String> {
     let mut result = HashMap::new();
+    let mut directories: HashMap<u64, HashSet<usize>> = HashMap::new();
     for id in value["jobs"].as_array().ok_or("Missing selection")? {
         let id = id.as_u64().ok_or("Identifiant invalide")?;
         let job = state
             .jobs
-            .iter()
-            .find(|j| j.id == id)
+            .get(state.job_position(id).ok_or("Operation not found")?)
             .ok_or("Operation not found")?;
-        result.insert(id, (true, (0..job.entries.len()).collect()));
+        result
+            .entry(id)
+            .or_insert_with(|| (true, (0..job.entries.len()).collect()));
     }
     for row in value["entries"].as_array().ok_or("Missing selection")? {
         let id = row["job"].as_u64().ok_or("Missing operation")?;
@@ -30,8 +42,7 @@ pub(super) fn selection(
             .ok_or("Ligne invalide")?;
         let job = state
             .jobs
-            .iter()
-            .find(|j| j.id == id)
+            .get(state.job_position(id).ok_or("Operation not found")?)
             .ok_or("Operation not found")?;
         let entry = job.entries.get(index).ok_or("Ligne introuvable")?;
         let selected = &mut result
@@ -40,19 +51,57 @@ pub(super) fn selection(
             .1;
         selected.insert(index);
         if entry.kind == "directory" {
-            selected.extend(
-                job.entries
-                    .iter()
-                    .enumerate()
-                    .filter(|(_, e)| {
-                        e.source.starts_with(&entry.source)
-                            && e.destination.starts_with(&entry.destination)
-                    })
-                    .map(|(i, _)| i),
-            );
+            directories.entry(id).or_default().insert(index);
         }
     }
+    // Une seule traversée par lot, même si tous ses dossiers sont sélectionnés.
+    // Les ancêtres source servent d’index ; la destination doit aussi appartenir au dossier.
+    for (id, roots) in directories {
+        let (whole, selected) = result.get_mut(&id).unwrap();
+        if *whole {
+            continue;
+        }
+        let job = &state.jobs[state.job_position(id).unwrap()];
+        expand_directories(job, &roots, selected);
+    }
     Ok(result)
+}
+/// Développe des indices déjà validés ; partagé par pause, réessai et annulations clavier.
+pub(super) fn expand_directories(job: &Job, roots: &HashSet<usize>, selected: &mut HashSet<usize>) {
+    if roots.is_empty() {
+        return;
+    }
+    // Un seul dossier reste un simple test de préfixes, sans construire d’index.
+    if roots.len() == 1 {
+        let root = &job.entries[*roots.iter().next().unwrap()];
+        selected.extend(job.entries.iter().enumerate().filter_map(|(index, entry)| {
+            (entry.source.starts_with(&root.source)
+                && entry.destination.starts_with(&root.destination))
+            .then_some(index)
+        }));
+        return;
+    }
+    let mut targets: HashMap<&Path, Vec<&Path>> = HashMap::new();
+    for index in roots {
+        let entry = &job.entries[*index];
+        targets
+            .entry(&entry.source)
+            .or_default()
+            .push(&entry.destination);
+    }
+    selected.extend(job.entries.iter().enumerate().filter_map(|(index, entry)| {
+        entry
+            .source
+            .ancestors()
+            .any(|ancestor| {
+                targets.get(ancestor).is_some_and(|destinations| {
+                    destinations
+                        .iter()
+                        .any(|destination| entry.destination.starts_with(destination))
+                })
+            })
+            .then_some(index)
+    }));
 }
 impl Engine {
     /// Demande la restauration des lots journalisés, terminés ou non.
@@ -146,7 +195,7 @@ impl Engine {
                 }
             }
             // La même requête traite la sélection de lots et de fichiers, après validation de tous les indices.
-            let paused = value["paused"].as_bool().unwrap_or(true);
+            let paused = if retry { true } else { pause_value(value)? };
             for job in &mut state.jobs {
                 let Some((whole, indices)) = selected.get(&job.id) else {
                     continue;
@@ -211,51 +260,76 @@ impl Engine {
         if job.retry_all {
             let mut scanned = Vec::new();
             for source in &job.sources {
-                if fs::symlink_metadata(source).is_err()
-                    && !job
-                        .entries
-                        .iter()
-                        .any(|entry| entry.source == *source && entry.state == TransferState::Done)
-                {
-                    return Err(format!(
-                        "Source introuvable pour la réactivation : {}",
-                        source.display()
-                    ));
-                }
-                if fs::symlink_metadata(source).is_ok() {
-                    self.scan(
+                match fs::symlink_metadata(source) {
+                    Ok(_) => self.scan(
                         job.id,
                         source,
                         &job.destination
                             .join(source.file_name().ok_or("Source invalide")?),
                         &mut scanned,
-                    )?;
+                    )?,
+                    Err(_)
+                        if job.entries.iter().any(|entry| {
+                            entry.source == *source && entry.state == TransferState::Done
+                        }) => {}
+                    Err(_) => {
+                        return Err(format!(
+                            "Source introuvable pour la réactivation : {}",
+                            source.display()
+                        ))
+                    }
                 }
             }
-            for entry in scanned {
-                if !job.entries.iter().any(|e| e.source == entry.source) {
-                    job.entries.push(entry);
-                }
-            }
+            // Les indices existants et leurs journaux restent stables ; indexer les sources une seule fois.
+            let keep = {
+                let mut known = job
+                    .entries
+                    .iter()
+                    .map(|entry| entry.source.as_path())
+                    .collect::<HashSet<_>>();
+                scanned
+                    .iter()
+                    .map(|entry| known.insert(entry.source.as_path()))
+                    .collect::<Vec<_>>()
+            };
+            job.entries.extend(
+                scanned
+                    .into_iter()
+                    .zip(keep)
+                    .filter_map(|(entry, keep)| keep.then_some(entry)),
+            );
         }
-        // Un fichier réactivé doit retrouver ses dossiers cible avant d’être recopié.
-        let paths = selected
-            .iter()
-            .map(|i| {
-                (
-                    job.entries[*i].source.clone(),
-                    job.entries[*i].destination.clone(),
-                )
-            })
-            .collect::<Vec<_>>();
-        for (index, entry) in job.entries.iter().enumerate() {
-            if entry.kind == "directory"
-                && paths.iter().any(|(source, target)| {
-                    source.starts_with(&entry.source) && target.starts_with(&entry.destination)
-                })
-                && ((entry.state == TransferState::Error && entry.error.is_empty())
-                    || fs::symlink_metadata(&entry.destination)
-                        .is_err_and(|e| e.kind() == std::io::ErrorKind::NotFound))
+        // Indexer les parents des lignes choisies sans recopier leurs chemins ni comparer chaque paire.
+        let ancestors = {
+            let mut directories: HashMap<&Path, Vec<usize>> = HashMap::new();
+            for (index, entry) in job.entries.iter().enumerate() {
+                if entry.kind == "directory" {
+                    directories.entry(&entry.source).or_default().push(index);
+                }
+            }
+            let mut ancestors = HashSet::new();
+            for index in &selected {
+                let entry = &job.entries[*index];
+                for source in entry.source.ancestors() {
+                    if let Some(parents) = directories.get(source) {
+                        for parent in parents {
+                            if entry
+                                .destination
+                                .starts_with(&job.entries[*parent].destination)
+                            {
+                                ancestors.insert(*parent);
+                            }
+                        }
+                    }
+                }
+            }
+            ancestors
+        };
+        for index in ancestors {
+            let entry = &job.entries[index];
+            if (entry.state == TransferState::Error && entry.error.is_empty())
+                || fs::symlink_metadata(&entry.destination)
+                    .is_err_and(|e| e.kind() == std::io::ErrorKind::NotFound)
             {
                 selected.insert(index);
             }
@@ -281,6 +355,12 @@ impl Engine {
             entry.size = if entry.kind == "file" { meta.len() } else { 0 };
             entry.copied = 0;
             entry.verified = 0;
+            // La réactivation recommence une copie : aucun préfixe ni rapport de l’essai restauré n’est réutilisé.
+            entry.interrupted = false;
+            entry.resume_checking = false;
+            entry.resume_checked = 0;
+            entry.resumed_from = 0;
+            entry.properties = None;
             entry.fast_move_check = None;
             entry.md5_source = None;
             entry.md5_destination = None;
@@ -300,6 +380,8 @@ impl Engine {
         job.undo_entries = None;
         job.retry_entries = None;
         job.retry_all = false;
+        // Une réponse ponctuelle donnée avant annulation ne vaut pas pour un nouveau conflit.
+        job.resolution = None;
         job.state = TransferState::Waiting;
         job.error.clear();
         job.recovery = false;
@@ -308,7 +390,7 @@ impl Engine {
         job.destination_keys =
             fast_move::destination_keys(job.entries.iter().map(|e| e.destination.clone()));
         job.fast_move = job.paths.is_some()
-            && fast_move::eligible(&job.entries, job.mode == "move", job.verify_md5);
+            && fast_move::eligible_for_job(&job.entries, job.mode == "move", job.verify_md5);
         {
             let mut state = self.shared.state.lock().unwrap();
             if let Some(current) = state.jobs.iter_mut().find(|j| j.id == job.id) {

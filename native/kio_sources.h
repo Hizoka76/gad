@@ -68,6 +68,7 @@ inline int requiredProtocol(const QJsonObject &request) {
         version=qMax(version,scheme=="smb"?9:(scheme=="ftp" || scheme=="sftp"?8:7));
     }
     if(request["gui_settings"].toObject().contains("completion_action") || request["gui_settings"].toObject().contains("completion_delay"))version=qMax(version,31);
+    if(request["gui_settings"].toObject()["completion_action"]=="clear")version=qMax(version,35);
     if(request["gui_settings"].toObject().contains("progressMessage"))version=qMax(version,34);
     if(request["prepare_only"].toBool() || request["command"]=="start_prepared")version=qMax(version,33);
     if(request.contains("verify_fast_move"))version=qMax(version,30);

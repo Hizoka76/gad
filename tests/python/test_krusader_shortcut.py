@@ -77,3 +77,34 @@ class KrusaderShortcutTest(unittest.TestCase):
     def test_receipt_cannot_write_outside_configuration(self):
         self.enable();receipt=integration.receipt_path();state=json.loads(receipt.read_text());state['files']['/tmp/not-gad']={};receipt.write_text(json.dumps(state))
         with self.assertRaises(ValueError):integration.configure(False,self.binary)
+
+    def test_enable_recovers_after_receipt_or_partial_xml_publication(self):
+        for crash_target in (self.user, self.rc):
+            with self.subTest(crash_target=crash_target):
+                self.user.parent.mkdir(parents=True, exist_ok=True)
+                self.rc.parent.mkdir(parents=True, exist_ok=True)
+                self.user.write_text('<KrusaderUserActions><action name="other"><title>Keep</title></action></KrusaderUserActions>')
+                self.rc.write_text('<gui name="krusader"><ActionProperties><Action name="std_paste" shortcut="Ctrl+V; Alt+P"/></ActionProperties></gui>')
+                writer = integration.atomic_write
+                def interrupted(path, *args, **kwargs):
+                    if path == crash_target:
+                        raise SystemExit('simulated interruption')
+                    return writer(path, *args, **kwargs)
+                with patch.object(integration, 'atomic_write', side_effect=interrupted):
+                    with self.assertRaises(SystemExit):
+                        self.enable()
+                self.enable()
+                self.assertIn('shortcut="Alt+P"', self.rc.read_text())
+                integration.configure(False, self.binary)
+                self.assertIn('shortcut="Ctrl+V; Alt+P"', self.rc.read_text())
+                self.assertIn('name="other"', self.user.read_text())
+                self.assertNotIn('gad_paste', self.user.read_text())
+
+    def test_reenable_refuses_unknown_changes_without_writing_any_file(self):
+        self.enable()
+        self.rc.write_text(self.rc.read_text().replace('shortcut="Ctrl+V"', 'shortcut="Alt+G"'))
+        paths = (self.user, self.rc, integration.receipt_path())
+        before = [path.read_bytes() for path in paths]
+        with self.assertRaises(ValueError):
+            self.enable()
+        self.assertEqual([path.read_bytes() for path in paths], before)

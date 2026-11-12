@@ -29,7 +29,7 @@ extern "C" char *sc_request(const char *input) {
     else if(request["command"]=="simulate"){QThread::msleep(simulationDelay.load());result=simulationPlan;++simulationCompleted;}
     else if(request["command"]=="error_report")result=errorReport;
     else if(request["command"]=="status" || request["command"]=="poll")result=status;
-    else {mutations.append(request);if(clearHistoryInMock && request["command"]=="clear"){QJsonArray kept;for(const auto &value:status["jobs"].toArray()){const auto row=value.toObject();if(!Protocol::terminal(row["state"].toString()) || row["undo_requested"].toBool())kept.append(row);}status["jobs"]=kept;}result=rejectExclusions && request["command"]=="configure" && request.contains("exclusions")?QJsonObject{{"error","Invalid exclusion rules"}}:QJsonObject{{"ok",true},{"id",1}};}
+    else {mutations.append(request);if(clearHistoryInMock && (request["command"]=="clear" || request["command"]=="completion_clear")){QJsonArray kept;for(const auto &value:status["jobs"].toArray()){const auto row=value.toObject();if(!Protocol::terminal(row["state"].toString()) || row["undo_requested"].toBool())kept.append(row);}status["jobs"]=kept;}result=rejectExclusions && request["command"]=="configure" && request.contains("exclusions")?QJsonObject{{"error","Invalid exclusion rules"}}:QJsonObject{{"ok",true},{"id",1}};}
     return strdup(QJsonDocument(result).toJson(QJsonDocument::Compact).constData());
 }
 extern "C" void sc_free(char *value){free(value);}
@@ -77,6 +77,17 @@ public:
     bool rejectShortcut=false;QList<bool> shortcutCalls;
     void configureDolphin(bool enabled,std::function<void(QJsonObject)> reply) override {
         shortcutCalls.append(enabled);QTimer::singleShot(0,this,[this,enabled,reply]{if(rejectShortcut){reply({{"error","Shortcut configuration rejected"}});return;}auto *check=findChild<QCheckBox *>("dolphinShortcut");QSignalBlocker blocker(check);check->setChecked(enabled);reply({{"ok",true}});});
+    }
+};
+
+/// Isoler les effets externes tout en vérifiant la validation des requêtes combinées.
+class ConfigurationWindow : public ProfileWindow {
+public:
+    QList<bool> krusaderCalls;
+    void configureKrusader(bool enabled,std::function<void(QJsonObject)> reply) override {
+        krusaderCalls.append(enabled);
+        auto *check=findChild<QCheckBox *>("krusaderShortcut");QSignalBlocker blocker(check);check->setChecked(enabled);
+        reply({{"ok",true}});
     }
 };
 
@@ -197,6 +208,152 @@ private Q_SLOTS:
         const auto restore=qScopeGuard([]{I18n::initialize("fr_FR");});I18n::initialize("en_US");QCOMPARE(list->currentItem()->data(Qt::UserRole).toString(),second.id);QCOMPARE(window.findChild<QDialog *>("profilesDialog")->windowTitle(),QString("Transfer profiles"));
     }
     /// Les limites futures ont leur propre commande et les valeurs invalides ne touchent pas les réglages.
+    /// Un échec externe après Krusader remet son raccourci dans son état initial.
+    void validConfigurationRestoresShortcutsWhenDolphinFails() {
+        ProfileSettingsGuard guard;ConfigurationWindow window;const auto previous=window.currentTransferProfile();
+        window.rejectShortcut=true;bool completed=false;QJsonObject response;mutations.clear();
+        window.handleAsync({{"command","configure"},{"gui_settings",QJsonObject{{"krusader_ctrl_v",true},{"dolphin_ctrl_v",true}}}},[&](QJsonObject result){response=result;completed=true;});
+        QTRY_VERIFY(completed);QVERIFY(response.contains("error"));
+        QCOMPARE(window.currentTransferProfile().gui,previous.gui);QCOMPARE(window.krusaderCalls,QList<bool>({true,false}));QVERIFY(mutations.isEmpty());
+    }
+    /// Le refus du moteur restitue les raccourcis et le fichier de démarrage.
+    void validConfigurationRestoresExternalSettingsWhenEngineFails() {
+        ProfileSettingsGuard guard;ConfigurationWindow window;const auto previous=window.currentTransferProfile();
+        const bool startup=autostartEnabled();rejectExclusions=true;const auto restore=qScopeGuard([]{rejectExclusions=false;});
+        bool completed=false;QJsonObject response;
+        window.handleAsync({{"command","configure"},{"exclusions",previous.options["exclusions"]},{"gui_settings",QJsonObject{{"krusader_ctrl_v",true},{"autostart",!startup}}}},[&](QJsonObject result){response=result;completed=true;});
+        QTRY_VERIFY(completed);QVERIFY(response.contains("error"));QCOMPARE(autostartEnabled(),startup);
+        QCOMPARE(window.currentTransferProfile().gui,previous.gui);QCOMPARE(window.krusaderCalls,QList<bool>({true,false}));
+    }
+    /// Une configuration asynchrone ne doit pas écraser une seconde modification arrivée entre ses étapes.
+    void combinedConfigurationBlocksConcurrentChanges() {
+        ProfileSettingsGuard guard;ConfigurationWindow window;bool completed=false;QJsonObject response;
+        auto *draft=window.findChild<QPlainTextEdit *>("excludedFiles");QVERIFY(draft);draft->setPlainText("*.draft");
+        window.handleAsync({{"command","configure"},{"gui_settings",QJsonObject{{"krusader_ctrl_v",true},{"dolphin_ctrl_v",true}}}},[&](QJsonObject result){response=result;completed=true;});
+        QVERIFY(!completed);auto *exclusions=window.findChild<QWidget *>("exclusionsPanel");QVERIFY(exclusions);QVERIFY(!exclusions->isEnabled());
+        QFocusEvent disabledBlur(QEvent::FocusOut,Qt::OtherFocusReason);QApplication::sendEvent(draft,&disabledBlur);
+        QVERIFY(!window.findChild<QMessageBox *>("errorDialog"));QJsonObject concurrent;
+        window.handleAsync({{"command","configure"},{"keep_history",true}},[&](QJsonObject result){concurrent=result;});
+        const bool rejected=concurrent.contains("error");
+        QTRY_VERIFY(completed);QVERIFY(!response.contains("error"));QVERIFY(rejected);QVERIFY(exclusions->isEnabled());
+        QCOMPARE(draft->toPlainText(),QString("*.draft"));
+        QFocusEvent enabledBlur(QEvent::FocusOut,Qt::TabFocusReason);QApplication::sendEvent(draft,&enabledBlur);
+        QCOMPARE(window.currentTransferProfile().options["exclusions"].toObject()["files"].toArray(),QJsonArray{"*.draft"});
+    }
+    /// Un réglage explicite reste réapplicable sans réécrire les options internes.
+    void explicitShortcutOnlyPreservesOtherSettings() {
+        ProfileSettingsGuard guard;ConfigurationWindow window;const auto previous=window.currentTransferProfile();
+        const bool enabled=previous.gui["krusader_ctrl_v"].toBool();mutations.clear();bool completed=false;QJsonObject response;
+        window.handleAsync({{"command","configure"},{"gui_settings",QJsonObject{{"krusader_ctrl_v",enabled}}}},[&](QJsonObject result){response=result;completed=true;});
+        QTRY_VERIFY(completed);QVERIFY(!response.contains("error"));QCOMPARE(window.krusaderCalls,QList<bool>{enabled});QVERIFY(mutations.isEmpty());
+        QCOMPARE(window.currentTransferProfile().gui,previous.gui);QCOMPARE(window.currentTransferProfile().options,previous.options);
+    }
+
+    /// Une modification externe du démarrage reste intacte lors d’une demande portant sur un seul raccourci.
+    void shortcutConfigurationPreservesExternallyChangedStartupFile() {
+        ProfileSettingsGuard guard;QVERIFY(setAutostart(false));ConfigurationWindow window;
+        QVERIFY(setAutostart(true));QFile saved(autostartPath());QVERIFY(saved.open(QIODevice::ReadOnly));const auto contents=saved.readAll();saved.close();
+        bool completed=false;QJsonObject response;
+        window.handleAsync({{"command","configure"},{"gui_settings",QJsonObject{{"krusader_ctrl_v",true}}}},[&](QJsonObject result){response=result;completed=true;});
+        QTRY_VERIFY(completed);QVERIFY(!response.contains("error"));QVERIFY(autostartEnabled());
+        QFile current(autostartPath());QVERIFY(current.open(QIODevice::ReadOnly));QCOMPARE(current.readAll(),contents);
+    }
+    /// Seul zéro signifie illimité ; une valeur positive inférieure à un demi-octet ne peut pas devenir zéro.
+    void cliRejectsPositiveRatesRoundedToUnlimited() {
+        for(const auto &option:QStringList{"--rate-limit","--request-rate-limit"}) {
+            QString failure;QVERIFY(CliOptions::configure({"gad","--configure",option,"0.0000001"},failure).isEmpty());QVERIFY(!failure.isEmpty());
+            const auto valid=CliOptions::configure({"gad","--configure",option,"0.000001"},failure);QVERIFY(failure.isEmpty());
+            const auto bytes=option=="--rate-limit"?valid["rate_limit"]:valid["gui_settings"].toObject()["request_rate_limit"];
+            QCOMPARE(bytes.toInteger(),qint64(1));
+        }
+    }
+
+    /// Les séparateurs suivent la langue de l’interface sans modifier le nombre d’octets ni envoyer de commande.
+    /// Une saisie positive sous la résolution d’un octet reste une limite active, jamais « illimité ».
+    void positiveSpeedInputCannotRoundToUnlimited() {
+        ProfileSettingsGuard guard;Window window;
+        for(const auto &name:QStringList{"globalRateLimit","defaultRequestRateLimit"}) {
+            auto *spin=window.findChild<QDoubleSpinBox *>(name);QVERIFY(spin);spin->setValue(2.5);
+            auto *editor=spin->findChild<QLineEdit *>();QVERIFY(editor);
+            editor->setText(spin->locale().toString(0.0000001,'f',7));spin->interpretText();
+            QCOMPARE(qRound64(spin->value()*1048576),qint64(1));
+        }
+    }
+
+    void speedLimitLocaleChangesWithoutChangingBytes() {
+        ProfileSettingsGuard guard;I18n::initialize("fr_FR");Window window;
+        QVERIFY(!window.handle({{"command","configure"},{"rate_limit",1},{"gui_settings",QJsonObject{{"request_rate_limit",1}}}}).contains("error"));
+        mutations.clear();
+        for(const auto &language:QStringList{"en_US","de_DE","fr_FR"}) {
+            I18n::initialize(language);
+            for(const auto &name:QStringList{"globalRateLimit","defaultRequestRateLimit"}) {
+                const auto *spin=window.findChild<QDoubleSpinBox *>(name);QVERIFY(spin);QCOMPARE(spin->locale().name(),QLocale(language).name());
+                QCOMPARE(qRound64(spin->value()*1048576),qint64(1));
+            }
+        }
+        QVERIFY(mutations.isEmpty());
+    }
+
+    void exactSpeedLimitsSurviveStartupAndProfiles_data() {
+        QTest::addColumn<qint64>("bytes");
+        QTest::newRow("one-byte")<<qint64(1);QTest::newRow("one-kibibyte")<<qint64(1024);
+        QTest::newRow("fractional-mib")<<qint64(1234567);QTest::newRow("near-maximum")<<qint64((1LL<<40)-1);
+    }
+    /// Une limite fine ne doit pas être arrondie à zéro, ni devenir illimitée lors du démarrage ou d’une capture.
+    void exactSpeedLimitsSurviveStartupAndProfiles() {
+        QFETCH(qint64,bytes);ProfileSettingsGuard guard;QSettings().setValue("rateLimit",bytes);QSettings().setValue("requestRateLimit",bytes);
+        Window window;const auto profile=window.currentTransferProfile();
+        QCOMPARE(profile.options["rate_limit"].toInteger(),bytes);QCOMPARE(profile.rate,bytes);
+        QVERIFY(!window.transferProfileDescription(profile).contains(QLocale().toString(0.,'f',2)+GAD_TR(" MiB/s")));
+        for(const auto &name:QStringList{"globalRateLimit","defaultRequestRateLimit"}) {
+            auto *spin=window.findChild<QDoubleSpinBox *>(name);QVERIFY(spin);QCOMPARE(qRound64(spin->value()*1048576),bytes);
+            spin->setValue(2.5);QCOMPARE(spin->cleanText(),spin->locale().toString(2.5,'f',2));
+        }
+    }
+    /// Valider une limite existante dans le menu contextuel ne change pas son nombre d’octets.
+    void selectedSpeedLimitRetainsSingleByte() {
+        ProfileSettingsGuard guard;auto request=job({file("waiting")},"waiting");request["rate_limit"]=1;publish(request);Window window;
+        auto *tree=window.findChild<QTreeWidget *>();QVERIFY(tree);tree->topLevelItem(0)->setSelected(true);window.showRateLimit();
+        auto *dialog=window.findChild<QDialog *>("requestRateDialog");QVERIFY(dialog);auto *spin=dialog->findChild<QDoubleSpinBox *>("requestRateLimit");QVERIFY(spin);
+        QCOMPARE(qRound64(spin->value()*1048576),qint64(1));
+    }
+
+    void configurationRejectsInvalidValuesBeforeShortcutChanges_data() {
+        QTest::addColumn<QJsonObject>("request");
+        const QList<QPair<QString,QJsonValue>> invalidGui{
+            {"language","not-a-locale"},{"request_rate_limit",-1},{"autostart","false"},
+            {"dolphin_ctrl_v","true"},{"krusader_ctrl_v","true"},
+            {"completion_action","invalid"},{"completion_delay",0}};
+        for(const auto &field:invalidGui) {
+            QJsonObject gui{{"krusader_ctrl_v",true},{"dolphin_ctrl_v",true}};gui[field.first]=field.second;
+            QTest::newRow(qPrintable("gui-"+field.first))<<QJsonObject{{"command","configure"},{"gui_settings",gui}};
+        }
+        for(const auto &field:QList<QPair<QString,QJsonValue>>{{"rate_limit",-1},{"verify_md5","true"},{"conflict_policy","replace"},{"exclusion_patch",QJsonObject{{"files","*.tmp"}}},{"unexpected_setting",true}})
+            QTest::newRow(qPrintable("engine-"+field.first))<<QJsonObject{{"command","configure"},{field.first,field.second},{"gui_settings",QJsonObject{{"krusader_ctrl_v",true},{"dolphin_ctrl_v",true}}}};
+        QTest::newRow("invalid-gui-object")<<QJsonObject{{"command","configure"},{"gui_settings",QJsonArray{}}};
+        QTest::newRow("invalid-with-profile")<<QJsonObject{{"command","configure"},{"profile","Saved"},{"gui_settings",QJsonObject{{"language","not-a-locale"}}}};
+    }
+    /// Aucun raccourci ni réglage moteur ne change pour une demande invalide.
+    void configurationRejectsInvalidValuesBeforeShortcutChanges() {
+        QFETCH(QJsonObject,request);ProfileSettingsGuard guard;ConfigurationWindow window;
+        if(request.contains("profile")){QString failure;auto profile=sampleProfile("Saved");profile.gui["dolphin_ctrl_v"]=true;profile.gui["krusader_ctrl_v"]=true;QVERIFY(TransferProfiles::store({profile},failure));}
+        const auto previous=window.currentTransferProfile();mutations.clear();bool completed=false;QJsonObject response;
+        window.handleAsync(request,[&](QJsonObject result){response=result;completed=true;});
+        QTRY_VERIFY(completed);QVERIFY(response.contains("error"));
+        QVERIFY(window.krusaderCalls.isEmpty());QVERIFY(window.shortcutCalls.isEmpty());QVERIFY(mutations.isEmpty());
+        QCOMPARE(window.currentTransferProfile().gui,previous.gui);
+        QCOMPARE(window.currentTransferProfile().options,previous.options);
+    }
+
+    /// La lecture Qt ne doit pas ajouter gui_settings:null à une demande qui ne contient que des options moteur.
+    void configurationWithoutGuiSettingsRemainsValid() {
+        ProfileSettingsGuard guard;ConfigurationWindow window;mutations.clear();bool completed=false;QJsonObject response;
+        const QJsonObject request{{"command","configure"},{"keep_history",false}};
+        window.handleAsync(request,[&](QJsonObject result){response=result;completed=true;});
+        QTRY_VERIFY(completed);QVERIFY(!response.contains("error"));QCOMPARE(mutations.size(),1);QCOMPARE(mutations.first(),request);
+        QVERIFY(window.krusaderCalls.isEmpty());QVERIFY(window.shortcutCalls.isEmpty());
+    }
+
     void requestRateConfigurationIsSeparateAndValidated() {
         ProfileSettingsGuard guard;Window window;auto *global=window.findChild<QDoubleSpinBox *>("globalRateLimit");const auto previous=global->value();QString failure;
         const auto request=CliOptions::configure({"gad","--configure","--request-rate-limit","3.5"},failure);QVERIFY(failure.isEmpty());mutations.clear();QVERIFY(!window.handle(request).contains("error"));QVERIFY(mutations.isEmpty());QCOMPARE(global->value(),previous);QCOMPARE(window.findChild<QDoubleSpinBox *>("defaultRequestRateLimit")->value(),3.5);QCOMPARE(SourceUrls::requiredProtocol(request),25);
@@ -292,6 +449,18 @@ private Q_SLOTS:
         query.text="other";QVERIFY(!query.matches(&row));query.text.clear();query.state="done";QVERIFY(!query.matches(&row));query.state.clear();query.from=today.addDays(1);QVERIFY(!query.matches(&row));query.from=today;
         row.setData(0,HistorySearch::CreatedRole,0);QVERIFY(!query.matches(&row));query.dates=false;QVERIFY(query.matches(&row));row.setData(0,HistorySearch::JobStateRole,"running");QVERIFY(!query.matches(&row));query.historyOnly=false;QVERIFY(query.matches(&row));query.enabled=false;query.text="never";QVERIFY(query.matches(&row));
     }
+    /// Les caches suivent les changements directs de requête, de chemins et les copies de critères.
+    void historyQueryCachesInvalidateWithoutLosingUnicodeOrLiteralMatching() {
+        QTreeWidgetItem row;row.setData(0,HistorySearch::JobStateRole,"done");
+        HistorySearch::setPaths(&row,QString::fromUtf8("/Été/image.jpg"));
+        HistorySearch::Query query;query.enabled=true;query.text=QString::fromUtf8("été \t image");
+        QVERIFY(query.matches(&row));QVERIFY(query.matches(&row));
+        auto copy=query;copy.text="other";QVERIFY(!copy.matches(&row));QVERIFY(query.matches(&row));
+        HistorySearch::setPaths(&row,"/other/file.txt");QVERIFY(copy.matches(&row));QVERIFY(!query.matches(&row));
+        row.setData(0,HistorySearch::PathsRole,QString::fromUtf8("/été/image.jpg"));QVERIFY(query.matches(&row));QVERIFY(!copy.matches(&row));
+        HistorySearch::setPaths(&row,QString::fromUtf8("/été/image.jpg"));QCOMPARE(row.data(0,HistorySearch::CachedPathsRole).toString(),QString::fromUtf8("/été/image.jpg"));QVERIFY(query.matches(&row));
+        query.text=" \n \t";QVERIFY(query.matches(&row));query.text=".*";QVERIFY(!query.matches(&row));
+    }
     /// La barre conserve les parents des résultats et les mêmes items ; fermer la recherche restaure la vue.
     void historySearchCombinesFiltersWithoutChangingQueue() {
         auto entries=nestedEntries();for(int i=0;i<entries.size();++i){auto entry=entries[i].toObject();entry["state"]="done";entries[i]=entry;}
@@ -324,12 +493,39 @@ private Q_SLOTS:
         entry["state"]="conflict";request["entries"]=QJsonArray{entry};state["jobs"]=QJsonArray{request};meters.sync(state,{1},7300);diagnostics.sync(state,meters,7300);QVERIFY(diagnostics.items()[0].reason.contains("décision"));
         state["paused"]=true;diagnostics.sync(state,meters,7400);QVERIFY(diagnostics.items()[0].reason.contains("pause"));
     }
+    /// Les deltas fusionnent leurs compteurs sans perdre les chemins, reçus ni l’ordre et refusent une base absente.
+    void sparseSnapshotsMergeCountersAndRatesAndRecoverFromInvalidBases() {
+        QueueSnapshot snapshot;auto request=job({file("running"),file("waiting")},"running");
+        request["entries"]=QJsonArray{file("running"),file("waiting")};
+        const auto full=QJsonObject{{"revision",10},{"reset",true},{"jobs",QJsonArray{request}},{"job_ids",QJsonArray{1}},{"row_order",QJsonArray{1}}};
+        snapshot.apply(full);
+        const auto patch=QJsonObject{{"id",1},{"rate_limit",123},{"entries",QJsonArray{QJsonObject{{"index",0},{"copied",17},{"verified",8},{"resume_checked",3}}}}};
+        const auto changes=snapshot.apply({{"revision",11},{"job_ids",QJsonArray{1}},{"jobs",QJsonArray{}},{"job_patches",QJsonArray{patch}}});
+        QCOMPARE(changes,QSet<qint64>{1});auto updated=snapshot.state()["jobs"].toArray()[0].toObject();
+        QCOMPARE(updated["rate_limit"].toInt(),123);auto entries=updated["entries"].toArray();auto expected=request["entries"].toArray()[0].toObject();expected["copied"]=17;expected["verified"]=8;expected["resume_checked"]=3;
+        QCOMPARE(entries[0].toObject(),expected);QCOMPARE(entries[1],request["entries"].toArray()[1]);QCOMPARE(snapshot.state()["row_order"],full["row_order"]);
+        const auto before=snapshot.state();auto invalid=patch;invalid["entries"]=QJsonArray{QJsonObject{{"index",99},{"copied",20}}};
+        QVERIFY(snapshot.apply({{"revision",12},{"job_ids",QJsonArray{1}},{"job_patches",QJsonArray{invalid}}}).isEmpty());QCOMPARE(snapshot.revision(),-1);QCOMPARE(snapshot.state(),before);
+        snapshot.apply(full);auto missing=patch;missing["id"]=99;snapshot.apply({{"revision",13},{"job_ids",QJsonArray{1}},{"job_patches",QJsonArray{missing}}});QCOMPARE(snapshot.revision(),-1);
+        snapshot.apply(full);QCOMPARE(snapshot.revision(),10);QCOMPARE(snapshot.state()["jobs"].toArray()[0],QJsonValue(request));
+    }
     /// Une réponse « inchangée » doit néanmoins rafraîchir la télémétrie, sans perdre les lots ni l’ordre.
     void unchangedSnapshotsStillRefreshWaitDiagnostics() {
         QueueSnapshot snapshot;const auto request=job({file("running")},"running");
         snapshot.apply({{"revision",10},{"reset",true},{"jobs",QJsonArray{request}},{"job_ids",QJsonArray{1}},{"row_order",QJsonArray{1}},{"diagnostics",QJsonObject{{"1",QJsonObject{{"global_throttled",false}}}}}});
         const auto changed=snapshot.apply({{"revision",10},{"unchanged",true},{"diagnostics",QJsonObject{{"1",QJsonObject{{"global_throttled",true}}}}}});QVERIFY(changed.isEmpty());QCOMPARE(snapshot.revision(),10);QCOMPARE(snapshot.state()["jobs"].toArray().size(),1);QVERIFY(snapshot.state()["diagnostics"].toObject()["1"].toObject()["global_throttled"].toBool());QCOMPARE(snapshot.state()["row_order"].toArray(),QJsonArray{1});
     }
+    /// Une saisie en attente survit aux ticks ; une nouvelle consigne externe reste prioritaire.
+    void progressRefreshPreservesUncommittedRateInput() {
+        ProfileSettingsGuard guard;publish(job({file("running")},"running"));status["rate_limit"]=1048576;
+        Window window;window.refresh();auto *rate=window.findChild<QDoubleSpinBox *>("globalRateLimit");
+        auto *editor=rate->findChild<QLineEdit *>();QVERIFY(editor);const auto pending=QString("12")+rate->suffix();
+        editor->setText(pending);mutations.clear();window.refresh();
+        QCOMPARE(editor->text(),pending);QCOMPARE(rate->value(),1.0);QVERIFY(mutations.isEmpty());
+        // Une nouvelle limite reçue d’une commande externe doit en revanche être affichée.
+        status["rate_limit"]=2097152;window.refresh();QCOMPARE(rate->value(),2.0);
+    }
+
     /// Les lignes du diagnostic sont stables, traduites à la volée et retirées après la fin d’un transfert.
     void diagnosticsDialogUpdatesWithoutMutatingTransfers() {
         publish(job({file("running")},"running"));status["diagnostics"]=QJsonObject{{"1",QJsonObject{{"queue_reason","active"},{"global_throttled",false}}}};Window window;mutations.clear();window.showDiagnostics();
@@ -375,6 +571,22 @@ private Q_SLOTS:
         auto next=job({file("done")});next["id"]=2;state["jobs"]=QJsonArray{first,next};state["queue_guard"]=QJsonObject{{"idle",true},{"epoch",2},{"next_id",2},{"last_command","enqueue"}};QCOMPARE(plan.observe(state,false,5999),Completion::Plan::Begin);QCOMPARE(plan.remaining(5999),5);
         QCOMPARE(plan.observe(state,true,7000),Completion::Plan::None);QVERIFY(!plan.counting);QCOMPARE(plan.observe(state,false,8000),Completion::Plan::Begin);QCOMPARE(plan.observe(state,false,13000),Completion::Plan::Ready);
     }
+    /// Démarrer un lot préparé ou mettre une sélection en pause ne désarme pas sa fin de lot.
+    void completionPlanKeepsActionAcrossStartAndSelectionPause() {
+        for(const auto &command:QStringList{"start_prepared","pause_selection"}) {
+            auto request=job({file("waiting")},"waiting");
+            request["start_required"]=command=="start_prepared";
+            QJsonObject state{{"jobs",QJsonArray{request}},{"queue_guard",QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}}}};
+            Completion::Plan plan;plan.arm("notify",5,state);
+            request["start_required"]=false;request["paused"]=command=="pause_selection";
+            state["jobs"]=QJsonArray{request};state["queue_guard"]=QJsonObject{{"idle",false},{"epoch",2},{"next_id",1},{"last_command",command}};
+            QCOMPARE(plan.observe(state,false,1000),Completion::Plan::None);QVERIFY(plan.armed);
+            request["state"]="done";request["entries"]=QJsonArray{file("done")};request["paused"]=false;state["jobs"]=QJsonArray{request};
+            auto guard=state["queue_guard"].toObject();guard["idle"]=true;state["queue_guard"]=guard;
+            QCOMPARE(plan.observe(state,false,2000),Completion::Plan::Begin);
+            QCOMPARE(plan.observe(state,false,7000),Completion::Plan::Ready);
+        }
+    }
     /// Erreurs, annulations, suppressions et moteur ancien rendent l’action inéligible, sans appel système.
     void completionPlanRejectsErrorsCanceledAndMissingRequests() {
         for(const auto &result:QStringList{"error","cancelled","undone","missing"}) {
@@ -385,10 +597,10 @@ private Q_SLOTS:
     }
     /// Tous les effets sont injectés : la sortie, la veille et l’extinction ne sont jamais réellement exécutées en test.
     void completionWindowDispatchesOnlyAfterCountdownAndOnlyOnce() {
-        for(const auto &action:QStringList{"notify","quit","suspend","poweroff"}) {
+        for(const auto &action:QStringList{"notify","clear","quit","suspend","poweroff"}) {
             ProfileSettingsGuard guard;auto request=job({file("running")},"running");publish(request);status["queue_guard"]=QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};CompletionWindow window;
             window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"completion_action",action},{"completion_delay",5}}}});window.armCompletion();QVERIFY(window.actions.isEmpty());request["state"]="done";publish(request);status["queue_guard"]=QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};
-            window.refreshCompletion(status,1000);QVERIFY(window.findChild<QDialog *>("completionCountdown"));QVERIFY(window.actions.isEmpty());window.refreshCompletion(status,5999);QVERIFY(window.actions.isEmpty());mutations.clear();window.refreshCompletion(status,6000);QCOMPARE(window.actions,QStringList{action});QCOMPARE(mutations.first()["command"].toString(),QString("completion_claim"));QCOMPARE(mutations.last()["command"].toString(),QString("completion_release"));window.refreshCompletion(status,10000);QCOMPARE(window.actions.size(),1);
+            window.refreshCompletion(status,1000);QVERIFY(!window.findChild<QDialog *>("completionCountdown"));QVERIFY(!window.findChild<TransferNotifications *>("completionNotification")->properties().isEmpty());QVERIFY(window.actions.isEmpty());window.refreshCompletion(status,5999);QVERIFY(window.actions.isEmpty());mutations.clear();window.refreshCompletion(status,6000);QCOMPARE(window.actions,QStringList{action});QCOMPARE(mutations.first()["command"].toString(),QString("completion_claim"));QCOMPARE(mutations.last()["command"].toString(),QString("completion_release"));window.refreshCompletion(status,10000);QCOMPARE(window.actions.size(),1);
         }
     }
     /// Le bouton Annuler désarme sans annuler les transferts ; recharger un profil ne peut jamais réarmer.
@@ -396,7 +608,7 @@ private Q_SLOTS:
         ProfileSettingsGuard guard;auto request=job({file("running")},"running");publish(request);status["queue_guard"]=QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};CompletionWindow window;
         window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"completion_action","poweroff"},{"completion_delay",5}}}});auto profile=window.currentTransferProfile();profile.name="Power preset";QString failure;QVERIFY(TransferProfiles::store({profile},failure));window.armCompletion();QVERIFY(window.applyTransferProfile(profile.id));
         request["state"]="done";publish(request);status["queue_guard"]=QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};window.refreshCompletion(status,10000);QVERIFY(window.actions.isEmpty());QVERIFY(!window.findChild<QDialog *>("completionCountdown"));
-        request["state"]="running";publish(request);status["queue_guard"]=QJsonObject{{"idle",false},{"epoch",2},{"next_id",1},{"last_command","retry_errors"}};window.armCompletion();request["state"]="done";publish(request);status["queue_guard"]=QJsonObject{{"idle",true},{"epoch",2},{"next_id",1},{"last_command","retry_errors"}};window.refreshCompletion(status,1000);auto *dialog=window.findChild<QDialog *>("completionCountdown");QVERIFY(dialog);dialog->findChild<QPushButton *>("completionCountdownCancel")->click();window.refreshCompletion(status,20000);QVERIFY(window.actions.isEmpty());
+        request["state"]="running";publish(request);status["queue_guard"]=QJsonObject{{"idle",false},{"epoch",2},{"next_id",1},{"last_command","retry_errors"}};window.armCompletion();request["state"]="done";publish(request);status["queue_guard"]=QJsonObject{{"idle",true},{"epoch",2},{"next_id",1},{"last_command","retry_errors"}};window.refreshCompletion(status,1000);window.cancelCompletion();QVERIFY(window.findChild<TransferNotifications *>("completionNotification")->properties().isEmpty());window.refreshCompletion(status,20000);QVERIFY(window.actions.isEmpty());
         auto old=profile.json();auto gui=old["gui"].toObject();gui.remove("completion_action");gui.remove("completion_delay");old["gui"]=gui;QSettings().setValue("transferProfiles",QJsonDocument(QJsonObject{{"version",4},{"profiles",QJsonArray{old}}}).toJson());const auto migrated=TransferProfiles::load(failure);QVERIFY(failure.isEmpty());QCOMPARE(migrated[0].gui["completion_action"].toString(),QString("none"));QCOMPARE(migrated[0].gui["completion_delay"].toInt(),30);
     }
     /// L’activation explicite dans les options reste distincte des préférences sauvegardées.
@@ -408,6 +620,27 @@ private Q_SLOTS:
         button->click();QVERIFY(label->text().contains("Actif"));QVERIFY(label->text().contains("45"));QVERIFY(window.actions.isEmpty());
         button->click();QVERIFY(label->text().contains("Inactif"));QCOMPARE(window.findChild<QComboBox *>("completionAction")->currentData().toString(),QString("suspend"));
         button->click();window.handle({{"command","configure"},{"gui_settings",QJsonObject{{"completion_delay",60}}}});QVERIFY(label->text().contains("Inactif"));QVERIFY(window.actions.isEmpty());
+    }
+
+    /// L’action réelle conserve la garde jusqu’au nettoyage puis ne se déclenche plus.
+    void completionClearsListAfterCountdownAndKeepsSavedPreference() {
+        ProfileSettingsGuard guard;auto request=job({file("running")},"running");publish(request);
+        status["queue_guard"]=QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};
+        clearHistoryInMock=true;Window window;
+        auto *menu=window.findChild<QToolButton *>("completionButton")->menu();
+        QVERIFY(QMetaObject::invokeMethod(menu,"aboutToShow",Qt::DirectConnection));
+        auto *clear=menu->findChild<QAction *>("completionChoose_clear");QVERIFY(clear);QCOMPARE(clear->text(),QString("Nettoyer la liste"));
+        window.findChild<QSpinBox *>("completionDelay")->setValue(5);clear->trigger();
+        QCOMPARE(QSettings().value("completionAction").toString(),QString("clear"));
+        QCOMPARE(window.currentTransferProfile().gui["completion_action"].toString(),QString("clear"));
+        QString failure;const auto cli=CliOptions::configure({"gad","--configure","--completion-action","clear"},failure);QVERIFY(failure.isEmpty());QCOMPARE(SourceUrls::requiredProtocol(cli),35);
+        request["state"]="done";request["entries"]=QJsonArray{file("done")};publish(request);
+        status["queue_guard"]=QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};
+        mutations.clear();window.refreshCompletion(status,1000);QVERIFY(!window.findChild<QDialog *>("completionCountdown"));QVERIFY(!window.findChild<TransferNotifications *>("completionNotification")->properties().isEmpty());QVERIFY(mutations.isEmpty());
+        window.refreshCompletion(status,6000);
+        QCOMPARE(mutations.size(),3);QCOMPARE(mutations[0]["command"].toString(),QString("completion_claim"));QCOMPARE(mutations[1]["command"].toString(),QString("completion_clear"));QCOMPARE(mutations[2]["command"].toString(),QString("completion_release"));
+        QVERIFY(status["jobs"].toArray().isEmpty());QCOMPARE(window.findChild<QTreeWidget *>()->topLevelItemCount(),0);
+        mutations.clear();window.refreshCompletion(status,20000);QVERIFY(mutations.isEmpty());
     }
 
     /// Les anciens profils conservent le comportement visible ; un choix récent reste durable.
@@ -433,6 +666,32 @@ private Q_SLOTS:
         request["state"]="done";request["entries"]=QJsonArray{file("done")};publish(request);status["queue_guard"]=QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};window.refreshCompletion(status,1000);window.refreshCompletion(status,6000);QVERIFY(window.pending);QVERIFY(!window.findChild<QWidget *>("settingsPanel")->isEnabled());QVERIFY(!window.findChild<QWidget *>("ratesPanel")->isEnabled());QVERIFY(!window.findChild<QWidget *>("completionPanel")->isEnabled());
         QJsonObject reply;window.handleAsync({{"command","configure"},{"gui_settings",QJsonObject{{"dolphin_ctrl_v",true}}}},[&](QJsonObject result){reply=result;});QVERIFY(reply.contains("error"));QCOMPARE(window.shortcutCalls,0);QVERIFY(window.handle({{"command","enqueue"},{"sources",QJsonArray{"sftp://host/a"}},{"destination","/tmp"}}).contains("error"));
         QJsonObject profileReply;QVERIFY(!window.applyTransferProfile("unknown",[&](QJsonObject result){profileReply=result;}));QVERIFY(profileReply.contains("error"));window.pending({{"ok",true}});QVERIFY(window.findChild<QWidget *>("settingsPanel")->isEnabled());QVERIFY(window.findChild<QWidget *>("ratesPanel")->isEnabled());QVERIFY(window.findChild<QWidget *>("completionPanel")->isEnabled());
+    }
+
+    /// Les lectures IPC n’actualisent pas la fenêtre ; un collage externe ne paie pas la reconstruction des lignes.
+    void readOnlyRequestsAndBackgroundAddsAvoidSynchronousRefresh() {
+        publish(job({file("running")},"running"));Window window;
+        auto *row=window.entryRow(1,0);QVERIFY(row);const auto previous=row->text(2);
+        publish(job({file("done")},"done"));
+        const auto result=window.handle({{"command","status"}});QCOMPARE(result["jobs"].toArray()[0].toObject()["state"].toString(),QString("done"));
+        QCOMPARE(row->text(2),previous);
+        auto *timer=window.findChild<QTimer *>("queueRefreshTimer");QVERIFY(timer);
+        QVERIFY(!window.handle({{"command","enqueue"},{"sources",QJsonArray{"/tmp/paste-fixture"}},{"destination","/tmp"},{"background",true}}).contains("error"));
+        QCOMPARE(row->text(2),previous);QVERIFY(timer->isActive());QCOMPARE(timer->interval(),25);
+        QVERIFY(QMetaObject::invokeMethod(timer,"timeout",Qt::DirectConnection));
+        QCOMPARE(timer->interval(),400);QCOMPARE(row->text(2),QString(GAD_TR("OK")));
+        auto active=job({file("running")},"running");active["fast_move"]=true;publish(active);
+        QVERIFY(QMetaObject::invokeMethod(timer,"timeout",Qt::DirectConnection));QCOMPARE(timer->interval(),50);
+        status["paused"]=true;QVERIFY(QMetaObject::invokeMethod(timer,"timeout",Qt::DirectConnection));QCOMPARE(timer->interval(),400);
+    }
+
+    /// La fréquence de rafraîchissement ne doit jamais entraîner des écritures de configuration au repos.
+    void unchangedRefreshDoesNotRewriteRateSettings() {
+        Window window;status["rate_limit"]=0;QSettings settings;settings.setValue("rateLimit",qlonglong(0));settings.sync();
+        const auto old=QDateTime::fromSecsSinceEpoch(1000000000);
+        QFile file(settings.fileName());QVERIFY(file.open(QIODevice::ReadWrite));QVERIFY(file.setFileTime(old,QFileDevice::FileModificationTime));file.close();
+        window.refresh();window.refresh();settings.sync();
+        QCOMPARE(QFileInfo(settings.fileName()).lastModified().toMSecsSinceEpoch(),old.toMSecsSinceEpoch());
     }
 
     void initTestCase() {
@@ -816,6 +1075,29 @@ private Q_SLOTS:
         QCOMPARE(QJsonDocument::fromJson(ErrorReport::encode(report,true)).object(),report);
         QString message;const auto path=temp.filePath("rapport.json");QVERIFY(ErrorReport::save(path,report,true,message));QFile saved(path);QVERIFY(saved.open(QIODevice::ReadOnly));QCOMPARE(QJsonDocument::fromJson(saved.readAll()).object(),report);
         const auto directory=temp.filePath("directory");QVERIFY(QDir().mkdir(directory));QVERIFY(!ErrorReport::save(directory,report,false,message));QVERIFY(!message.isEmpty());QVERIFY(QFileInfo(directory).isDir());
+    }
+
+    /// Des chemins de montage identiques peuvent appartenir à des origines différentes selon le lot.
+    void errorReportIndexesKeepEachRemoteOrigin() {
+        QJsonArray owners,records;
+        for(int id=1;id<=2;++id) {
+            owners.append(QJsonObject{{"id",id},{"sources",QJsonArray{"/mount/source"}},{"source_urls",QJsonArray{QString("sftp://host%1/source").arg(id)}},{"destination","/mount/target"},{"destination_url",QString("ftp://host%1/target").arg(id)}});
+            records.append(QJsonObject{{"job",id},{"scope","entry"},{"mode","copy"},{"state","error"},{"kind","file"},{"source","/mount/source/file.txt"},{"destination","/mount/target/file.txt"},{"error","failure"}});
+        }
+        const QJsonObject report{{"jobs",owners},{"records",records},{"generated_unix",0}};
+        const auto text=QString::fromUtf8(ErrorReport::encode(report,false));
+        for(int id=1;id<=2;++id) {
+            QVERIFY(text.contains(QString("sftp://host%1/source/file.txt").arg(id)));
+            QVERIFY(text.contains(QString("ftp://host%1/target/file.txt").arg(id)));
+        }
+        QVERIFY(!text.contains("/mount/"));
+        errorReport=report;Window window;window.showErrorReport();
+        auto *rows=window.findChild<QTreeWidget *>("errorReportRows");QCOMPARE(rows->topLevelItemCount(),2);
+        for(int i=0;i<2;++i) {
+            auto *row=rows->topLevelItem(i);const auto id=row->text(0).toInt();
+            QCOMPARE(row->text(2),QString("sftp://host%1/source/file.txt").arg(id));
+            QCOMPARE(row->text(3),QString("ftp://host%1/target/file.txt").arg(id));
+        }
     }
 
     /// Le bilan réessaie seulement les erreurs réessayables affichées après filtrage, avec leurs indices stables.
@@ -1391,6 +1673,28 @@ private Q_SLOTS:
         QCOMPARE(SourceUrls::requiredProtocol(QJsonObject{{"verify_space",true}}),14);
         window.handle({{"command","configure"},{"verify_space",false}});QVERIFY(!check->isChecked());
     }
+    /// Les actions suivent la sélection visible, y compris ses groupes et ses filtres.
+    void priorityAvailabilityForMultipleSiblingSelections() {
+        QJsonArray entries;
+        for(int i=0;i<4;++i) {
+            auto entry=file("waiting");entry["source"]=QString("/tmp/source/file%1.txt").arg(i);entry["destination"]=QString("/tmp/target/file%1.txt").arg(i);entries.append(entry);
+        }
+        publish(job(entries,"waiting"));Window window;auto *tree=window.findChild<QTreeWidget *>();
+        const QList<QList<int>> cases{{0},{3},{1,2},{0,1,2,3},{0,3}};
+        const QList<QPair<bool,bool>> expected{{false,true},{true,false},{true,true},{false,false},{true,true}};
+        for(int i=0;i<cases.size();++i) {
+            {QSignalBlocker blocker(tree);tree->clearSelection();for(int index:cases[i])window.entryRow(1,index)->setSelected(true);}
+            window.updateRowActions();
+            QCOMPARE(window.findChild<QAction *>("rowUp")->isEnabled(),expected[i].first);
+            QCOMPARE(window.findChild<QAction *>("rowDown")->isEnabled(),expected[i].second);
+        }
+        // Qt omet les lignes cachées de selectedItems ; leur sélection mémorisée n’est pas une nouvelle cible.
+        {QSignalBlocker blocker(tree);tree->clearSelection();window.entryRow(1,0)->setSelected(true);window.entryRow(1,3)->setSelected(true);window.entryRow(1,3)->setHidden(true);}
+        QCOMPARE(tree->selectedItems().size(),1);window.updateRowActions();
+        QVERIFY(!window.findChild<QAction *>("rowUp")->isEnabled());
+        QVERIFY(window.findChild<QAction *>("rowDown")->isEnabled());
+    }
+
     /// Une priorité ne remplace aucun widget : sélection, branche ouverte et fichier courant restent stables.
     void priorityReordersOnlyRootsAndKeepsFileSelection() {
         auto entries=nestedEntries();for(int i=0;i<entries.size();++i){auto entry=entries[i].toObject();entry["state"]="waiting";entries[i]=entry;}

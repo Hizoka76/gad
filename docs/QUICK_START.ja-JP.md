@@ -1,6 +1,6 @@
 # Gad — クイックスタート {#gad-quick-start}
 
-**Gad, il copie. · 高機能ファイル複製マネージャー · バージョン 0.3.0**
+**Gad, il copie. · 高機能ファイル複製マネージャー · バージョン 0.4.0**
 
 [ユーザーガイド](USER_GUIDE.ja-JP.md) · [開発者ガイド](DEVELOPER_GUIDE.ja-JP.md) · [すべての言語](README.ja-JP.md)
 

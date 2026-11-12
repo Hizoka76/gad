@@ -1,6 +1,6 @@
 # Gad — Schnellstart {#gad-quick-start}
 
-**Gad, il copie. · Erweiterter Duplizierungsmanager · Version 0.3.0**
+**Gad, il copie. · Erweiterter Duplizierungsmanager · Version 0.4.0**
 
 [Benutzerhandbuch](USER_GUIDE.de-DE.md) · [Entwicklerhandbuch](DEVELOPER_GUIDE.de-DE.md) · [Alle Sprachen](README.de-DE.md)
 

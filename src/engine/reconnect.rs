@@ -180,18 +180,30 @@ pub(super) struct CopyTemp {
     temp: Temp,
 }
 impl CopyTemp {
-    pub(super) fn new(engine: Engine, id: u64, path: PathBuf) -> Self {
+    pub(super) fn new(engine: Engine, id: u64, path: PathBuf, stamp: undo::Stamp) -> Self {
         Self {
             engine,
             id,
-            temp: Temp(path),
+            temp: Temp::new(path, stamp),
         }
+    }
+    /// Réutilise l’identité capturée à la création, jamais celle d’un éventuel remplacement.
+    pub(super) fn check(&self) -> Result<fs::Metadata, String> {
+        self.temp.check()
+    }
+    /// Partage la même revalidation après journal que les temporaires de restauration.
+    pub(super) fn check_version(&self, expected: &fs::Metadata) -> Result<(), String> {
+        self.temp.check_version(expected)
+    }
+    /// La conversion volontaire du fichier vide en lien change son identité de manière explicite.
+    pub(super) fn set_identity(&mut self, stamp: undo::Stamp) {
+        self.temp.stamp = stamp;
     }
 }
 impl Drop for CopyTemp {
     fn drop(&mut self) {
         if self.engine.connection_lost(self.id) {
-            self.temp.0 = PathBuf::new();
+            self.temp.path = PathBuf::new();
         }
     }
 }

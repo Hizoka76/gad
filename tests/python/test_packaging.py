@@ -32,6 +32,22 @@ class PackagingTests(unittest.TestCase):
             self.assertNotIn(str(root), launcher)
             docs.assert_called_once_with(root / 'stage/usr/share/gad/docs')
 
+    def test_output_cannot_reenter_source_directories(self):
+        # Le répertoire de sortie ne doit jamais être recopié dans lui-même.
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); project = root / 'project'; project.mkdir()
+            for name in ('docs', 'scripts', 'debian'):
+                (project / name).mkdir()
+            (root / 'linked-docs').symlink_to(project / 'docs', target_is_directory=True)
+            for output in (project / 'docs/output', project / 'scripts/output',
+                           project / 'debian/output', root / 'linked-docs/output'):
+                with self.subTest(output=output), patch.object(package, 'PROJECT', project), \
+                        patch.object(package.subprocess, 'check_output', return_value='0.1.0a-0~resolute') as command:
+                    with self.assertRaisesRegex(ValueError, 'source'):
+                        package.prepare(output)
+                    command.assert_not_called()
+                    self.assertFalse(output.exists())
+
     def test_source_archive_omits_private_and_build_data(self):
         self.check_source_archive('xz')
 

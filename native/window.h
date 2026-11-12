@@ -55,6 +55,7 @@ class Window : public QMainWindow {
     QString languageChoice;
     QActionGroup *languageActions=nullptr;
     bool languageAvailable(const QString &locale) const;
+    QString configurationError(const QJsonObject &request) const;
     void setLanguage(const QString &locale);
     bool profileApplying=false;
     bool profileCommitting=false;
@@ -99,6 +100,7 @@ class Window : public QMainWindow {
     bool deferHiddenTree=false,treePending=false;
     QJsonArray refreshSummary(const QSet<qint64> &changed);
     TransferNotifications *desktopTransfers;
+    TransferNotifications *completionNotification=nullptr;
     // Les ajouts suivants attendent la résolution du premier lot pour préserver leur ordre.
     QQueue<QJsonObject> sourceQueue;
     bool resolvingSources = false;
@@ -142,6 +144,7 @@ public:
     void saveCurrentProfile();
     TransferProfiles::Profile currentTransferProfile() const;
     bool applyTransferProfile(const QString &id,std::function<void(QJsonObject)> reply = {});
+    bool applyTransferSettings(const TransferProfiles::Profile &profile,std::function<void(QJsonObject)> reply,QJsonObject patch={},QSet<QString> externalFields={});
     QString transferProfileDescription(const TransferProfiles::Profile &profile) const;
     void setProfileApplying(bool applying);
     /// Encode les indices des enfants sélectionnés et déduplique ceux déjà couverts par un lot entier.
@@ -190,7 +193,7 @@ public:
     QJsonObject handle(QJsonObject request);
     /// Termine une configuration Dolphin sans bloquer les transferts ni la réponse IPC.
     void handleAsync(QJsonObject request,std::function<void(QJsonObject)> reply);
-    void configureKrusader(bool enabled,std::function<void(QJsonObject)> reply);
+    virtual void configureKrusader(bool enabled,std::function<void(QJsonObject)> reply);
     virtual void configureDolphin(bool enabled,std::function<void(QJsonObject)> reply);
     static QString dolphinIntegration();
     /// Met à jour les lignes existantes à partir d’un instantané JSON, sans reconstruire le modèle.

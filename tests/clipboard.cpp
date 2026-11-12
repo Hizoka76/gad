@@ -171,6 +171,23 @@ int main(int argc, char **argv) {
     check(files.error.isEmpty() && files.mode == "move" && files.sources == QStringList{"/tmp/avec espaces/été\n.txt", "/tmp/deux"}, "Décodage KDE cut/URI");
     formats = {{"x-special/gnome-copied-files", "cut\nfile:///tmp/deux\n"}};
     check(Clipboard::decode(formats.keys(), read).mode == "move", "Décodage GNOME cut");
+    formats = {{"text/uri-list", "file:///tmp/deux\r\n"}, {"x-special/gnome-copied-files", "cut\nfile:///tmp/deux\n"}};
+    files=Clipboard::decode(formats.keys(),read);
+    check(files.error.isEmpty() && files.mode=="move", "Ctrl+X GNOME conserve le déplacement lorsque text/uri-list est aussi proposé");
+    formats["x-special/gnome-copied-files"]="copy\nfile:///tmp/deux\n";
+    check(Clipboard::decode(formats.keys(),read).mode=="copy", "Ctrl+C GNOME reste une copie avec les deux formats");
+    formats["x-special/gnome-copied-files"]="cut\nfile:///tmp/autre\n";
+    files=Clipboard::decode(formats.keys(),read);
+    check(!files.error.isEmpty() && files.sources.isEmpty(), "Des listes GNOME et URI différentes ne doivent pas déplacer les mauvais fichiers");
+    int gnomeReads=0;
+    files=Clipboard::decode({"text/uri-list","x-special/gnome-copied-files"},[&](const QString &format){
+        if(format=="text/uri-list")return QByteArray("file:///tmp/deux\n");
+        return ++gnomeReads==1?QByteArray("cut\nfile:///tmp/deux\n"):QByteArray("copy\nfile:///tmp/deux\n");
+    });
+    check(!files.error.isEmpty() && files.sources.isEmpty(), "Un changement de l’intention GNOME pendant la lecture est refusé");
+    formats={{"x-special/gnome-copied-files","invalid\nfile:///tmp/deux\n"}};
+    check(!Clipboard::decode(formats.keys(),read).error.isEmpty(), "Une opération GNOME inconnue n’est pas interprétée comme une copie");
+
     formats = {{"application/x-kde4-urilist", "file:///tmp/deux\n"}};
     check(Clipboard::decode(formats.keys(), read).sources == QStringList{"/tmp/deux"}, "Décodage KDE alternatif");
     formats = {{"text/uri-list", "file:///tmp/deux\nhttps://serveur/partage\n"}};

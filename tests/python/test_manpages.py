@@ -56,3 +56,14 @@ class ManpageTests(unittest.TestCase):
             with patch.object(generate_manpages, 'ROOT', root):
                 with self.assertRaises(KeyError):
                     generate_manpages.render('gad', 'es')
+
+    def test_install_does_not_follow_preexisting_temporary_link(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            unrelated = root/'keep';unrelated.write_bytes(b'keep')
+            folder = root/'man1';folder.mkdir()
+            staged = folder/'.gad.1.install';staged.symlink_to(unrelated)
+            install_manpages.install(root)
+            self.assertEqual(unrelated.read_bytes(), b'keep')
+            self.assertTrue(staged.is_symlink())
+            self.assertTrue((folder/'gad.1').is_file())

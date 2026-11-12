@@ -141,7 +141,11 @@ pub(super) fn next(state: &mut State) -> Option<(u64, bool)> {
     for id in row_queue::ordered_jobs(state) {
         let job = &**state.jobs.iter().find(|job| job.id == id).unwrap();
         // Une préparation ne réserve ni un disque ni l’ordre des collages immédiats.
-        if job.start_required || terminal(&job.state) || state.active.contains_key(&job.id) {
+        if job.start_required
+            || state.pending_starts.contains(&job.id)
+            || terminal(&job.state)
+            || state.active.contains_key(&job.id)
+        {
             continue;
         }
         // A scan may still discover a mount point: keep its ordering barrier.

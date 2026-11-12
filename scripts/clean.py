@@ -18,6 +18,12 @@ def candidates(root):
     selected = set()
 
     def add(path):
+        # Les sorties Debian ont des chemins fixes : un parent lié peut sortir du dépôt.
+        parent = root
+        for component in path.relative_to(root).parts[:-1]:
+            parent = parent / component
+            if parent.is_symlink():
+                return
         # Un répertoire contenant un fichier versionné ne peut pas être supprimé en bloc.
         if not any(path == item or path in item.parents for item in tracked):
             selected.add(path)

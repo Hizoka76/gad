@@ -1,7 +1,7 @@
 //! Renommage atomique d’un dossier complet : un seul changement de nom et un journal groupé.
 //! Les sélections partielles et les arbres modifiés conservent le parcours par entrée.
 use super::*;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 /// Les descendants sont contigus dans l’ordre de l’analyse, parents avant enfants.
 fn span(entries: &[Entry], start: usize) -> std::ops::Range<usize> {
@@ -16,16 +16,26 @@ fn span(entries: &[Entry], start: usize) -> std::ops::Range<usize> {
 /// Vérifie le contenu réel sans lire les fichiers ni suivre les liens symboliques.
 /// Un élément ajouté, retiré ou remplacé interdit de traiter l’arbre comme un bloc.
 fn exact_tree(entries: &[Entry], destination: bool) -> bool {
-    let expected: BTreeMap<_, _> = entries
+    inspect_tree(entries, destination, |_, _| true)
+}
+
+/// Le même parcours vérifie les noms, identités et métadonnées, sans relire chaque entrée séparément.
+fn inspect_tree(
+    entries: &[Entry],
+    destination: bool,
+    mut check: impl FnMut(usize, &fs::Metadata) -> bool,
+) -> bool {
+    let expected: HashMap<_, _> = entries
         .iter()
-        .map(|entry| {
+        .enumerate()
+        .map(|(index, entry)| {
             (
                 if destination {
                     entry.destination.as_path()
                 } else {
                     entry.source.as_path()
                 },
-                entry,
+                (index, entry),
             )
         })
         .collect();
@@ -42,7 +52,7 @@ fn exact_tree(entries: &[Entry], destination: bool) -> bool {
     }];
     let mut visited = 0;
     while let Some(path) = pending.pop() {
-        let Some(entry) = expected.get(path.as_path()) else {
+        let Some((index, entry)) = expected.get(path.as_path()) else {
             return false;
         };
         let Ok(meta) = fs::symlink_metadata(&path) else {
@@ -50,6 +60,7 @@ fn exact_tree(entries: &[Entry], destination: bool) -> bool {
         };
         if (meta.dev(), meta.ino()) != entry.identity
             || source_kind(&meta) != Some(entry.kind.as_str())
+            || !check(*index, &meta)
         {
             return false;
         }
@@ -69,8 +80,8 @@ fn exact_tree(entries: &[Entry], destination: bool) -> bool {
 
 /// Une pause ou annulation d’enfant doit rester respectée : pas de renommage global dans ce cas.
 fn ready(job: &Job, range: std::ops::Range<usize>, virgin: bool) -> bool {
+    // exact_tree compare l’arbre réel aux éléments sélectionnés : un filtre sans effet ne bloque pas le renommage.
     job.fast_move
-        && !job.exclusions.active()
         && !job.cancel
         && !job.paused
         && job.entries[range.clone()]
@@ -130,9 +141,13 @@ impl Engine {
             (range.clone(), job.entries[range].to_vec())
         };
         let root = &tree[0];
+        let mut metadata = vec![None; tree.len()];
         if fs::symlink_metadata(&root.destination).is_ok()
             || !fast_move::tree_possible(&root.source, &root.destination)
-            || !exact_tree(&tree, false)
+            || !inspect_tree(&tree, false, |index, meta| {
+                metadata[index] = Some(meta.clone());
+                true
+            })
         {
             return Ok(None);
         }
@@ -181,12 +196,8 @@ impl Engine {
             if changed {
                 return Ok(None);
             }
-            let meta = fs::symlink_metadata(&entry.source).map_err(|error| error.to_string())?;
-            if (meta.dev(), meta.ino()) != entry.identity
-                || source_kind(&meta) != Some(entry.kind.as_str())
-            {
-                return Ok(None);
-            }
+            // L’identité a déjà été vérifiée dans le parcours exact, avant la sauvegarde du plan.
+            let meta = metadata[offset].take().ok_or("Incomplete tree metadata")?;
             let stamp = undo::Stamp::from_metadata(&entry.source, &meta)?;
             let directory = entry.kind == "directory";
             plan.push((
@@ -203,6 +214,7 @@ impl Engine {
                 meta,
             ));
         }
+        drop(metadata);
         // Contrôler à nouveau le lot après les lectures de métadonnées, sans verrou pendant les accès disque.
         {
             let mut state = self.shared.state.lock().unwrap();
@@ -223,12 +235,6 @@ impl Engine {
         }
         self.save()?;
         self.checkpoint_entry(id, start)?;
-        let unchanged = tree.iter().zip(&plan).all(|(entry, (_, before))| {
-            fs::symlink_metadata(&entry.source).is_ok_and(|now| {
-                same_version(before, &now)
-                    && (before.ctime(), before.ctime_nsec()) == (now.ctime(), now.ctime_nsec())
-            })
-        });
         let still_ready = {
             let state = self.shared.state.lock().unwrap();
             state
@@ -237,7 +243,13 @@ impl Engine {
                 .find(|job| job.id == id)
                 .is_some_and(|job| ready(job, range.clone(), false))
         };
-        if !unchanged || !still_ready || !exact_tree(&tree, false) {
+        if !still_ready
+            || !inspect_tree(&tree, false, |index, now| {
+                let before = &plan[index].1;
+                same_version(before, now)
+                    && (before.ctime(), before.ctime_nsec()) == (now.ctime(), now.ctime_nsec())
+            })
+        {
             self.clear_tree_plan(id, range)?;
             return Ok(None);
         }
@@ -341,5 +353,66 @@ impl Engine {
             self.save()?;
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn combined_tree_inspection_keeps_name_identity_and_version_checks() {
+        struct Cleanup(PathBuf);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                let _ = fs::remove_dir_all(&self.0);
+            }
+        }
+        let fixture = Cleanup(std::env::temp_dir().join(format!(
+            "gad-tree-inspect-{}-{}",
+            std::process::id(),
+            snapshot::touch()
+        )));
+        let source = fixture.0.join("source");
+        let target = fixture.0.join("dest");
+        fs::create_dir_all(&source).unwrap();
+        fs::create_dir(&target).unwrap();
+        let file = source.join("file");
+        fs::write(&file, b"before").unwrap();
+        let engine = Engine::new();
+        engine.request(&json!({"command":"enqueue","prepare_only":true,"mode":"move","sources":[source],"destination":target}).to_string()).unwrap();
+        let entries = (0..500)
+            .find_map(|_| {
+                let entries = {
+                    let state = engine.shared.state.lock().unwrap();
+                    state
+                        .jobs
+                        .first()
+                        .filter(|job| job.state == TransferState::Waiting)
+                        .map(|job| job.entries.clone())
+                };
+                if entries.is_none() {
+                    thread::sleep(std::time::Duration::from_millis(10));
+                }
+                entries
+            })
+            .expect("prepared tree");
+        let mut metadata = vec![None; entries.len()];
+        assert!(inspect_tree(&entries, false, |index, meta| {
+            metadata[index] = Some(meta.clone());
+            true
+        }));
+        assert!(metadata.iter().all(Option::is_some));
+        fs::write(&file, b"a changed file").unwrap();
+        assert!(exact_tree(&entries, false));
+        assert!(!inspect_tree(&entries, false, |index, meta| same_version(
+            metadata[index].as_ref().unwrap(),
+            meta
+        )));
+        fs::write(source.join("extra"), b"unselected").unwrap();
+        assert!(!exact_tree(&entries, false));
+        let mut duplicates = entries.clone();
+        duplicates.push(entries[0].clone());
+        assert!(!exact_tree(&duplicates, false));
+        engine.request(r#"{"command":"shutdown"}"#).unwrap();
     }
 }

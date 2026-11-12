@@ -6,9 +6,11 @@ import os
 from pathlib import Path
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 from journal_reader import read_journal
+from private_test_session import run as run_private_session
 
 
 def main():
@@ -22,7 +24,11 @@ def main():
         runtime.mkdir(mode=0o700)
         env = dict(os.environ, HOME=str(base / "home"), QT_QPA_PLATFORM="offscreen",
                    XDG_RUNTIME_DIR=str(runtime), XDG_CONFIG_HOME=str(base / "config"),
-                   XDG_DATA_HOME=str(base / "data"))
+                   XDG_DATA_HOME=str(base / "data"), XDG_CACHE_HOME=str(base / "cache"))
+        env["DBUS_SYSTEM_BUS_ADDRESS"] = env["DBUS_SESSION_BUS_ADDRESS"]
+        settings = base / 'config/Gad/Gad.conf'
+        settings.parent.mkdir(parents=True)
+        settings.write_text('[General]\nprogressMessage=false\n')
         source = base / 'source é😀 "\n.bin'
         destination = base / "destination"
         destination.mkdir()
@@ -111,4 +117,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["--private-session"]:
+        main()
+    else:
+        run_private_session(__file__)

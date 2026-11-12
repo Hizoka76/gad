@@ -32,6 +32,24 @@ struct PreviewRow<'a> {
     reason: &'a str,
     detail: String,
 }
+/// Les sorties de dossier sont différées pour agréger leurs descendants sans récursion.
+enum ScanTask {
+    Visit {
+        source: PathBuf,
+        target: PathBuf,
+        parent: Option<usize>,
+        missing_parent: bool,
+        inherited_conflict: bool,
+    },
+    Children {
+        children: std::vec::IntoIter<fs::DirEntry>,
+        target: PathBuf,
+        parent: usize,
+        missing_parent: bool,
+        inherited_conflict: bool,
+    },
+    FinishQueued(usize),
+}
 impl Plan {
     fn checkpoint(&self) -> Result<(), String> {
         if self.cancelled.load(Ordering::Relaxed) {
@@ -63,6 +81,82 @@ impl Plan {
         parent: Option<usize>,
         missing_parent: bool,
         inherited_conflict: bool,
+    ) -> Result<(), String> {
+        let mut pending = vec![ScanTask::Visit {
+            source: source.into(),
+            target: target.into(),
+            parent,
+            missing_parent,
+            inherited_conflict,
+        }];
+        while let Some(task) = pending.pop() {
+            match task {
+                ScanTask::Visit {
+                    source,
+                    target,
+                    parent,
+                    missing_parent,
+                    inherited_conflict,
+                } => {
+                    self.scan_one(
+                        &source,
+                        &target,
+                        parent,
+                        missing_parent,
+                        inherited_conflict,
+                        &mut pending,
+                    )?;
+                }
+                ScanTask::Children {
+                    mut children,
+                    target,
+                    parent,
+                    missing_parent,
+                    inherited_conflict,
+                } => {
+                    let Some(child) = children.next() else {
+                        continue;
+                    };
+                    let source = child.path();
+                    let destination = target.join(child.file_name());
+                    pending.push(ScanTask::Children {
+                        children,
+                        target,
+                        parent,
+                        missing_parent,
+                        inherited_conflict,
+                    });
+                    self.scan_one(
+                        &source,
+                        &destination,
+                        Some(parent),
+                        missing_parent,
+                        inherited_conflict,
+                        &mut pending,
+                    )?;
+                }
+                ScanTask::FinishQueued(index) => {
+                    if self.rows[index + 1..]
+                        .iter()
+                        .all(|row| row["action"] == "excluded")
+                    {
+                        self.rows[index]["action"] = json!("excluded");
+                        self.rows[index]["reason"] = json!("queued");
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+    /// Analyse une seule entrée ; ses descendants restent dans la pile de travail sur le tas.
+    fn scan_one(
+        &mut self,
+        source: &Path,
+        target: &Path,
+        parent: Option<usize>,
+        missing_parent: bool,
+        inherited_conflict: bool,
+        pending: &mut Vec<ScanTask>,
     ) -> Result<(), String> {
         self.checkpoint()?;
         // Une limite explicite évite de saturer l’interface ; aucun plan tronqué ne peut être lancé.
@@ -259,24 +353,17 @@ impl Plan {
                     }
                 };
             sort_children(&mut children);
-            for child in children {
-                self.scan(
-                    &child.path(),
-                    &destination.join(child.file_name()),
-                    Some(index),
-                    missing_parent || existing.is_none() || collision && !merge,
-                    conflict,
-                )?;
+            if queued {
+                pending.push(ScanTask::FinishQueued(index));
             }
-        }
-        if queued
-            && kind == "directory"
-            && self.rows[index + 1..]
-                .iter()
-                .all(|row| row["action"] == "excluded")
-        {
-            self.rows[index]["action"] = json!("excluded");
-            self.rows[index]["reason"] = json!("queued");
+            // Les frères partagent le parent cible au lieu de recopier tous leurs chemins à l’avance.
+            pending.push(ScanTask::Children {
+                children: children.into_iter(),
+                target: destination,
+                parent: index,
+                missing_parent: missing_parent || existing.is_none() || collision && !merge,
+                inherited_conflict: conflict,
+            });
         }
         Ok(())
     }

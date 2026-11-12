@@ -4,7 +4,7 @@
       "file": "01-overview.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "fb24a0864e0af7addecfc81ea8f39e5edb518e4e74fce8710876ef1aa27187c0"
+      "sha256": "c669d317c99ffc1b3a2bd81970cfb555dd8f83f283d81a8f83523bb6d5df39c9"
     },
     {
       "file": "02-sources-options.png",
@@ -22,7 +22,7 @@
       "file": "03-pause.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "f36266effa95181fc47d0f295dd02c827cf01fb789200587dc85ab6e6effb676"
+      "sha256": "8792fa4993ea6e9d0ca5ddf238cd656814bdafe68b72cca47a8a104332927630"
     },
     {
       "file": "04-cancellation-menu.png",
@@ -46,13 +46,13 @@
       "file": "07-md5-verification.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "138f60b4c06cfc1395f0929d34ab6085fdee8390920a4deef87ac69275cab42d"
+      "sha256": "8c81265657104bb3bf4dbafeeb85f0465fff638e33d05b6381481eb7a3fa8161"
     },
     {
       "file": "08-conflict.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "0293d8930c790ea25b99270b527ff4946634344314f46f214e7c697be00a7baf"
+      "sha256": "8255d87bddad0491a078533b51eba0dfadba7e779d519c96386688233e5cc9bc"
     },
     {
       "file": "09-tray-menu.png",
@@ -64,25 +64,25 @@
       "file": "10-about.png",
       "height": 576,
       "width": 770,
-      "sha256": "4194f1870022e21123e314427a70be1e5d29e587487bcd57a28d22fb5893c423"
+      "sha256": "0f4290ffb6403f0ea36b6e8d454d8419b0e70835f2041fe6bed6c96ef696468c"
     },
     {
       "file": "11-property-verification.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "6d70132b6ee5828cd8b348daba2804bbebd6abba095f9313c31ff6d7463681ae"
+      "sha256": "d55aac9ff58481426867e75582a76000d47981992563200936fd39197e83ce56"
     },
     {
       "file": "12-reconnection.png",
       "height": 1240,
       "width": 2480,
-      "sha256": "cad733c2e8e5a5b561caf81d0a841b92d1b42ba61640f9b77dd5499fe1849c87"
+      "sha256": "b372eb95a9ea2cd610582a6f0cae5c87628785d43c611852245440992c570182"
     },
     {
       "file": "13-error-report.png",
       "height": 1300,
       "width": 2640,
-      "sha256": "1e77d3c795b24654523e34d8f8b316fc59160df294881689e01351d91a2d41e0"
+      "sha256": "b731703068b8930fb7de19650bef46916b328e55532a0df3e189becf9795808b"
     },
     {
       "file": "15-profiles.png",
@@ -94,7 +94,7 @@
       "file": "16-history-search.png",
       "height": 1400,
       "width": 2480,
-      "sha256": "84d807934b445681565b4f8754affcc509478e4492e74052b221d645bc973712"
+      "sha256": "e1a18a77fa98cd89605afb80337258d0b8db630c55cbd2fc2547649e1e5b25c8"
     },
     {
       "file": "17-transfer-diagnostics.png",
@@ -106,19 +106,19 @@
       "file": "18-fast-move-verification.png",
       "height": 1400,
       "width": 2480,
-      "sha256": "1a798da5ec70666b501808a4ef91217950bef152cbf61155035bf607dce96f07"
+      "sha256": "2e46ceaaa62cd693743d1828b4bc7459089c9219712ed5cdc4bde32d066f8b8d"
     },
     {
       "file": "19-batch-completion.png",
-      "height": 480,
-      "width": 1100,
-      "sha256": "0a78a61c6c4d06b1e85f75e723742e3848cfd032ab9e02709cc04c7196463321"
+      "height": 1400,
+      "width": 2480,
+      "sha256": "da39a10dea5b39c0f9abc8f41cde7fa66d66bcea3928a338f682808006229942"
     },
     {
       "file": "20-completion-options.png",
       "height": 1480,
       "width": 1600,
-      "sha256": "b0366231ea72a6dbb592f7c6de0f6912bce848b8a5918fad818da62c2911241a"
+      "sha256": "b28a37d96a7f88be4e0088f50ffa25b304e1972255ef5c0d63a19ff68da0f542"
     },
     {
       "file": "21-speed-options.png",
@@ -130,7 +130,7 @@
       "file": "22-preparation.png",
       "height": 1400,
       "width": 2480,
-      "sha256": "637ae0f70352ce06b57182c02592daef84d0accbc1f6f1f886631896c3acc65b"
+      "sha256": "d4081b84adaac2426267e4f199902ddb23b4fc1638a1a07e554b3dbc4bce386a"
     },
     {
       "file": "23-exclusions.png",
@@ -149,7 +149,7 @@
   "style": "breeze",
   "theme": "light",
   "window_color": "#eff0f1",
-  "version": "0.3.0",
-  "generated_at": "2026-11-10",
+  "version": "0.4.0",
+  "generated_at": "2026-11-12",
   "language": "fr"
 }

@@ -56,11 +56,11 @@ fn relevant(entry: &Entry) -> bool {
 }
 /// Conserve les dossiers nécessaires aux nouveaux enfants, sans garder des branches entièrement dupliquées.
 fn keep_ancestors(entries: &[Entry], keep: &mut [bool]) {
-    let mut directories: HashMap<(PathBuf, PathBuf), Vec<usize>> = HashMap::new();
+    let mut directories: HashMap<(&Path, &Path), Vec<usize>> = HashMap::new();
     for (i, e) in entries.iter().enumerate() {
         if e.kind == "directory" {
             directories
-                .entry((e.source.clone(), e.destination.clone()))
+                .entry((&e.source, &e.destination))
                 .or_default()
                 .push(i);
         }
@@ -76,7 +76,7 @@ fn keep_ancestors(entries: &[Entry], keep: &mut [bool]) {
         while let (Some(s), Some(t)) = (source.parent(), target.parent()) {
             source = s;
             target = t;
-            if let Some(indices) = directories.get(&(s.to_path_buf(), t.to_path_buf())) {
+            if let Some(indices) = directories.get(&(s, t)) {
                 let ancestor = indices
                     .iter()
                     .copied()

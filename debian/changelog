@@ -1,3 +1,20 @@
+gad (0.4.0a-0~resolute) resolute; urgency=medium
+
+  * Version 0.4.0 : fiabiliser copie, déplacement rapide, reprise et restauration.
+  * Optimiser les instantanés, sélections, réactivations et recherches de parents.
+  * Protéger les journaux, temporaires et publications sur les montages distants.
+  * Afficher le compte à rebours de fin de lot dans une notification KDE annulable.
+  * Corriger les profils, raccourcis, métadonnées et commandes après réanalyse.
+  * Étendre les tests et corriger les régressions face à la version précédente.
+  * Release 0.4.0: harden transfers, fast moves, resume and rollback.
+  * Optimize snapshots, selections, reactivation and ancestor indexing.
+  * Protect journals, staging files and publication on remote mounts.
+  * Show batch completion countdowns in cancellable KDE notifications.
+  * Fix profiles, shortcuts, metadata and rescanned row controls.
+  * Expand automated coverage and fix regressions against the previous release.
+
+ -- Terence Belleguic <hizo@free.fr>  Thu, 12 Nov 2026 21:14:21 +0100
+
 gad (0.3.0a-0~resolute) resolute; urgency=medium
 
   * Version 0.3.0 : accélérer le journal, les transferts et les déplacements rapides.

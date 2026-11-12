@@ -9,6 +9,7 @@ import shlex
 import shutil
 import subprocess
 from xdg_paths import data_home
+from desktop_entry import executable
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -52,9 +53,7 @@ def protect_launcher(binary):
         source=original if original is not None else next((path.read_text() for path in sources if path.is_file()),None)
         if source is None:raise RuntimeError('Lanceur Dolphin introuvable.')
     # Les champs Exec obéissent au format Desktop, sans interprétation par un shell.
-    value=str(binary)
-    for char in ('\\','"','`','$'):value=value.replace(char,'\\'+char)
-    quoted='"'+value.replace('\\','\\\\').replace('%','%%')+'"'
+    quoted=executable(binary)
     lines=source.splitlines();group='';changed=False
     for i,line in enumerate(lines):
         if line.startswith('['):group=line

@@ -54,3 +54,19 @@ class InstallDocsTest(unittest.TestCase):
             personal=destination/'pdf/personal.pdf';personal.write_text('keep')
             install_docs.install(destination,source)
             self.assertFalse(obsolete.exists());self.assertEqual(personal.read_text(),'keep')
+
+    def test_preexisting_temporary_links_cannot_overwrite_other_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, destination = root/'source', root/'docs'
+            source.mkdir();destination.mkdir()
+            (source/'guide.md').write_bytes(b'guide')
+            unrelated = root/'unrelated';unrelated.write_bytes(b'keep')
+            for name in ('.guide.md.install', '.catalog.json.install'):
+                (destination/name).symlink_to(unrelated)
+            with patch.object(install_docs, 'runtime_catalog', return_value={'guides':[{'html':'missing.html','md':'guide.md'}]}):
+                install_docs.install(destination, source)
+            self.assertEqual(unrelated.read_bytes(), b'keep')
+            self.assertEqual((destination/'guide.md').read_bytes(), b'guide')
+            for name in ('.guide.md.install', '.catalog.json.install'):
+                self.assertTrue((destination/name).is_symlink())

@@ -85,6 +85,16 @@ class CleanTests(unittest.TestCase):
         self.assertTrue((self.root / 'other').is_symlink())
         self.assertTrue((outside / 'keep.pyc').exists())
 
+    def test_debian_symlink_never_removes_external_build_named_data(self):
+        outside = Path(self.temporary.name) / 'external'
+        (outside / 'gad').mkdir(parents=True)
+        (outside / 'gad/keep').write_text('private')
+        (outside / 'files').write_text('private metadata')
+        (self.root / 'debian').symlink_to(outside, target_is_directory=True)
+        self.assertEqual(self.run_clean(True), [])
+        self.assertEqual((outside / 'gad/keep').read_text(), 'private')
+        self.assertEqual((outside / 'files').read_text(), 'private metadata')
+
     def test_fails_closed_outside_git(self):
         outside = Path(self.temporary.name) / 'not-a-repository'
         outside.mkdir()

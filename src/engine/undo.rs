@@ -28,6 +28,7 @@ pub(super) struct Stamp {
     /// Type attendu : fichier, dossier ou lien symbolique.
     kind: String,
     /// Texte de la cible si l’élément est un lien symbolique.
+    #[serde(skip_serializing_if = "Option::is_none")]
     link: Option<PathBuf>,
 }
 impl Stamp {
@@ -80,7 +81,11 @@ impl Stamp {
     /// Vérifie qu’un chemin correspond à l’empreinte. Pour un dossier, seuls
     /// l’identité et le type sont stables lorsque son contenu change.
     pub(super) fn matches(&self, path: &Path) -> bool {
-        Self::read(path).is_ok_and(|m| {
+        fs::symlink_metadata(path).is_ok_and(|meta| self.matches_metadata(path, &meta))
+    }
+    /// Une capture fraîche suffit pour comparer identité, propriétés et texte du lien.
+    pub(super) fn matches_metadata(&self, path: &Path, meta: &fs::Metadata) -> bool {
+        Self::from_metadata(path, meta).is_ok_and(|m| {
             self.dev == m.dev
                 && self.ino == m.ino
                 && self.kind == m.kind
@@ -94,8 +99,8 @@ impl Stamp {
         })
     }
     /// Un renommage conserve aussi les métadonnées des dossiers ; ctime est contrôlé séparément quand il doit rester stable.
-    pub(super) fn matches_fast_move(&self, path: &Path) -> bool {
-        Self::read(path).is_ok_and(|now| {
+    pub(super) fn matches_fast_metadata(&self, path: &Path, meta: &fs::Metadata) -> bool {
+        Self::from_metadata(path, meta).is_ok_and(|now| {
             self.dev == now.dev
                 && self.ino == now.ino
                 && self.kind == now.kind
@@ -133,7 +138,16 @@ impl Stamp {
         Err("Volume du transfert introuvable".into())
     }
     /// Rétablit les permissions et la date prises en charge, hors liens symboliques.
-    fn metadata(&self, path: &Path) -> Result<(), String> {
+    fn metadata(&self, path: &Path, owner: &Stamp) -> Result<(), String> {
+        self.metadata_with(path, owner, || {})
+    }
+    /// Le rappel permet de tester une substitution exactement après l’ouverture du chemin.
+    fn metadata_with(
+        &self,
+        path: &Path,
+        owner: &Stamp,
+        after_pin: impl FnOnce(),
+    ) -> Result<(), String> {
         if self.kind == "link" {
             return Ok(());
         }
@@ -143,11 +157,20 @@ impl Stamp {
             .custom_flags(0x200000 | 0x20000)
             .open(path)
             .map_err(|error| error.to_string())?;
-        if fast_move::descriptor_is_kio_fuse(&file) {
-            return Ok(());
+        let changed = || "Restored source changed; destination kept".to_owned();
+        if self.kind != owner.kind
+            || !owner.owns_metadata(&file.metadata().map_err(|e| e.to_string())?)
+        {
+            return Err(changed());
         }
-        fs::set_permissions(path, fs::Permissions::from_mode(self.mode & 0o7777))
-            .map_err(|e| e.to_string())?;
+        after_pin();
+        if fast_move::descriptor_is_kio_fuse(&file) {
+            return if owner.same_inode(path) {
+                Ok(())
+            } else {
+                Err(changed())
+            };
+        }
         let time = if self.seconds >= 0 {
             SystemTime::UNIX_EPOCH
                 .checked_add(Duration::new(self.seconds as u64, self.nanos as u32))
@@ -156,10 +179,38 @@ impl Stamp {
                 .checked_sub(Duration::from_secs(self.seconds.unsigned_abs()))
                 .and_then(|t| t.checked_add(Duration::from_nanos(self.nanos as u64)))
         };
+        // Une répétition après le dernier chmod peut retrouver un fichier devenu illisible.
+        // Si toutes les propriétés sont déjà appliquées, aucun accès en lecture n’est nécessaire.
+        let current = file.metadata().map_err(|e| e.to_string())?;
+        if current.mode() & 0o7777 == self.mode & 0o7777
+            && time.is_none_or(|t| current.modified().ok() == Some(t))
+        {
+            return if owner.same_inode(path) {
+                Ok(())
+            } else {
+                Err(changed())
+            };
+        }
+        // Ne jamais suivre un lien ni attendre sur un FIFO substitué. Les deux écritures
+        // portent ensuite sur ce même descripteur, même si son nom est déplacé entre-temps.
+        let output = OpenOptions::new()
+            .read(true)
+            .custom_flags(0x20000 | 0x800)
+            .open(path)
+            .map_err(|e| e.to_string())?;
+        if !owner.owns_metadata(&output.metadata().map_err(|e| e.to_string())?) {
+            return Err(changed());
+        }
         if let Some(t) = time {
-            fs::File::open(path)
-                .and_then(|f| f.set_times(fs::FileTimes::new().set_modified(t)))
+            output
+                .set_times(fs::FileTimes::new().set_modified(t))
                 .map_err(|e| e.to_string())?;
+        }
+        output
+            .set_permissions(fs::Permissions::from_mode(self.mode & 0o7777))
+            .map_err(|e| e.to_string())?;
+        if !owner.same_inode(path) {
+            return Err(changed());
         }
         Ok(())
     }
@@ -170,41 +221,73 @@ impl Stamp {
 /// ils permettent de reprendre une restauration sans supposer qu’une étape a été terminée.
 pub(super) struct Record {
     /// Préfixe durable d’une copie non encore publiée ; absent après la phase de publication.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub resume: Option<resume::Point>,
     /// Racine déplacée d’un seul renommage ; ses descendants possèdent aussi leur propre journal.
     pub directory_move: bool,
     /// Le résultat est l’original renommé : son retour conserve l’inode et ne détruit aucun contenu.
     pub rename_move: bool,
     /// Ctime après renommage : détecte une modification même si la taille et mtime ont été rétablies.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub rename_ctime: Option<(i64, i64)>,
     /// Chemin privé utilisé avant la publication de la copie.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub staging: Option<PathBuf>,
     /// Identité du temporaire pour ne pas supprimer un remplacement externe.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub staging_stamp: Option<Stamp>,
     /// Empreinte du résultat prévu lors de la publication.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<Stamp>,
     /// MD5 du contenu copié, utilisé pour protéger une suppression de restauration.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub digest: Option<String>,
     /// Ancienne destination déplacée à l’abri avant son remplacement.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub backup: Option<PathBuf>,
     /// Empreinte de cette ancienne destination sauvegardée.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub original: Option<Stamp>,
     /// Ctime de la sauvegarde après son renommage : détecte aussi une mtime rétablie.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub backup_ctime: Option<(i64, i64)>,
+    /// Les services KIO sans ctime stable sont contrôlés par contenu avant restauration ou nettoyage.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backup_digest: Option<String>,
     /// Version de la source avant sa suppression ou du dossier avant son retrait.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub source_stamp: Option<Stamp>,
     /// La suppression de la source d’un fichier a été journalisée.
     pub source_removed: bool,
     /// Le retrait du dossier source a été journalisé.
     pub source_dir_removed: bool,
     /// Empreinte de la source préparée ou publiée par une restauration.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub restored_source: Option<Stamp>,
     /// Emplacement privé de la source en cours de restauration.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub restore_staging: Option<PathBuf>,
     /// Cette entrée a achevé sa restauration ; les étapes ne doivent pas être rejouées.
     pub reverted: bool,
 }
+
 impl Record {
+    /// Ctime reste léger sur POSIX ; un fournisseur sans date fiable exige une empreinte de contenu.
+    pub(super) fn remember_backup_version(
+        &mut self,
+        path: &Path,
+        metadata: &fs::Metadata,
+        reliable_ctime: bool,
+        mut checkpoint: impl FnMut() -> Result<(), String>,
+    ) -> Result<(), String> {
+        self.backup_ctime = reliable_ctime.then_some((metadata.ctime(), metadata.ctime_nsec()));
+        self.backup_digest = if !reliable_ctime && metadata.is_file() {
+            Some(md5_file(path, None, |_| checkpoint())?)
+        } else {
+            None
+        };
+        Ok(())
+    }
     /// Les empreintes de contenu, dates et inodes restent contrôlées après un changement de dev_t.
     pub(super) fn rebind(&mut self, devices: &std::collections::HashMap<u64, u64>) {
         for stamp in [
@@ -308,6 +391,28 @@ pub(super) fn check_output(entry: &Entry, r: &Record) -> Result<bool, String> {
         entry.destination.display()
     ))
 }
+/// Les mêmes garanties protègent la restauration et l’abandon de son historique.
+fn check_backup_file(backup: &Path, record: &Record) -> Result<(), String> {
+    own(
+        backup,
+        record
+            .original
+            .as_ref()
+            .ok_or("Journal de remplacement incomplet")?,
+    )?;
+    if let Some(expected) = record.backup_ctime {
+        let meta = fs::symlink_metadata(backup).map_err(|error| error.to_string())?;
+        if expected != (meta.ctime(), meta.ctime_nsec()) {
+            return Err("Backup changed since the transfer; files kept".into());
+        }
+    }
+    if let Some(expected) = &record.backup_digest {
+        if md5_file(backup, None, |_| Ok(()))? != *expected {
+            return Err("Backup changed since the transfer; files kept".into());
+        }
+    }
+    Ok(())
+}
 /// Contrôle la sauvegarde avant toute suppression du résultat et avant son retour.
 fn check_backup(entry: &Entry, r: &Record) -> Result<(), String> {
     // L’ancienne destination doit encore correspondre au journal avant toute manipulation de sa sauvegarde.
@@ -316,18 +421,7 @@ fn check_backup(entry: &Entry, r: &Record) -> Result<(), String> {
             stamp.volume(backup)?;
         }
         if exists(backup) {
-            own(
-                backup,
-                r.original
-                    .as_ref()
-                    .ok_or("Journal de remplacement incomplet")?,
-            )?;
-            if let Some(expected) = r.backup_ctime {
-                let meta = fs::symlink_metadata(backup).map_err(|error| error.to_string())?;
-                if expected != (meta.ctime(), meta.ctime_nsec()) {
-                    return Err("Backup changed since the transfer; files kept".into());
-                }
-            }
+            check_backup_file(backup, r)?;
         } else if !r
             .original
             .as_ref()
@@ -383,6 +477,31 @@ fn check_paths(entry: &Entry, r: &Record) -> Result<(), String> {
     }
     Ok(())
 }
+/// Un parent recréé doit toujours appartenir à la restauration avant de modifier ses propriétés.
+fn check_restored_directory(entry: &Entry, record: &Record) -> Result<(), String> {
+    restored_directory_owner(entry, record).map(|_| ())
+}
+/// Fournit l’identité qui autorise la restauration des propriétés, distincte des propriétés d’origine.
+fn restored_directory_owner<'a>(entry: &Entry, record: &'a Record) -> Result<&'a Stamp, String> {
+    check_parents(&entry.source)?;
+    record
+        .source_stamp
+        .as_ref()
+        .filter(|stamp| stamp.matches(&entry.source))
+        .or_else(|| {
+            record
+                .restored_source
+                .as_ref()
+                .filter(|stamp| stamp.matches(&entry.source))
+        })
+        .ok_or_else(|| {
+            format!(
+                "Dossier source recréé par une autre action : {}",
+                entry.source.display()
+            )
+        })
+}
+
 /// Vérifie les résultats, sauvegardes et sources avant les modifications de restauration.
 /// Une erreur conserve les fichiers litigieux au lieu de tenter de les écraser.
 pub(super) fn preflight(entry: &Entry) -> Result<(), String> {
@@ -391,6 +510,9 @@ pub(super) fn preflight(entry: &Entry) -> Result<(), String> {
         return Ok(());
     }
     check_paths(entry, r)?;
+    if r.source_dir_removed && exists(&entry.source) {
+        check_restored_directory(entry, r)?;
+    }
     let output = check_output(entry, r)?;
     check_backup(entry, r)?;
     if r.source_removed && !exists(&entry.source) {
@@ -453,10 +575,19 @@ pub(super) fn restore_directory(
     cleanup_staging(&r)?;
     safe_parents(&entry.source)?;
     let temp = private_directory(entry.source.parent().ok_or("Parent absent")?, "restore-dir")?;
+    let stamp = Stamp::read(&temp)?;
+    let cleanup = Temp::new(temp.clone(), stamp.clone());
     r.restore_staging = Some(temp.clone());
-    r.restored_source = Some(Stamp::read(&temp)?);
+    r.restored_source = Some(stamp);
     persist(entry, &r, save)?;
-    publish_new(&temp, &entry.source).map_err(|e| e.to_string())?;
+    cleanup.check()?;
+    let source = entry.source.clone();
+    publish_new_with(&temp, &source, |meta| {
+        r.restored_source =
+            Some(Stamp::from_metadata(&source, meta).map_err(std::io::Error::other)?);
+        persist(entry, &r, save).map_err(std::io::Error::other)
+    })
+    .map_err(|e| e.to_string())?;
     sync_parent(&entry.source)?;
     // Keep directories writable until every child has been restored.
     Ok(())
@@ -525,14 +656,17 @@ pub(super) fn restore_file(
                 entry.source.parent().ok_or("Parent source absent")?,
                 "restore",
             )?;
+            let _directory_cleanup = Temp::new(dir.clone(), Stamp::read(&dir)?);
             let temp = dir.join("file");
             let prepared = (|| {
-                if entry.kind == "link" {
+                // Le descripteur reste ouvert jusqu’après le garde pour empêcher le recyclage de son inode.
+                let (output_handle, cleanup) = if entry.kind == "link" {
                     symlink(
                         fs::read_link(&entry.destination).map_err(|e| e.to_string())?,
                         &temp,
                     )
                     .map_err(|e| e.to_string())?;
+                    (None, Temp::new(temp.clone(), Stamp::read(&temp)?))
                 } else {
                     let mut input = OpenOptions::new()
                         .read(true)
@@ -545,28 +679,44 @@ pub(super) fn restore_file(
                         .mode(0o600)
                         .open(&temp)
                         .map_err(|e| e.to_string())?;
+                    let cleanup = Temp::new(
+                        temp.clone(),
+                        Stamp::from_metadata(
+                            &temp,
+                            &output.metadata().map_err(|e| e.to_string())?,
+                        )?,
+                    );
                     std::io::copy(&mut input, &mut output).map_err(|e| e.to_string())?;
-                    output.sync_all().map_err(|e| e.to_string())?;
+                    cleanup.check()?;
                     if let Some(digest) = &r.digest {
                         if md5_file(&temp, None, |_| Ok(()))? != *digest {
                             return Err("Contents changed while moving back to the source".into());
                         }
                     }
-                }
+                    (Some(output), cleanup)
+                };
+                cleanup.check()?;
                 if let Some(stamp) = &r.source_stamp {
-                    stamp.metadata(&temp)?;
+                    stamp.metadata(&temp, &cleanup.stamp)?;
                 }
+                // Un acquittement unique couvre aussi les permissions et dates restaurées.
+                if let Some(output) = &output_handle {
+                    output.sync_all().map_err(|e| e.to_string())?;
+                }
+                let staged_metadata = cleanup.check()?;
                 r.restore_staging = Some(temp.clone());
-                r.restored_source = Some(Stamp::read(&temp)?);
+                r.restored_source = Some(Stamp::from_metadata(&temp, &staged_metadata)?);
                 persist(entry, &r, save)?;
-                publish_new(&temp, &entry.source)
-                    .map_err(|e| format!("Source existante conservée : {e}"))?;
+                cleanup.check_version(&staged_metadata)?;
+                let source = entry.source.clone();
+                publish_new_with(&temp, &source, |meta| {
+                    r.restored_source =
+                        Some(Stamp::from_metadata(&source, meta).map_err(std::io::Error::other)?);
+                    persist(entry, &r, save).map_err(std::io::Error::other)
+                })
+                .map_err(|e| format!("Source existante conservée : {e}"))?;
                 sync_parent(&entry.source)
             })();
-            if prepared.is_err() {
-                let _ = fs::remove_file(&temp);
-            }
-            let _ = fs::remove_dir(&dir);
             prepared?;
         }
     }
@@ -595,17 +745,22 @@ pub(super) fn restore_file(
         fs::remove_file(&entry.destination).map_err(|e| e.to_string())?;
         sync_parent(&entry.destination)?;
     }
-    if let Some(backup) = &r.backup {
+    if let Some(backup) = r.backup.clone() {
         if let Some(stamp) = &r.original {
-            stamp.volume(backup)?;
+            stamp.volume(&backup)?;
         }
-        if exists(backup) {
+        if exists(&backup) {
             own(
-                backup,
+                &backup,
                 r.original.as_ref().ok_or("Sauvegarde sans empreinte")?,
             )?;
-            publish_new(backup, &entry.destination)
-                .map_err(|e| format!("Sauvegarde conservée ; restauration impossible : {e}"))?;
+            let destination = entry.destination.clone();
+            publish_new_with(&backup, &destination, |meta| {
+                r.original =
+                    Some(Stamp::from_metadata(&destination, meta).map_err(std::io::Error::other)?);
+                persist(entry, &r, save).map_err(std::io::Error::other)
+            })
+            .map_err(|e| format!("Sauvegarde conservée ; restauration impossible : {e}"))?;
             sync_parent(&entry.destination)?;
         }
         if let Some(parent) = backup.parent() {
@@ -636,6 +791,9 @@ pub(super) fn finish_directory(
     if r.reverted {
         return Ok(());
     }
+    if r.source_dir_removed {
+        check_restored_directory(entry, &r)?;
+    }
     if let Some(result) = &r.result {
         if exists(&entry.destination) {
             safe_parents(&entry.destination)?;
@@ -647,7 +805,7 @@ pub(super) fn finish_directory(
     }
     if r.source_dir_removed {
         if let Some(original) = &r.source_stamp {
-            original.metadata(&entry.source)?;
+            original.metadata(&entry.source, restored_directory_owner(entry, &r)?)?;
         }
     }
     cleanup_staging(&r)?;
@@ -669,7 +827,7 @@ pub(super) fn cleanup_staging(r: &Record) -> Result<(), String> {
             if exists(path) {
                 // Partial data may have changed its size, but the inode must still be ours.
                 let now = Stamp::read(path)?;
-                if now.dev != stamp.dev || now.ino != stamp.ino {
+                if now.dev != stamp.dev || now.ino != stamp.ino || now.kind != stamp.kind {
                     return Err("Temporary file replaced; kept".into());
                 }
                 if now.kind == "directory" {
@@ -700,12 +858,7 @@ pub(super) fn discard(entry: &Entry) -> Result<(), String> {
             stamp.volume(backup)?;
         }
         if exists(backup) {
-            own(
-                backup,
-                r.original
-                    .as_ref()
-                    .ok_or("Journal de sauvegarde incomplet")?,
-            )?;
+            check_backup_file(backup, r)?;
             fs::remove_file(backup).map_err(|e| e.to_string())?;
         }
         if let Some(parent) = backup.parent() {
@@ -720,10 +873,113 @@ pub(super) fn discard(entry: &Entry) -> Result<(), String> {
 pub(super) fn restore_parent_metadata(entry: &Entry) -> Result<(), String> {
     if let Some(record) = &entry.undo {
         if record.source_dir_removed {
+            check_restored_directory(entry, record)?;
             if let Some(stamp) = &record.source_stamp {
-                stamp.metadata(&entry.source)?;
+                stamp.metadata(&entry.source, restored_directory_owner(entry, record)?)?;
             }
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    /// Une substitution avant ou après ouverture ne doit changer ni les droits ni la date d’un fichier étranger.
+    fn metadata_restoration_rejects_replacements_at_pin_boundary() {
+        for link in [false, true] {
+            for after in [true, false] {
+                let root = private_directory(&std::env::temp_dir(), "metadata-swap-test").unwrap();
+                let path = root.join("restored");
+                let foreign = root.join("foreign");
+                fs::write(&path, b"owned").unwrap();
+                fs::set_permissions(&path, fs::Permissions::from_mode(0o640)).unwrap();
+                let desired = Stamp::read(&path).unwrap();
+                fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+                fs::write(&foreign, b"foreign").unwrap();
+                fs::set_permissions(&foreign, fs::Permissions::from_mode(0o600)).unwrap();
+                let handle = fs::File::open(&foreign).unwrap();
+                let before = handle.metadata().unwrap();
+                let replace = || {
+                    fs::rename(&path, root.join("parked")).unwrap();
+                    if link {
+                        symlink(&foreign, &path).unwrap();
+                    } else {
+                        fs::rename(&foreign, &path).unwrap();
+                    }
+                };
+                if !after {
+                    replace();
+                }
+                let result = desired.metadata_with(&path, &desired, || {
+                    if after {
+                        replace();
+                    }
+                });
+                let now = handle.metadata().unwrap();
+                fs::remove_dir_all(&root).unwrap();
+                assert!(
+                    result.is_err(),
+                    "Replaced target accepted: link={link}, after_pin={after}"
+                );
+                assert_eq!(now.mode(), before.mode());
+                assert_eq!(now.modified().unwrap(), before.modified().unwrap());
+            }
+        }
+    }
+
+    #[test]
+    /// Après application des propriétés, une répétition doit accepter aussi les modes sans lecture.
+    fn metadata_restoration_is_idempotent_without_read_permission() {
+        for directory in [false, true] {
+            let root =
+                private_directory(&std::env::temp_dir(), "metadata-idempotent-test").unwrap();
+            let path = root.join("restored");
+            if directory {
+                fs::create_dir(&path).unwrap();
+            } else {
+                fs::write(&path, b"contents").unwrap();
+            }
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).unwrap();
+            let stamp = Stamp::read(&path).unwrap();
+            let result = stamp.metadata(&path, &stamp);
+            let mode = fs::symlink_metadata(&path).unwrap().mode() & 0o7777;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
+            fs::remove_dir_all(root).unwrap();
+            assert!(result.is_ok(), "directory={directory}: {result:?}");
+            assert_eq!(mode, 0);
+        }
+    }
+
+    #[test]
+    /// Rétablir des permissions sans lecture ne doit pas empêcher la restauration de la date.
+    fn metadata_restoration_accepts_restrictive_modes() {
+        let root = private_directory(&std::env::temp_dir(), "metadata-test").unwrap();
+        let path = root.join("restored");
+        for mode in [0o000, 0o200, 0o400, 0o600] {
+            fs::write(&path, b"contents").unwrap();
+            let date = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000);
+            fs::File::open(&path).unwrap().set_modified(date).unwrap();
+            fs::set_permissions(&path, fs::Permissions::from_mode(mode)).unwrap();
+            let stamp = Stamp::read(&path).unwrap();
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+            fs::File::open(&path)
+                .unwrap()
+                .set_modified(SystemTime::now())
+                .unwrap();
+            let result = stamp.metadata(&path, &stamp);
+            let restored = fs::metadata(&path).unwrap();
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+            fs::remove_file(&path).unwrap();
+            if result.is_err() {
+                fs::remove_dir(&root).unwrap();
+            }
+            assert!(result.is_ok(), "mode={mode:o}: {result:?}");
+            assert_eq!(restored.mode() & 0o777, mode);
+            assert_eq!(restored.modified().unwrap(), date);
+        }
+        fs::remove_dir(root).unwrap();
+    }
 }

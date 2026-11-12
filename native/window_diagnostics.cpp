@@ -25,13 +25,17 @@ void Window::refreshDiagnostics() {
     dialog->setProperty("refreshingDiagnostics",true);
     const auto guard=qScopeGuard([dialog]{dialog->setProperty("refreshingDiagnostics",false);});
     QSet<qint64> live;
+    // Un seul index par rafraîchissement, plutôt qu’un parcours complet pour chaque lot.
+    QHash<qint64,QTreeWidgetItem *> existing;
+    for(int i=0;i<rows->topLevelItemCount();++i) {
+        auto *row=rows->topLevelItem(i);existing.insert(row->data(0,Qt::UserRole).toLongLong(),row);
+    }
+    const QFontMetrics metrics(rows->font());
     for(const auto &item:diagnosticTracker.items()) {
-        live.insert(item.id);QTreeWidgetItem *row=nullptr;
-        for(int i=0;i<rows->topLevelItemCount();++i)if(rows->topLevelItem(i)->data(0,Qt::UserRole).toLongLong()==item.id){row=rows->topLevelItem(i);break;}
+        live.insert(item.id);auto *row=existing.value(item.id,nullptr);
         if(!row){row=new QTreeWidgetItem(rows);row->setData(0,Qt::UserRole,item.id);}
         const QStringList values{QString("#%1 · %2").arg(item.id).arg(item.name),item.status,item.reason,item.limits,item.metrics};
         int height=24;
-        const QFontMetrics metrics(rows->font());
         for(int c=0;c<values.size();++c) {
             height=qMax(height,metrics.boundingRect(QRect(0,0,qMax(40,rows->columnWidth(c)-16),100000),Qt::TextWordWrap,values[c]).height()+14);
             if(row->text(c)!=values[c])row->setText(c,values[c]);

@@ -10,6 +10,8 @@ mod delta;
 mod settings;
 mod snapshot_reader;
 
+// Ctime détecte aussi une modification dont mtime a été rétabli après réécriture.
+type Fingerprint = (u64, u64, u64, i64, i64, i64, i64);
 const MAX_RECORDS: usize = 64;
 // La mémoire supplémentaire reste bornée même avec un historique volumineux.
 const MAX_CACHE_BYTES: usize = 16 * 1024 * 1024;
@@ -23,7 +25,7 @@ pub(super) struct Writer {
     revisions: HashMap<u64, u64>,
     header: Option<settings::Cached>,
     ids: Vec<u64>,
-    snapshot: Option<(u64, u64, u64, i64, i64)>,
+    snapshot: Option<Fingerprint>,
     log_identity: Option<(u64, u64)>,
     length: u64,
     records: usize,
@@ -111,13 +113,15 @@ fn header(state: &State) -> Value {
 pub(super) fn log_path(path: &Path) -> PathBuf {
     path.with_extension("json.wal")
 }
-fn fingerprint(meta: &fs::Metadata) -> (u64, u64, u64, i64, i64) {
+fn fingerprint(meta: &fs::Metadata) -> Fingerprint {
     (
         meta.dev(),
         meta.ino(),
         meta.len(),
         meta.mtime(),
         meta.mtime_nsec(),
+        meta.ctime(),
+        meta.ctime_nsec(),
     )
 }
 fn failure(error: impl std::fmt::Display) -> String {
@@ -290,7 +294,63 @@ fn encode_record(value: &impl Serialize) -> Result<Vec<u8>, String> {
     Ok(bytes)
 }
 
+/// Un temporaire appartient à une seule compaction ; aucun ancien nom n’est tronqué ou réutilisé.
+fn snapshot_temporary(path: &Path) -> Result<(fs::File, Temp), String> {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    for _ in 0..1000 {
+        let serial = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let temporary = path.with_extension(format!("json.tmp-{}-{serial}", std::process::id()));
+        let file = match OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .custom_flags(0x20000 | 0x800)
+            .open(&temporary)
+        {
+            Ok(file) => file,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(failure(error)),
+        };
+        let stamp = undo::Stamp::from_metadata(&temporary, &file.metadata().map_err(failure)?)
+            .map_err(failure)?;
+        return Ok((file, Temp::new(temporary, stamp)));
+    }
+    Err(failure(std::io::Error::from_raw_os_error(17)))
+}
 impl Writer {
+    /// Valide le descripteur et le nom avant toute écriture, sans suivre un lien ni attendre sur un FIFO.
+    fn validate_log(&self, path: &Path, file: &fs::File, append: bool) -> Result<(), String> {
+        let meta = file.metadata().map_err(failure)?;
+        let named = fs::symlink_metadata(log_path(path)).map_err(failure)?;
+        let identity = (meta.dev(), meta.ino());
+        if !meta.is_file()
+            || meta.nlink() != 1
+            || !named.is_file()
+            || (named.dev(), named.ino()) != identity
+            || self
+                .log_identity
+                .is_some_and(|expected| expected != identity)
+            || (append && self.log_identity.is_none())
+            || (self.log_identity.is_some() && meta.len() != self.length)
+        {
+            return Err(failure("journal incrémental modifié hors de Gad"));
+        }
+        Ok(())
+    }
+    fn open_log(&self, path: &Path, append: bool) -> Result<fs::File, String> {
+        let file = OpenOptions::new()
+            .write(true)
+            .truncate(false)
+            .append(append)
+            .create(!append && self.log_identity.is_none())
+            .mode(0o600)
+            .custom_flags(0x20000 | 0x800)
+            .open(log_path(path))
+            .map_err(failure)?;
+        self.validate_log(path, &file, append)?;
+        Ok(file)
+    }
+
     /// Une seule instance sous le verrou writer ; state doit rester stable pendant la capture.
     pub(super) fn save(
         &mut self,
@@ -407,18 +467,7 @@ impl Writer {
             full_jobs,
             patches,
         })?;
-        let mut log = OpenOptions::new()
-            .append(true)
-            .custom_flags(0x20000)
-            .open(log_path(path))
-            .map_err(failure)?;
-        let meta = log.metadata().map_err(failure)?;
-        if !meta.is_file()
-            || Some((meta.dev(), meta.ino())) != self.log_identity
-            || meta.len() != self.length
-        {
-            return Err(failure("journal incrémental modifié hors de Gad"));
-        }
+        let mut log = self.open_log(path, true)?;
         if let Err(error) = log.write_all(&bytes).and_then(|_| log.sync_all()) {
             // Le refus n’autorise aucun effet de fichier. Revenir à la dernière frontière durable.
             if log
@@ -478,33 +527,31 @@ impl Writer {
             sequence: self.sequence,
         })
         .map_err(failure)?;
-        let mut output = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600)
-            .custom_flags(0x20000)
-            .open(path.with_extension("json.tmp"))
-            .map_err(failure)?;
+        // Valider le WAL avant la publication évite de remplacer l’instantané si son journal a été substitué.
+        let log = self.open_log(path, false)?;
+        let pinned_log = fingerprint(&log.metadata().map_err(failure)?);
+        let (mut output, temporary) = snapshot_temporary(path)?;
         output
             .write_all(&bytes)
             .and_then(|_| output.sync_all())
             .map_err(failure)?;
-        fs::rename(path.with_extension("json.tmp"), path).map_err(failure)?;
+        temporary
+            .check_version(&output.metadata().map_err(failure)?)
+            .map_err(failure)?;
+        fs::rename(&temporary.path, path).map_err(failure)?;
         fs::File::open(parent)
             .and_then(|file| file.sync_all())
             .map_err(failure)?;
-        // Après publication, tout échec impose de recharger l’instantané avant une autre écriture.
+        // Après publication, un refus exige un rechargement avant toute nouvelle écriture.
         self.poisoned = true;
-        let log = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600)
-            .custom_flags(0x20000)
-            .open(log_path(path))
+        self.validate_log(path, &log, false)?;
+        if fingerprint(&log.metadata().map_err(failure)?) != pinned_log {
+            return Err(failure("journal incrémental modifié hors de Gad"));
+        }
+        // Le descripteur est celui qui a été validé : aucun O_TRUNC ne précède les contrôles.
+        log.set_len(0)
+            .and_then(|_| log.sync_all())
             .map_err(failure)?;
-        log.sync_all().map_err(failure)?;
         fs::File::open(parent)
             .and_then(|file| file.sync_all())
             .map_err(failure)?;
@@ -1188,14 +1235,27 @@ mod tests {
         append(&path, 3, &state);
         assert!(load(&path).is_err());
         fs::write(log_path(&path), &log).unwrap();
-        let parked = f.0.join("snapshot.json");
-        fs::rename(&path, &parked).unwrap();
-        assert!(load(&path).is_err());
-        fs::rename(parked, &path).unwrap();
         assert_eq!(
             writer.snapshot,
             Some(fingerprint(&fs::metadata(&path).unwrap()))
         );
+        let parked = f.0.join("snapshot.json");
+        thread::sleep(std::time::Duration::from_millis(10));
+        fs::rename(&path, &parked).unwrap();
+        assert!(load(&path).is_err());
+        fs::rename(parked, &path).unwrap();
+        // Le contenu est revenu, mais le renommage externe change ctime : l’ancien écrivain doit refuser.
+        assert!(writer
+            .save(&path, &state, true)
+            .unwrap_err()
+            .contains("instantané modifié hors de Gad"));
+        let (reloaded, sequence) = load(&path).unwrap();
+        assert_eq!(state_value(&reloaded), state_value(&state));
+        writer = Writer {
+            sequence,
+            ..Writer::default()
+        };
+        writer.save(&path, &reloaded, true).unwrap();
         assert_eq!(
             fs::metadata(&path).unwrap().permissions().mode() & 0o777,
             0o600
@@ -1231,5 +1291,130 @@ mod tests {
         fs::write(log_path(&path), b"broken\n").unwrap();
         assert!(Engine::persistent(path.clone()).is_err());
         assert_eq!(fs::read(log_path(&path)).unwrap(), b"broken\n");
+    }
+    #[test]
+    /// Un ancien nom temporaire ne peut pas servir à tronquer un autre fichier.
+    fn review_journal_checkpoint_uses_an_exclusive_temporary() {
+        let f = Fixture::new();
+        let path = f.path();
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        let foreign = f.0.join("foreign");
+        fs::write(&foreign, b"foreign contents").unwrap();
+        fs::hard_link(&foreign, path.with_extension("json.tmp")).unwrap();
+        let result = Writer::default().save(&path, &State::default(), true);
+        assert_eq!(fs::read(&foreign).unwrap(), b"foreign contents");
+        assert!(result.is_ok(), "{result:?}");
+        assert!(load(&path).is_ok());
+    }
+
+    #[test]
+    /// La compaction valide le WAL avant de publier un instantané ou de tronquer un fichier.
+    fn review_journal_compaction_refuses_a_replaced_log() {
+        for linked in [false, true] {
+            let f = Fixture::new();
+            let path = f.path();
+            let mut writer = Writer::default();
+            let mut state = State::default();
+            writer.save(&path, &state, false).unwrap();
+            let snapshot = fs::read(&path).unwrap();
+            fs::rename(log_path(&path), f.0.join("saved-wal")).unwrap();
+            let foreign = f.0.join("foreign");
+            fs::write(&foreign, b"foreign contents").unwrap();
+            if linked {
+                fs::hard_link(&foreign, log_path(&path)).unwrap();
+            } else {
+                fs::rename(&foreign, log_path(&path)).unwrap();
+            }
+            state.paused = true;
+            let result = writer.save(&path, &state, true);
+            assert!(result.is_err(), "Replaced WAL accepted: linked={linked}");
+            assert_eq!(fs::read(log_path(&path)).unwrap(), b"foreign contents");
+            assert_eq!(fs::read(&path).unwrap(), snapshot);
+        }
+    }
+
+    #[test]
+    /// Une réécriture externe reste détectée même si sa taille et sa date de modification sont conservées.
+    fn review_journal_refuses_snapshot_rewrite_with_preserved_mtime() {
+        let f = Fixture::new();
+        let path = f.path();
+        let mut writer = Writer::default();
+        let mut state = State::default();
+        writer.save(&path, &state, false).unwrap();
+        let before = fs::metadata(&path).unwrap();
+        let original = fs::read_to_string(&path).unwrap();
+        let changed = original.replacen(":false", ":true ", 1);
+        assert_ne!(original, changed);
+        assert_eq!(original.len(), changed.len());
+        thread::sleep(std::time::Duration::from_millis(10));
+        fs::write(&path, &changed).unwrap();
+        fs::File::open(&path)
+            .unwrap()
+            .set_modified(before.modified().unwrap())
+            .unwrap();
+        state.paused = true;
+        assert!(
+            writer.save(&path, &state, false).is_err(),
+            "Modified snapshot accepted despite changed ctime"
+        );
+        assert_eq!(fs::read_to_string(&path).unwrap(), changed);
+        assert!(fs::read(log_path(&path)).unwrap().is_empty());
+    }
+
+    #[test]
+    /// Le sous-processus borne le scénario afin qu’une ouverture de FIFO ne bloque pas toute la suite.
+    fn review_journal_fifo_never_blocks_a_writer() {
+        const ROOT: &str = "GAD_JOURNAL_FIFO_TEST_ROOT";
+        let Some(root) = std::env::var_os(ROOT) else {
+            let f = Fixture::new();
+            let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "engine::journal::tests::review_journal_fifo_never_blocks_a_writer",
+                    "--nocapture",
+                ])
+                .env(ROOT, &f.0)
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .spawn()
+                .unwrap();
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+            let mut timed_out = false;
+            while child.try_wait().unwrap().is_none() {
+                if std::time::Instant::now() >= deadline {
+                    timed_out = true;
+                    child.kill().unwrap();
+                    break;
+                }
+                thread::sleep(std::time::Duration::from_millis(10));
+            }
+            let output = child.wait_with_output().unwrap();
+            assert!(
+                !timed_out && output.status.success(),
+                "FIFO write did not fail promptly: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        };
+        use std::os::unix::ffi::OsStrExt;
+        unsafe extern "C" {
+            fn mkfifo(path: *const std::ffi::c_char, mode: u32) -> std::ffi::c_int;
+        }
+        for checkpoint in [false, true] {
+            let directory = PathBuf::from(&root).join(format!("case-{checkpoint}"));
+            fs::create_dir(&directory).unwrap();
+            // Le garde ne possède que le dossier créé ici, jamais un emplacement préexistant.
+            let f = Fixture(directory);
+            let path = f.path();
+            let mut writer = Writer::default();
+            let mut state = State::default();
+            writer.save(&path, &state, false).unwrap();
+            fs::remove_file(log_path(&path)).unwrap();
+            let fifo = std::ffi::CString::new(log_path(&path).as_os_str().as_bytes()).unwrap();
+            // SAFETY : chaîne terminée par NUL, mode Linux valide, aucun pointeur conservé par libc.
+            assert_eq!(unsafe { mkfifo(fifo.as_ptr(), 0o600) }, 0);
+            state.paused = true;
+            assert!(writer.save(&path, &state, checkpoint).is_err());
+        }
     }
 }

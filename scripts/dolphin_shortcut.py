@@ -6,6 +6,7 @@ import shutil
 import argparse
 import json
 import os
+import tempfile
 from xml.dom import minidom
 
 ACTION = "servicemenu_gad-paste.desktop::GadPaste"
@@ -51,17 +52,18 @@ def xml_paths():
 def atomic_write(path,contents,private=False):
     """Écrit et synchronise avant remplacement ; conserve les permissions du XML existant."""
     path.parent.mkdir(parents=True,exist_ok=True)
-    temporary=path.with_name(path.name+".gad-paste.tmp")
-    flags=os.O_WRONLY|os.O_CREAT|os.O_TRUNC|os.O_NOFOLLOW
-    descriptor=os.open(temporary,flags,0o600)
+    # Chaque écriture possède son fichier exclusif : deux processus ne partagent ni
+    # le contenu en préparation, ni le nom que l’un va publier puis supprimer.
+    descriptor,name=tempfile.mkstemp(prefix=path.name+".gad-paste.",suffix=".tmp",dir=path.parent)
+    temporary=Path(name);published=False
     try:
         with os.fdopen(descriptor,"wb") as output:
             if private:os.fchmod(output.fileno(),0o600)
+            elif path.exists():os.fchmod(output.fileno(),path.stat().st_mode & 0o7777)
             output.write(contents);output.flush();os.fsync(output.fileno())
-        if path.exists() and not private:shutil.copymode(path,temporary)
-        temporary.replace(path)
+        temporary.replace(path);published=True
     finally:
-        temporary.unlink(missing_ok=True)
+        if not published:temporary.unlink(missing_ok=True)
 
 
 def configure_paste(enabled):

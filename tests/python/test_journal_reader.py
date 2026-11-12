@@ -58,3 +58,17 @@ class JournalReaderTest(unittest.TestCase):
             path.with_suffix(".json.wal").write_bytes(line(first) + line(second))
             with self.assertRaises(ValueError):
                 read_journal(path)
+
+    def test_large_reordered_history_preserves_order_and_removes_absent_jobs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "state.json"
+            jobs = [{"id": index, "state": "done"} for index in range(2048)]
+            path.write_text(json.dumps({"jobs": jobs, "paused": False}))
+            ids = list(range(2046, -1, -2))
+            payload = json.dumps({"sequence": 1, "header": {"paused": True},
+                                  "jobs": [{"id": 0, "state": "cancelled"}], "ids": ids}).encode()
+            path.with_suffix(".json.wal").write_bytes(hashlib.md5(payload).hexdigest().encode() + b" " + payload + b"\n")
+            state = read_journal(path)
+            self.assertEqual([job["id"] for job in state["jobs"]], ids)
+            self.assertEqual(state["jobs"][-1]["state"], "cancelled")
+            self.assertTrue(state["paused"])

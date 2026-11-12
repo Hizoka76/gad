@@ -1,6 +1,6 @@
 # Gad — Guía de desarrollo {#gad-developer-guide}
 
-Versión documentada: **0.3.0**, protocolo **33**, 8 de noviembre de 2026.
+Versión documentada: **0.4.0**, protocolo **35**, 12 de noviembre de 2026.
 
 Gad significa **Gestionnaire Avancé de Duplication**; su lema es **Gad, il copie.** Esta guía describe la implementación en este repositorio. El código sigue teniendo autoridad para los campos exactos y los valores predeterminados.
 
@@ -98,7 +98,7 @@ Los argumentos se convierten en un comando, con portapapeles y procesamiento de 
 
 El socket es `gad.sock` en el directorio de ejecución del usuario. Las solicitudes terminan en nueva línea JSON, una respuesta por conexión, con un límite de solicitudes entrantes de 16 MiB y acceso solo para usuarios. `--status` sin una instancia debe fallar en lugar de iniciar un motor gráfico.
 
-Sólo se utilizan la configuración y las ubicaciones del diario propias de Gad. La versión actual del protocolo es **33**. Las comprobaciones de capacidad/versión evitan el envío silencioso de un movimiento, un punto final remoto o una solicitud de verificación a una instancia anterior que no puede implementarlo. Un ejecutable recién instalado aún puede contactar con un proceso más antiguo; actualizar una instancia inactiva mediante el apagado normal.
+Sólo se utilizan la configuración y las ubicaciones del diario propias de Gad. La versión actual del protocolo es **35**. Las comprobaciones de capacidad/versión evitan el envío silencioso de un movimiento, un punto final remoto o una solicitud de verificación a una instancia anterior que no puede implementarlo. Un ejecutable recién instalado aún puede contactar con un proceso más antiguo; actualizar una instancia inactiva mediante el apagado normal.
 
 ```bash
 gad
@@ -358,7 +358,7 @@ Un análisis vacío fallido utiliza validación y escaneo de raíz completos. Re
 
 ## Referencia del protocolo {#protocol-reference}
 
-`native/protocol.def` es el vocabulario compartido; Las estructuras y validadores Rust definen contratos exactos. La versión actual es **33**. Los comandos específicos de la GUI se enrutan mediante Qt y los comandos del motor, mediante Rust.
+`native/protocol.def` es el vocabulario compartido; Las estructuras y validadores Rust definen contratos exactos. La versión actual es **35**. Los comandos específicos de la GUI se enrutan mediante Qt y los comandos del motor, mediante Rust.
 
 | Dominio | Parámetros principales | Comportamiento |
 |---|---|---|
@@ -620,7 +620,7 @@ Suspender y apagar utilizan logind y respetan sus permisos e inhibidores. Una no
 
 ## Preparar transferencias en la lista principal {#preparing-transfers}
 
-El protocolo actual es **33**. Se persiste `Job.start_required`; `prepare_only` distingue la preparación manual de las solicitudes externas. El planificador omite las preparaciones sin validar. El control único envía `pause` con `paused=false` para iniciar o reanudar. `staging.rs` crea temporales visibles; `resume.rs` verifica su identidad y prefijo. Las órdenes de simulación de solo lectura permanecen internas, sin ventana propia.
+El protocolo actual es **35**. Se persiste `Job.start_required`; `prepare_only` distingue la preparación manual de las solicitudes externas. El planificador omite las preparaciones sin validar. El control único envía `pause` con `paused=false` para iniciar o reanudar. `staging.rs` crea temporales visibles; `resume.rs` verifica su identidad y prefijo. Las órdenes de simulación de solo lectura permanecen internas, sin ventana propia.
 
 
 ## Índice temporal de directorios

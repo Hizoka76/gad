@@ -1,6 +1,6 @@
 # Gad — Developer Guide
 
-Documented version: **0.3.0**, protocol **33**, November 8, 2026.
+Documented version: **0.4.0**, protocol **35**, November 12, 2026.
 
 Gad means **Gestionnaire Avancé de Duplication**; its slogan is **Gad, il copie.** This guide describes the implementation in this repository. The code remains authoritative for exact fields and defaults.
 
@@ -98,7 +98,7 @@ Arguments become a command, with clipboard and URL processing where required. Qt
 
 The socket is `gad.sock` under the user runtime directory. Requests are newline-terminated JSON, one reply per connection, with a 16 MiB incoming request limit and user-only access. `--status` without an instance must fail instead of starting a graphical engine.
 
-Only Gad's own settings and journal locations are used. Current protocol version is **33**. Capability/version checks prevent silently sending a move, remote endpoint, or verification request to an older instance that cannot implement it. A newly installed executable may still contact an older process; update an idle instance through normal shutdown.
+Only Gad's own settings and journal locations are used. Current protocol version is **35**. Capability/version checks prevent silently sending a move, remote endpoint, or verification request to an older instance that cannot implement it. A newly installed executable may still contact an older process; update an idle instance through normal shutdown.
 
 ```bash
 gad
@@ -358,7 +358,7 @@ A failed empty analysis uses full root validation and scanning. Reset structural
 
 ## Protocol reference
 
-`native/protocol.def` is the shared vocabulary; Rust structures and validators define exact contracts. Current version is **33**. GUI-specific commands are routed by Qt and engine commands by Rust.
+`native/protocol.def` is the shared vocabulary; Rust structures and validators define exact contracts. Current version is **35**. GUI-specific commands are routed by Qt and engine commands by Rust.
 
 | Command | Main parameters | Behavior |
 |---|---|---|
@@ -561,7 +561,7 @@ Regression tests in `src/engine/tests/integrity.rs` cover edits preserving size/
 
 QSettings `transferProfiles` schema version 5 separates `options`, `gui` and `request_rate_limit`, with no destination field. Loading version 1 preserves its existing options, fills missing ones from current preferences, drops the destination and writes version 5 once. Invalid or unknown documents remain untouched.
 
-`currentTransferProfile` captures every settings control. Application validates language availability, prepares Dolphin shortcuts asynchronously, snapshots the exact startup entry, then applies internal configuration. Rejection triggers attempted restoration of configuration, startup and shortcuts; incomplete rollback is reported. Concurrent configuration changes and quitting are blocked during application. File submissions remain possible and are never triggered by a profile. The engine protocol is 33; profile schema versioning is independent.
+`currentTransferProfile` captures every settings control. Application validates language availability, prepares Dolphin shortcuts asynchronously, snapshots the exact startup entry, then applies internal configuration. Rejection triggers attempted restoration of configuration, startup and shortcuts; incomplete rollback is reported. Concurrent configuration changes and quitting are blocked during application. File submissions remain possible and are never triggered by a profile. The engine protocol is 35; profile schema versioning is independent.
 
 Qt tests cover migration, destination removal, every option, Dolphin/engine failures, exact startup restoration, concurrent configuration, unavailable languages and persistence.
 
@@ -620,7 +620,7 @@ Suspend and power off use logind and respect its authorization and inhibitors. A
 
 ## Prepare transfers in the main list {#preparing-transfers}
 
-The current protocol is **33**. `Job.start_required` is persisted; `prepare_only` distinguishes manual preparation from external submissions. Scheduling skips unapproved preparations. The single control sends `pause` with `paused=false` to start or resume. `staging.rs` creates visible partial files; `resume.rs` verifies their identity and prefix before resuming. Read-only simulation commands remain internal to the engine, without a dedicated window.
+The current protocol is **35**. `Job.start_required` is persisted; `prepare_only` distinguishes manual preparation from external submissions. Scheduling skips unapproved preparations. The single control sends `pause` with `paused=false` to start or resume. `staging.rs` creates visible partial files; `resume.rs` verifies their identity and prefix before resuming. Read-only simulation commands remain internal to the engine, without a dedicated window.
 
 
 ## Transient directory index

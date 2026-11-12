@@ -64,7 +64,7 @@ QJsonArray Window::refreshSummary(const QSet<qint64> &changed) {
 /// La conservation des items préserve le survol, les infobulles, les indices et la sélection.
 void Window::refresh(){
     if (closing) return;
-    const auto delta=engine({{"command",Protocol::Command::Poll},{"since",queueSnapshot.revision()}});
+    const auto delta=engine({{"command",Protocol::Command::Poll},{"since",queueSnapshot.revision()},{"entry_deltas",true}});
     if(delta.contains("error")){summary->setText(I18n::message(delta["error"].toString()));return;}
     const auto changed=queueSnapshot.apply(delta);state=queueSnapshot.state();
     // Un seul contrôle pilote la file, qu’elle soit préparée, active ou en pause.
@@ -94,7 +94,10 @@ void Window::refresh(){
 
     if(state.contains("rate_limit")) {
         const auto bytes=state["rate_limit"].toInteger();QSignalBlocker blocker(globalRate);
-        globalRate->setValue(bytes/1048576.0);QSettings().setValue("rateLimit",bytes);
+        // Même sans signal valueChanged, setValue réécrit l’éditeur et efface une saisie non validée.
+        if(qRound64(globalRate->value()*1048576)!=bytes)globalRate->setValue(bytes/1048576.0);
+        // Un rafraîchissement, même rapide, ne réécrit pas une préférence inchangée.
+        QSettings settings;if(settings.value("rateLimit",0).toLongLong()!=bytes)settings.setValue("rateLimit",bytes);
     }
     const auto ignored=state["duplicates_ignored"].toInteger();
     if(reportedDuplicates>=0 && ignored>reportedDuplicates) {
@@ -187,7 +190,7 @@ void Window::refresh(){
     const auto searchData=[](QTreeWidgetItem *row,const QJsonObject &job,const QString &paths){
         row->setData(0,HistorySearch::CreatedRole,job["created_at"].toInteger());
         row->setData(0,HistorySearch::JobStateRole,job["state"].toString());
-        row->setData(0,HistorySearch::PathsRole,paths);
+        HistorySearch::setPaths(row,paths);
     };
     for (const auto &value : jobs) {
         const auto job = value.toObject(); const auto id = job["id"].toInteger(); const auto status = job["state"].toString();

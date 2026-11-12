@@ -3,7 +3,7 @@ use super::*;
 use std::os::unix::fs::PermissionsExt;
 
 /// Rétablir mtime après une écriture reproduit un changement invisible au seul couple taille/date.
-fn rewrite_preserving_mtime(path: &Path, contents: &[u8]) {
+pub(super) fn rewrite_preserving_mtime(path: &Path, contents: &[u8]) {
     let modified = fs::metadata(path).unwrap().modified().unwrap();
     // tmpfs peut réutiliser l’horloge du même tick pour plusieurs écritures immédiates.
     thread::sleep(Duration::from_millis(10));
@@ -188,6 +188,13 @@ fn edited_backup_blocks_restoration_before_any_selected_output_is_removed() {
     assert_eq!(fs::read(f.0.join("dest/a")).unwrap(), b"first source");
     assert_eq!(fs::read(f.0.join("dest/b")).unwrap(), b"second source");
     assert_eq!(fs::read(backup).unwrap(), b"bad backup");
+    assert!(engine
+        .request(r#"{"command":"shutdown"}"#)
+        .unwrap_err()
+        .contains("Backup changed"));
+    engine
+        .request(r#"{"command":"configure","keep_history":true}"#)
+        .unwrap();
     engine.request(r#"{"command":"shutdown"}"#).unwrap();
 }
 
@@ -265,6 +272,13 @@ fn backup_changed_during_restore_does_not_delete_the_valid_result() {
     assert_eq!(fs::read(f.0.join("dest/a")).unwrap(), b"first source");
     assert_eq!(fs::read(f.0.join("source/a")).unwrap(), b"first source");
     assert_eq!(fs::read(backup).unwrap(), b"bad backup");
+    assert!(engine
+        .request(r#"{"command":"shutdown"}"#)
+        .unwrap_err()
+        .contains("Backup changed"));
+    engine
+        .request(r#"{"command":"configure","keep_history":true}"#)
+        .unwrap();
     engine.request(r#"{"command":"shutdown"}"#).unwrap();
 }
 

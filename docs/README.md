@@ -1,6 +1,6 @@
 # Gad — Documentation
 
-Version 0.3.0 · Français
+Version 0.4.0 · Français
 
 ## Choisir un guide
 

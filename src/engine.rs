@@ -17,6 +17,7 @@ mod fast_move;
 mod fast_verify;
 mod prepared;
 mod properties;
+mod publication;
 mod rate;
 mod reconnect;
 mod resume;
@@ -217,6 +218,9 @@ struct Job {
 #[serde(default)]
 /// État sérialisable du moteur ; les réservations de travailleurs ne sont pas persistées.
 struct State {
+    /// Index dérivé, toujours revalidé après retrait ou réorganisation du vecteur.
+    #[serde(skip)]
+    job_positions: std::cell::RefCell<std::collections::HashMap<u64, usize>>,
     #[serde(skip)]
     completion_claimed: bool,
     #[serde(skip)]
@@ -244,6 +248,9 @@ struct State {
     #[serde(skip)]
     /// Distingue une pause récente d’une pause que le collage en arrière-plan peut lever.
     pause_epoch: u64,
+    #[serde(skip)]
+    /// Lots manuels autorisés en mémoire mais encore bloqués jusqu’à leur sauvegarde durable.
+    pending_starts: std::collections::HashSet<u64>,
     /// Valeur par défaut pour les futures opérations.
     verify_md5: bool,
     verify_properties: bool,
@@ -304,15 +311,39 @@ pub struct Engine {
     shared: Arc<Shared>,
 }
 
+impl State {
+    /// Les chemins chauds évitent de rescanner l’historique pour chaque bloc d’octets.
+    fn job_position(&self, id: u64) -> Option<usize> {
+        let cached = self.job_positions.borrow().get(&id).copied();
+        if let Some(index) = cached {
+            if self.jobs.get(index).is_some_and(|job| job.id == id) {
+                return Some(index);
+            }
+        }
+        let position = self.jobs.iter().position(|job| job.id == id);
+        let mut cache = self.job_positions.borrow_mut();
+        if cache.len() > self.jobs.len().saturating_mul(2).max(64) {
+            cache.clear();
+        }
+        if let Some(index) = position {
+            cache.insert(id, index);
+        } else {
+            cache.remove(&id);
+        }
+        position
+    }
+}
+
 impl Engine {
     #[cfg(test)]
     /// Crée un moteur de test sans journal sur disque.
     pub fn new() -> Self {
-        Self::start(State::default(), None)
+        let engine = Self::unstarted(State::default(), None);
+        engine.start_workers();
+        engine
     }
-    /// Partage l’état puis démarre deux travailleurs ; l’ordonnanceur réserve les lots
-    /// sous le verrou d’état avant toute opération de fichiers.
-    fn start(mut state: State, history_path: Option<PathBuf>) -> Self {
+    /// Construit l’état sans travailleur ; le démarrage persistant doit d’abord valider son journal.
+    fn unstarted(mut state: State, history_path: Option<PathBuf>) -> Self {
         if conflicts::parse(&json!(state.conflict_policy)).is_err() {
             state.conflict_policy = conflicts::ask();
         }
@@ -324,7 +355,7 @@ impl Engine {
                 .max()
                 .unwrap_or(0),
         );
-        let engine = Self {
+        Self {
             shared: Arc::new(Shared {
                 requests: Mutex::new(()),
                 simulations: Mutex::new(simulation::Registry::default()),
@@ -337,14 +368,16 @@ impl Engine {
                 stop: std::sync::atomic::AtomicBool::new(false),
                 worker: Mutex::new(Vec::new()),
             }),
-        };
+        }
+    }
+    /// Les travailleurs ne deviennent propriétaires de l’état qu’après son initialisation.
+    fn start_workers(&self) {
         // Deux travailleurs suffisent ; leur simple existence n’autorise pas deux copies sur un même disque.
         for _ in 0..2 {
-            let worker = engine.clone();
+            let worker = self.clone();
             let handle = thread::spawn(move || worker.work());
-            engine.shared.worker.lock().unwrap().push(handle);
+            self.shared.worker.lock().unwrap().push(handle);
         }
-        engine
     }
     /// Valide et distribue une commande JSON. Les mutations d’état sont protégées
     /// par le mutex ; les sauvegardes et attentes se font après libération de ce verrou.
@@ -373,6 +406,7 @@ impl Engine {
                         | Command::Poll
                         | Command::ErrorReport
                         | Command::CompletionRelease
+                        | Command::CompletionClear
                         | Command::Shutdown
                 )
             {
@@ -401,15 +435,36 @@ impl Engine {
         ));
         match command {
             Command::CompletionClaim => self.claim_completion(&v),
+            Command::CompletionClear => {
+                // Seule une fin de lot validée peut nettoyer tout en gardant les mutations bloquées.
+                let state = self.shared.state.lock().unwrap();
+                if !state.completion_claimed || !completion::idle(&state) {
+                    return Err("The queue changed before the completion action".into());
+                }
+                drop(state);
+                self.discard_history()?;
+                Ok(json!({"ok": true}))
+            }
             Command::CompletionRelease => {
                 self.shared.state.lock().unwrap().completion_claimed = false;
                 Ok(json!({"ok":true}))
             }
-            Command::Poll => self.poll(v["since"].as_u64()),
+            Command::Poll => {
+                if v["entry_deltas"].as_bool().unwrap_or(false) {
+                    self.poll_changes(v["since"].as_u64(), true)
+                } else {
+                    self.poll(v["since"].as_u64())
+                }
+            }
             Command::ErrorReport => self.error_report(),
             Command::RetryErrors => self.retry_errors(&v),
             // Expose un instantané complet et la version du protocole aux clients Qt/CLI.
             Command::Status => {
+                // La négociation client n’a besoin d’aucun fichier ni état d’historique.
+                // Les clients/serveurs historiques peuvent toujours demander l’instantané complet.
+                if v["summary"].as_bool() == Some(true) {
+                    return Ok(json!({"protocol_version":protocol::VERSION}));
+                }
                 let mut state = self.shared.state.lock().unwrap();
                 let view = row_queue::layout(&mut state);
                 let mut value = serde_json::to_value(&*state).map_err(|e| e.to_string())?;
@@ -458,7 +513,10 @@ impl Engine {
                         state.exclusions = rules;
                     }
                     if let Some(limit) = limit {
-                        state.rate_limit = limit;
+                        if state.rate_limit != limit {
+                            self.shared.limiter.lock().unwrap().reset_global();
+                            state.rate_limit = limit;
+                        }
                     }
                     if let Some(value) = v["allow_duplication"].as_bool() {
                         state.allow_duplication = value;
@@ -687,20 +745,24 @@ impl Engine {
             }
             // La pause ne termine aucun travailleur : le réveil leur fait relire les indicateurs.
             Command::Pause => {
-                {
+                let paused = controls::pause_value(&v)?;
+                let selected = {
                     let mut state = self.shared.state.lock().unwrap();
-                    state.paused = v["paused"].as_bool().unwrap_or(true);
+                    state.paused = paused;
                     state.pause_epoch = state.pause_epoch.wrapping_add(1);
+                    let mut selected = std::collections::BTreeSet::new();
                     if !state.paused {
                         for job in &mut state.jobs {
                             if job.start_required {
+                                selected.insert(job.id);
                                 job.start_required = false;
                             }
                         }
                     }
-                }
-                self.shared.wake.notify_all();
-                self.save()?;
+                    state.pending_starts.extend(selected.iter().copied());
+                    selected
+                };
+                self.commit_prepared_start(&selected)?;
                 Ok(json!({"ok":true}))
             }
             // Le protocole historique reste disponible ; une restauration demande d’abord l’arrêt du lot.
@@ -770,21 +832,23 @@ impl Engine {
                         .ok_or("Operation not found")?;
                     // L’interface transmet l’indice affiché : un choix périmé ne doit pas
                     // répondre au conflit suivant du même lot. Les anciens clients peuvent l’omettre.
-                    if let Some(value) = v.get("index") {
+                    let pending = if let Some(value) = v.get("index") {
                         let index = value
                             .as_u64()
                             .and_then(|i| usize::try_from(i).ok())
                             .ok_or("Indice de conflit invalide")?;
-                        if job.cancel
-                            || job.entries.get(index).is_none_or(|entry| {
-                                entry.state != TransferState::Conflict || entry.cancel
-                            })
-                        {
-                            return Err(
-                                "This conflict is no longer pending. The list will be refreshed"
-                                    .into(),
-                            );
-                        }
+                        job.entries.get(index).is_some_and(|entry| {
+                            entry.state == TransferState::Conflict && !entry.cancel
+                        })
+                    } else {
+                        job.entries
+                            .iter()
+                            .any(|entry| entry.state == TransferState::Conflict && !entry.cancel)
+                    };
+                    if job.cancel || !pending {
+                        return Err(
+                            "This conflict is no longer pending. The list will be refreshed".into(),
+                        );
                     }
                     job.resolution = Some(action.into());
                     if v["all"].as_bool() == Some(true) {
@@ -826,6 +890,15 @@ impl Engine {
                 }) {
                     return Err("Operations are still active".into());
                 }
+                {
+                    // Done peut précéder le dernier fsync et la libération de la réservation.
+                    // Attendre avant le nettoyage évite de conserver un historique pourtant désactivé.
+                    let mut state = self.shared.state.lock().unwrap();
+                    while !state.active.is_empty() || state.preparing != 0 || state.finalizing != 0
+                    {
+                        state = self.shared.wake.wait(state).unwrap();
+                    }
+                }
                 if !self.shared.state.lock().unwrap().keep_history {
                     self.discard_history()?;
                 }
@@ -856,10 +929,17 @@ impl Engine {
     /// Cette méthode ne persiste pas à elle seule les changements.
     fn update(&self, id: u64, update: impl FnOnce(&mut Job)) {
         let mut state = self.shared.state.lock().unwrap();
-        if let Some(job) = state.jobs.iter_mut().find(|j| j.id == id) {
-            update(job);
+        if let Some(index) = state.job_position(id) {
+            update(&mut state.jobs[index]);
         }
         self.shared.wake.notify_all();
+    }
+    /// Publie les compteurs sans réveiller les attentes de pause ou l’ordonnanceur.
+    fn progress(&self, id: u64, index: usize, counter: snapshot::Counter, value: u64) {
+        let mut state = self.shared.state.lock().unwrap();
+        if let Some(position) = state.job_position(id) {
+            state.jobs[position].set_counter(index, counter, value);
+        }
     }
     /// Ne pas attribuer comme suffixe un nom déjà prévu par un autre fichier de la file.
     fn available_queued_name(&self, id: u64, index: usize, path: &Path) -> Result<PathBuf, String> {
@@ -971,73 +1051,85 @@ impl Engine {
         entries: &mut Vec<Entry>,
         rules: &exclusions::Rules,
     ) -> Result<(), String> {
-        {
-            let state = self.shared.state.lock().unwrap();
-            if state
-                .jobs
-                .iter()
-                .find(|j| j.id == id)
-                .is_none_or(|j| j.cancel)
+        // Préordre explicite : la profondeur des dossiers ne consomme pas la pile du travailleur.
+        enum Task {
+            Entry(PathBuf, PathBuf),
+            Children(std::vec::IntoIter<fs::DirEntry>, PathBuf),
+        }
+        let mut pending = vec![Task::Entry(source.into(), destination.into())];
+        while let Some(task) = pending.pop() {
+            let (source, destination) = match task {
+                Task::Entry(source, destination) => (source, destination),
+                Task::Children(mut children, destination) => {
+                    let Some(child) = children.next() else {
+                        continue;
+                    };
+                    let paths = (child.path(), destination.join(child.file_name()));
+                    pending.push(Task::Children(children, destination));
+                    paths
+                }
+            };
+            let (source, destination) = (source.as_path(), destination.as_path());
             {
-                return Err("Canceled".into());
+                let state = self.shared.state.lock().unwrap();
+                if state
+                    .job_position(id)
+                    .is_none_or(|index| state.jobs[index].cancel)
+                {
+                    return Err("Canceled".into());
+                }
             }
-        }
-        if source.to_str().is_none() || destination.to_str().is_none() {
-            return Err(
-                "Nom de fichier non UTF-8 : cette version ne le prend pas en charge".into(),
-            );
-        }
-        let name = source
-            .file_name()
-            .and_then(|name| name.to_str())
-            .ok_or("Invalid copy source.")?;
-        if !rules.include_hidden && name.starts_with('.') {
-            return Ok(());
-        }
-        let meta =
-            fs::symlink_metadata(source).map_err(|e| format!("{} : {e}", source.display()))?;
-        if rules.excludes(name, meta.is_dir()) {
-            return Ok(());
-        }
-        let kind = source_kind(&meta)
-            .ok_or_else(|| format!("Fichier spécial non pris en charge : {}", source.display()))?;
-        entries.push(Entry {
-            paused: false,
-            hidden: false,
-            cancel: false,
-            identity: (meta.dev(), meta.ino()),
-            source: source.into(),
-            destination: destination.into(),
-            kind: kind.into(),
-            size: if kind == "file" { meta.len() } else { 0 },
-            copied: 0,
-            verified: 0,
-            properties: None,
-            fast_move_check: None,
-            md5_source: None,
-            md5_destination: None,
-            interrupted: false,
-            resume_checking: false,
-            resume_checked: 0,
-            resumed_from: 0,
-            state: TransferState::Waiting,
-            error: String::new(),
-            undo: None,
-        });
-        if kind == "directory" {
-            let mut children = fs::read_dir(source)
-                .map_err(|e| e.to_string())?
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| e.to_string())?;
-            sort_children(&mut children);
-            for child in children {
-                self.scan_selected(
-                    id,
-                    &child.path(),
-                    &destination.join(child.file_name()),
-                    entries,
-                    rules,
-                )?;
+            if source.to_str().is_none() || destination.to_str().is_none() {
+                return Err(
+                    "Nom de fichier non UTF-8 : cette version ne le prend pas en charge".into(),
+                );
+            }
+            let name = source
+                .file_name()
+                .and_then(|name| name.to_str())
+                .ok_or("Invalid copy source.")?;
+            if !rules.include_hidden && name.starts_with('.') {
+                continue;
+            }
+            let meta =
+                fs::symlink_metadata(source).map_err(|e| format!("{} : {e}", source.display()))?;
+            if rules.excludes(name, meta.is_dir()) {
+                continue;
+            }
+            let kind = source_kind(&meta).ok_or_else(|| {
+                format!("Fichier spécial non pris en charge : {}", source.display())
+            })?;
+            entries.push(Entry {
+                paused: false,
+                hidden: false,
+                cancel: false,
+                identity: (meta.dev(), meta.ino()),
+                source: source.into(),
+                destination: destination.into(),
+                kind: kind.into(),
+                size: if kind == "file" { meta.len() } else { 0 },
+                copied: 0,
+                verified: 0,
+                properties: None,
+                fast_move_check: None,
+                md5_source: None,
+                md5_destination: None,
+                interrupted: false,
+                resume_checking: false,
+                resume_checked: 0,
+                resumed_from: 0,
+                state: TransferState::Waiting,
+                error: String::new(),
+                undo: None,
+            });
+            if kind == "directory" {
+                let mut children = fs::read_dir(source)
+                    .map_err(|e| e.to_string())?
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| e.to_string())?;
+                sort_children(&mut children);
+                // Garder l’itérateur évite deux chemins complets supplémentaires par frère en attente.
+                pending.push(Task::Children(children.into_iter(), destination.into()));
             }
         }
         Ok(())
@@ -1512,18 +1604,27 @@ impl Engine {
                         entry.destination.parent().ok_or("Dossier parent absent")?,
                         "dir",
                     )?;
-                    // Le garde couvre aussi les erreurs de métadonnées et de journal avant publication.
-                    let _cleanup = TempDirectory(temp.clone());
                     let stamp = undo::Stamp::read(&temp)?;
-                    let record = undo::Record {
+                    // Le nettoyage ne doit jamais retirer un dossier arrivé à la place du nôtre.
+                    let cleanup = Temp::new(temp.clone(), stamp.clone());
+                    let mut record = undo::Record {
                         staging: Some(temp.clone()),
                         staging_stamp: Some(stamp.clone()),
                         result: Some(stamp),
                         ..Default::default()
                     };
-                    self.record(id, index, record)?;
+                    self.record(id, index, record.clone())?;
                     self.checkpoint_entry(id, index)?;
-                    publish_new(&temp, &entry.destination).map_err(io)?;
+                    cleanup.check()?;
+                    publish_new_with(&temp, &entry.destination, |meta| {
+                        record.result = Some(
+                            undo::Stamp::from_metadata(&entry.destination, meta)
+                                .map_err(std::io::Error::other)?,
+                        );
+                        self.record(id, index, record.clone())
+                            .map_err(std::io::Error::other)
+                    })
+                    .map_err(io)?;
                     use std::os::unix::fs::PermissionsExt;
                     let directory = fs::File::open(&entry.destination).map_err(io)?;
                     if !fast_move::descriptor_is_kio_fuse(&directory) {
@@ -1619,16 +1720,28 @@ impl Engine {
             let record = undo::Record {
                 source_stamp: Some(origin_stamp),
                 staging: Some(temp.clone()),
-                staging_stamp: Some(undo::Stamp::read(&temp)?),
+                staging_stamp: Some(undo::Stamp::from_metadata(
+                    &temp,
+                    &output.metadata().map_err(io)?,
+                )?),
                 ..Default::default()
             };
             (temp, output, None, record, md5::Context::new(), 0)
         };
         // Une validation de reprise refusée n’atteint pas ce garde : le préfixe est alors conservé pour récupération.
-        let cleanup = reconnect::CopyTemp::new(self.clone(), id, temp.clone());
+        let mut cleanup = reconnect::CopyTemp::new(
+            self.clone(),
+            id,
+            temp.clone(),
+            record
+                .staging_stamp
+                .clone()
+                .ok_or("Missing temporary file identity")?,
+        );
         // KIO Fuse charge autrement l’ancien contenu avant la première écriture ; ce fichier vient d’être créé exclusivement.
         // Fixer sa taille à zéro initialise explicitement son cache, sans relire un fichier FTP vide.
-        if prior.is_none() && fast_move::descriptor_is_kio_fuse(&output) {
+        let output_is_kio = fast_move::descriptor_is_kio_fuse(&output);
+        if prior.is_none() && output_is_kio {
             output.set_len(0).map_err(io)?;
         }
         if record.source_stamp.is_none() {
@@ -1644,9 +1757,12 @@ impl Engine {
             }
             let link = fs::read_link(&entry.source).map_err(io)?;
             drop(output);
+            cleanup.check()?;
             fs::remove_file(&temp).map_err(io)?;
             symlink(link, &temp).map_err(io)?;
-            record.staging_stamp = Some(undo::Stamp::read(&temp)?);
+            let stamp = undo::Stamp::read(&temp)?;
+            cleanup.set_identity(stamp.clone());
+            record.staging_stamp = Some(stamp);
             self.record(id, index, record.clone())?;
         } else {
             // Linux O_NOFOLLOW: a source swapped for a symlink is never followed.
@@ -1679,9 +1795,7 @@ impl Engine {
                 .iter()
                 .find(|job| job.id == id)
                 .is_some_and(|job| job.resume_enabled);
-            if (resume_enabled || !fast_move::descriptor_is_kio_fuse(&output))
-                && record.resume.is_none()
-            {
+            if (resume_enabled || !output_is_kio) && record.resume.is_none() {
                 let current = fs::symlink_metadata(&entry.source).map_err(io)?;
                 if !same_version(&meta, &current)
                     || (meta.ctime(), meta.ctime_nsec()) != (current.ctime(), current.ctime_nsec())
@@ -1724,11 +1838,10 @@ impl Engine {
                         .write_all(&buffer[written..written + budget])
                         .map_err(io)?;
                     written += budget;
-                    self.update(id, |j| j.entries[index].copied = total + written as u64);
+                    self.progress(id, index, snapshot::Counter::Copied, total + written as u64);
                 }
                 undo_hash.consume(&buffer[..count]);
                 total += count as u64;
-                self.update(id, |j| j.entries[index].copied = total);
                 if record.resume.is_some() && resume::due(total, saved, point_clock) {
                     self.save_copy_point(
                         (id, index),
@@ -1745,6 +1858,16 @@ impl Engine {
             if total != meta.len() || !same_version(&meta, &source.metadata().map_err(io)?) {
                 return Err("Source changed during copying".into());
             }
+            // Les services KIO n’offrent pas tous chmod/utime ; le contenu est transmis avec leurs droits et dates par défaut.
+            if !output_is_kio {
+                output.set_permissions(meta.permissions()).map_err(io)?;
+                if let Ok(modified) = meta.modified() {
+                    output
+                        .set_times(fs::FileTimes::new().set_modified(modified))
+                        .map_err(io)?;
+                }
+            }
+            // Un seul acquittement final couvre données, permissions et dates avant le journal.
             if record.resume.is_some() {
                 self.save_copy_point(
                     (id, index),
@@ -1754,24 +1877,16 @@ impl Engine {
                     total,
                     &undo_hash,
                 )?;
+            } else {
+                output.sync_all().map_err(io)?;
             }
-            // Les services KIO n’offrent pas tous chmod/utime ; le contenu est transmis avec leurs droits et dates par défaut.
-            if !fast_move::descriptor_is_kio_fuse(&output) {
-                output.set_permissions(meta.permissions()).map_err(io)?;
-                if let Ok(modified) = meta.modified() {
-                    output
-                        .set_times(fs::FileTimes::new().set_modified(modified))
-                        .map_err(io)?;
-                }
-            }
-            output.sync_all().map_err(io)?;
             record.digest = Some(format!("{:x}", undo_hash.finalize()));
             // La source et le temporaire sont relus avant publication, et donc avant suppression de la source.
             if verify_md5 {
                 self.update(id, |j| j.entries[index].state = TransferState::Verifying);
                 let comparison = compare_md5(&entry.source, &temp, &source_metadata, |read| {
                     self.checkpoint_entry(id, index)?;
-                    self.update(id, |j| j.entries[index].verified = read);
+                    self.progress(id, index, snapshot::Counter::Verified, read);
                     Ok(())
                 })?;
                 self.update(id, |j| {
@@ -1798,9 +1913,10 @@ impl Engine {
         }
         // La pause, le MD5 et les contrôles de propriétés ont pu laisser la source évoluer.
         verify_source(&entry.source, &source_metadata)?;
+        let staged_metadata = cleanup.check()?;
         record.resume = None;
         record.source_stamp = Some(undo::Stamp::read(&entry.source)?);
-        record.result = Some(undo::Stamp::read(&temp)?);
+        record.result = Some(undo::Stamp::from_metadata(&temp, &staged_metadata)?);
         if replace {
             let newer = self
                 .shared
@@ -1825,26 +1941,50 @@ impl Engine {
         }
         // Le journal précède le renommage de l’ancienne destination afin qu’un arrêt reste récupérable.
         self.record(id, index, record.clone())?;
-        if let Some(backup) = &record.backup {
+        if let Some(backup) = record.backup.clone() {
             if !record.original.as_ref().unwrap().matches(&destination) {
                 return Err("Destination changed before replacement; kept".into());
             }
-            publish_new(&destination, backup).map_err(io)?;
-            let backed_up = fs::symlink_metadata(backup).map_err(io)?;
-            record.backup_ctime = Some((backed_up.ctime(), backed_up.ctime_nsec()));
+            publish_new_with(&destination, &backup, |meta| {
+                record.original =
+                    Some(undo::Stamp::from_metadata(&backup, meta).map_err(std::io::Error::other)?);
+                self.record(id, index, record.clone())
+                    .map_err(std::io::Error::other)
+            })
+            .map_err(io)?;
+            let backed_up = fs::symlink_metadata(&backup).map_err(io)?;
+            // Sauvegarde et temporaire partagent ce parent : réutiliser le montage déjà identifié sur le descripteur.
+            record.remember_backup_version(&backup, &backed_up, !output_is_kio, || {
+                self.checkpoint_entry(id, index)
+            })?;
             self.record(id, index, record.clone())?;
             sync_directory(backup.parent().unwrap()).map_err(io)?;
             sync_directory(parent).map_err(io)?;
         }
         // Recontrôler après la sauvegarde et l’écriture du journal, juste avant publication.
         let publication = verify_source(&entry.source, &source_metadata).and_then(|()| {
-            publish_new(&temp, &destination).map_err(|error| {
-                format!("Publication de la copie (destination conservée) : {error}")
+            // La sauvegarde du journal et d’une ancienne destination a pu laisser le nom évoluer.
+            cleanup.check_version(&staged_metadata)?;
+            publish_new_with(&temp, &destination, |meta| {
+                record.result = Some(
+                    undo::Stamp::from_metadata(&destination, meta)
+                        .map_err(std::io::Error::other)?,
+                );
+                self.record(id, index, record.clone())
+                    .map_err(std::io::Error::other)
             })
+            .map_err(|error| format!("Publication de la copie (destination conservée) : {error}"))
         });
         if let Err(error) = publication {
-            if let Some(backup) = &record.backup {
-                let _ = publish_new(backup, &destination);
+            if let Some(backup) = record.backup.clone() {
+                let _ = publish_new_with(&backup, &destination, |meta| {
+                    record.original = Some(
+                        undo::Stamp::from_metadata(&destination, meta)
+                            .map_err(std::io::Error::other)?,
+                    );
+                    self.record(id, index, record.clone())
+                        .map_err(std::io::Error::other)
+                });
             }
             return Err(error);
         }
@@ -1880,11 +2020,7 @@ fn finish_directories(job: &mut Job) {
 }
 /// État de pause/annulation sous le verrou : aucune E/S ni attente ici.
 fn checkpoint_ready(state: &State, id: u64, index: Option<usize>) -> Result<bool, String> {
-    let job = state
-        .jobs
-        .iter()
-        .find(|job| job.id == id)
-        .ok_or("Canceled")?;
+    let job = &state.jobs[state.job_position(id).ok_or("Canceled")?];
     let entry = match index {
         Some(index) => Some(job.entries.get(index).ok_or("Canceled")?),
         None => None,
@@ -2055,24 +2191,59 @@ fn publish_new(source: &Path, destination: &Path) -> std::io::Result<()> {
         Err(std::io::Error::last_os_error())
     }
 }
+/// Les publications journalisées peuvent adapter l’identité du résultat lors d’un repli SSHFS.
+fn publish_new_with(
+    source: &Path,
+    destination: &Path,
+    acknowledge: impl FnMut(&fs::Metadata) -> std::io::Result<()>,
+) -> std::io::Result<()> {
+    publication::publish(source, destination, acknowledge, publish_new)
+}
 /// Reconnaît les états sans travail de copie restant ; une restauration demandée
 /// peut néanmoins être planifiée séparément.
 fn terminal(state: &str) -> bool {
     TransferState::from_wire(state).is_some_and(TransferState::is_terminal)
 }
-/// Garde RAII : le fichier privé est retiré à la sortie du bloc s’il existe encore.
-struct Temp(PathBuf);
-impl Drop for Temp {
-    /// Retire le fichier temporaire lors de la sortie du bloc, y compris après erreur.
-    fn drop(&mut self) {
-        let _ = fs::remove_file(&self.0);
+/// Garde d’identité : seuls le fichier ou dossier effectivement créés peuvent être retirés.
+struct Temp {
+    path: PathBuf,
+    stamp: undo::Stamp,
+}
+impl Temp {
+    fn new(path: PathBuf, stamp: undo::Stamp) -> Self {
+        Self { path, stamp }
+    }
+    /// La taille peut évoluer pendant la copie ; l’inode, le périphérique et le type restent les nôtres.
+    fn check(&self) -> Result<fs::Metadata, String> {
+        let metadata = fs::symlink_metadata(&self.path).map_err(reconnect::io_error)?;
+        if !self.stamp.owns_metadata(&metadata) {
+            return Err("Temporary file replaced; kept".into());
+        }
+        Ok(metadata)
+    }
+    /// Une attente du journal ne doit pas rendre valide une version devenue différente.
+    fn check_version(&self, expected: &fs::Metadata) -> Result<(), String> {
+        if !same_version(expected, &self.check()?) {
+            return Err("Temporary file changed before finalization".into());
+        }
+        Ok(())
     }
 }
-/// Retire un dossier privé abandonné, uniquement s’il est encore vide ; ne suit aucun lien.
-struct TempDirectory(PathBuf);
-impl Drop for TempDirectory {
+impl Drop for Temp {
     fn drop(&mut self) {
-        let _ = fs::remove_dir(&self.0);
+        if self.path.as_os_str().is_empty() {
+            return;
+        }
+        // Le chemin peut déjà avoir été publié : l’absence attendue ne construit aucun message d’erreur.
+        if let Ok(metadata) = fs::symlink_metadata(&self.path) {
+            if self.stamp.owns_metadata(&metadata) {
+                if metadata.is_dir() {
+                    let _ = fs::remove_dir(&self.path);
+                } else {
+                    let _ = fs::remove_file(&self.path);
+                }
+            }
+        }
     }
 }
 /// Refuse les ancêtres qui sont des liens ou qui ne sont pas des dossiers.

@@ -1,6 +1,6 @@
 # Gad — Guia do utilizador {#gad-user-guide}
 
-**Gestionnaire Avancé de Duplication · Versão 0.3.0**
+**Gestionnaire Avancé de Duplication · Versão 0.4.0**
 
 **Gad, il copie.**
 

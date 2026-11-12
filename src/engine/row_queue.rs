@@ -52,11 +52,11 @@ pub(super) fn layout(state: &mut State) -> Arc<Layout> {
             parents.insert(key, None);
             continue;
         }
-        let mut directories: HashMap<(PathBuf, PathBuf), Vec<usize>> = HashMap::new();
+        let mut directories: HashMap<(&Path, &Path), Vec<usize>> = HashMap::new();
         for (i, e) in job.entries.iter().enumerate() {
             if e.kind == "directory" {
                 directories
-                    .entry((e.source.clone(), e.destination.clone()))
+                    .entry((&e.source, &e.destination))
                     .or_default()
                     .push(i);
             }
@@ -71,7 +71,7 @@ pub(super) fn layout(state: &mut State) -> Arc<Layout> {
             while let (Some(s), Some(t)) = (source.parent(), target.parent()) {
                 source = s;
                 target = t;
-                if let Some(indices) = directories.get(&(s.to_path_buf(), t.to_path_buf())) {
+                if let Some(indices) = directories.get(&(s, t)) {
                     let candidate = indices
                         .iter()
                         .copied()

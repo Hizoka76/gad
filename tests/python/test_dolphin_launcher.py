@@ -23,6 +23,17 @@ class DolphinLauncherTests(unittest.TestCase):
                 integration.protect_launcher(binary);self.assertEqual(desktop.read_text(),text)
                 integration.restore_launcher();self.assertFalse(desktop.exists())
 
+    def test_special_program_path_cannot_expand_fields_or_create_desktop_lines(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            with self.prepare(root):
+                integration.protect_launcher(root/'Gad %u\nComment=injected')
+                text=(root/'data/applications/org.kde.dolphin.desktop').read_text()
+                command=next(line for line in text.splitlines() if line.startswith('Exec='))
+                self.assertIn('Gad %%u\\nComment=injected',command)
+                self.assertNotIn('\nComment=injected',text)
+                integration.restore_launcher()
+
     def test_original_customizations_are_restored(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)

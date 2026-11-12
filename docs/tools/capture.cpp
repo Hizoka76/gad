@@ -169,7 +169,7 @@ int main(int argc,char **argv) {
     demoState["jobs"]=QJsonArray{first};demoState["queue_guard"]=QJsonObject{{"idle",false},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};window.refresh();window.armCompletion();
     auto finished=first;finished["state"]="done";auto finishedEntries=finished["entries"].toArray();for(int i=0;i<finishedEntries.size();++i){auto item=finishedEntries[i].toObject();item["state"]="done";item["copied"]=item["size"];finishedEntries[i]=item;}finished["entries"]=finishedEntries;
     demoState["jobs"]=QJsonArray{finished};demoState["queue_guard"]=QJsonObject{{"idle",true},{"epoch",1},{"next_id",1},{"last_command","enqueue"}};window.refreshCompletion(demoState,1000);window.refreshCompletion(demoState,6000);
-    save(window.findChild<QDialog *>("completionCountdown"),output+"/19-batch-completion.png",manifest);window.cancelCompletion();
+    save(&window,output+"/19-batch-completion.png",manifest);window.cancelCompletion();
     settingsTabs->setCurrentWidget(settings->findChild<QScrollArea *>("completionScroll"));settings->show();app.processEvents();
     save(settings,output+"/20-completion-options.png",manifest);settings->hide();
     settingsTabs->setCurrentIndex(2);settings->show();app.processEvents();

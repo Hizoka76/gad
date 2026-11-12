@@ -1,3 +1,4 @@
+#include "rate_spinbox.h"
 #include "i18n.h"
 #include "protocol.h"
 // Implémentation de la fenêtre Gad, séparée par responsabilité.
@@ -53,17 +54,26 @@ void Window::updateRowActions(){
         retryBlocked |= itemStopped && !finished(owner->data(0,Qt::UserRole+3).toString());
     }
     const auto selected=tree->selectedItems();bool allQueued=!selected.isEmpty(),canUp=false,canDown=false,canNext=false;
+    QSet<QTreeWidgetItem *> parents;
+    const QSet<QTreeWidgetItem *> selectedRows(selected.cbegin(),selected.cend());
     for(auto *item:selected) {
-        allQueued &= item->data(0,RowTree::CanQueueRole).toBool();
-        auto *parent=item->parent();const int index=parent?parent->indexOfChild(item):tree->indexOfTopLevelItem(item);
-        for(int i=0;i<index;++i)if(!(parent?parent->child(i):tree->topLevelItem(i))->isSelected())canUp=true;
-        const int count=parent?parent->childCount():tree->topLevelItemCount();
-        for(int i=index+1;i<count;++i)if(!(parent?parent->child(i):tree->topLevelItem(i))->isSelected())canDown=true;
-        for(auto *ancestor=item;ancestor;ancestor=ancestor->parent()) {
+        allQueued &= item->data(0,RowTree::CanQueueRole).toBool();parents.insert(item->parent());
+        for(auto *ancestor=item;ancestor && !canNext;ancestor=ancestor->parent()) {
             if(!ancestor->data(0,RowTree::CanQueueRole).toBool())continue;
             const auto *p=ancestor->parent();const int position=p?p->indexOfChild(ancestor):tree->indexOfTopLevelItem(ancestor);
             if(position>0)canNext=true;
         }
+    }
+    // Un parcours par groupe de frères remplace deux parcours pour chaque ligne sélectionnée.
+    for(auto *parent:parents) {
+        bool seenSelected=false,seenUnselected=false;
+        const int count=parent?parent->childCount():tree->topLevelItemCount();
+        for(int i=0;i<count && !(canUp && canDown);++i) {
+            auto *row=parent?parent->child(i):tree->topLevelItem(i);
+            if(selectedRows.contains(row)){canUp |= seenUnselected;seenSelected=true;}
+            else if(!row->isSelected()){canDown |= seenSelected;seenUnselected=true;}
+        }
+        if(canUp && canDown)break;
     }
     bool retryErrors=false;
     for(auto *item:selected) {
@@ -107,7 +117,7 @@ bool manualAdditionWaits(const QJsonObject &state,const QQueue<QJsonObject> &pen
 /// Dans une file inactive, les ajouts manuels attendent le contrôle de démarrage.
 QJsonObject Window::enqueue(const QStringList &sources){
     QJsonArray array; for (const auto &source : sources) array.append(source);
-    auto result=handle({{"command", Protocol::Command::Enqueue}, {"sources", array}, {"destination", destination->text()},{"prepare_only",manualAdditionWaits(state,sourceQueue)}});refresh();return result;
+    return handle({{"command", Protocol::Command::Enqueue}, {"sources", array}, {"destination", destination->text()},{"prepare_only",manualAdditionWaits(state,sourceQueue)}});
 }
 
 /// L’ajout dans Gad suit la préparation manuelle ; le collage externe conserve son démarrage immédiat.
@@ -219,7 +229,38 @@ void Window::configureKrusader(bool enabled,std::function<void(QJsonObject)> rep
     process->start(python,{script,enabled?"--enable-ctrl-v":"--disable-ctrl-v","--binary",QCoreApplication::applicationFilePath()});timeout->start(8000);
 }
 
+/// Valider la demande complète avant de toucher aux raccourcis, au profil ou aux préférences.
+QString Window::configurationError(const QJsonObject &request) const {
+    if(request["command"]!=Protocol::Command::Configure)return {};
+    const auto invalid=GAD_TR("Invalid transfer profile settings.");
+    if(request.contains("gui_settings") && !request["gui_settings"].isObject())return invalid;
+    const auto gui=request["gui_settings"].toObject();
+    const QStringList guiFlags{"progressMessage","autostart","dolphin_ctrl_v","krusader_ctrl_v","konqueror_ctrl_v"};
+    for(const auto &key:guiFlags)if(gui.contains(key) && !gui[key].isBool())return invalid;
+    auto guiKeys=guiFlags;guiKeys.append({"language","request_rate_limit","completion_action","completion_delay"});
+    for(auto field=gui.begin();field!=gui.end();++field)if(!guiKeys.contains(field.key()))return invalid;
+    if(gui.contains("language") && (!gui["language"].isString() || !languageAvailable(gui["language"].toString())))return invalid;
+    if(gui.contains("request_rate_limit") && !TransferProfiles::validRate(gui["request_rate_limit"]))return invalid;
+    if(gui.contains("completion_action") && (!gui["completion_action"].isString() || !Completion::validAction(gui["completion_action"].toString())))return GAD_TR("Invalid completion action");
+    if(gui.contains("completion_delay") && !Completion::validDelay(gui["completion_delay"]))return GAD_TR("Invalid countdown: use 5 to 3600 whole seconds.");
+    const QStringList flags{"verify_md5","verify_fast_move","verify_properties","verify_space","keep_history","resume_interrupted","allow_duplication"};
+    for(const auto &key:flags)if(request.contains(key) && !request[key].isBool())return invalid;
+    auto keys=flags;keys.append({"command","profile","gui_settings","rate_limit","conflict_policy","exclusions","exclusion_patch"});
+    for(auto field=request.begin();field!=request.end();++field)if(!keys.contains(field.key()))return invalid;
+    if(request.contains("rate_limit") && !TransferProfiles::validRate(request["rate_limit"]))return invalid;
+    if(request.contains("conflict_policy") && (!request["conflict_policy"].isString() || !QStringList{"ask","skip","newer","rename"}.contains(request["conflict_policy"].toString())))return invalid;
+    for(const auto &key:QStringList{"exclusions","exclusion_patch"})if(request.contains(key)) {
+        if(!request[key].isObject())return invalid;
+        // Les règles complètes ont les défauts du moteur ; un patch conserve les options présentes.
+        QJsonObject rules=key=="exclusion_patch"?exclusionRules:QJsonObject{{"include_hidden",true},{"directories",QJsonArray{}},{"files",QJsonArray{}}};
+        const auto supplied=request[key].toObject();for(auto field=supplied.begin();field!=supplied.end();++field)rules[field.key()]=field.value();
+        if(!TransferProfiles::validRules(rules))return invalid;
+    }
+    return {};
+}
+
 void Window::handleAsync(QJsonObject request,std::function<void(QJsonObject)> reply) {
+    const auto invalid=configurationError(request);if(!invalid.isEmpty()){reply({{"error",invalid}});return;}
     if(completionExecuting && (request["command"]==Protocol::Command::Configure || request["command"]==Protocol::Command::Enqueue || request["command"]==Protocol::Command::StartPrepared || request["command"]==Protocol::Command::Paste)){reply({{"error",GAD_TR("A completion action is being dispatched; no operation was added")}});return;}
     if(request.contains("profile")) {
         const auto name=request.take("profile");
@@ -233,37 +274,37 @@ void Window::handleAsync(QJsonObject request,std::function<void(QJsonObject)> re
         }
         reply({{"error",GAD_TR("Transfer profile not found.")},{"profile",name}});return;
     }
-    if(profileApplying && !profileCommitting && request["command"]==Protocol::Command::Configure){reply({{"error",GAD_TR("A transfer profile is already being applied.")}});return;}
+    if(profileApplying && !profileCommitting && request["command"]==Protocol::Command::Configure){reply({{"error",GAD_TR("Settings are already being applied.")}});return;}
     // Le même scan reçu par la socket reste asynchrone, comme celui de la fenêtre.
     if(request["command"]==Protocol::Command::Simulate) {
         auto result=std::make_shared<QJsonObject>();auto *worker=QThread::create([request,result]{*result=engine(request);});
         connect(worker,&QThread::finished,this,[reply,result]{reply(*result);});
         connect(worker,&QThread::finished,worker,&QObject::deleteLater);worker->start();return;
     }
-    auto gui=request["gui_settings"].toObject();
+    auto gui=request.value("gui_settings").toObject();
     if(gui.contains("progressMessage") && !gui["progressMessage"].isBool()){reply({{"error",GAD_TR("Invalid transfer profile settings.")}});return;}
     if(gui.contains("completion_action") && (!gui["completion_action"].isString() || !Completion::validAction(gui["completion_action"].toString()))){reply({{"error",GAD_TR("Invalid completion action")}});return;}
     if(gui.contains("completion_delay") && !Completion::validDelay(gui["completion_delay"])){reply({{"error",GAD_TR("Invalid countdown: use 5 to 3600 whole seconds.")}});return;}
 
-    if(request["command"]==Protocol::Command::Configure && gui.contains("krusader_ctrl_v")) {
-        if(!gui["krusader_ctrl_v"].isBool()){reply({{"error",GAD_TR("Invalid transfer profile settings.")}});return;}
-        const bool enabled=gui.take("krusader_ctrl_v").toBool();request["gui_settings"]=gui;
-        configureKrusader(enabled,[this,request,reply](QJsonObject result){if(result.contains("error") || (request.size()==2 && request["gui_settings"].toObject().isEmpty())){reply(result);return;}handleAsync(request,reply);});return;
+    if(request["command"]==Protocol::Command::Configure && (gui.contains("krusader_ctrl_v") || gui.contains("dolphin_ctrl_v") || gui.contains("autostart"))) {
+        auto desired=currentTransferProfile();QSet<QString> externalFields;
+        for(auto field=gui.begin();field!=gui.end();++field) {
+            if(field.key()=="request_rate_limit")desired.rate=field.value().toInteger();
+            else desired.gui[field.key()]=field.value();
+            if(field.key()=="krusader_ctrl_v" || field.key()=="dolphin_ctrl_v" || field.key()=="autostart")externalFields.insert(field.key());
+        }
+        for(auto field=request.begin();field!=request.end();++field)if(desired.options.contains(field.key()))desired.options[field.key()]=field.value();
+        for(const auto &key:QStringList{"autostart","krusader_ctrl_v","dolphin_ctrl_v"})gui.remove(key);
+        request["gui_settings"]=gui;
+        applyTransferSettings(desired,std::move(reply),request,externalFields);return;
     }
-    if(request["command"]!=Protocol::Command::Configure || !gui.contains("dolphin_ctrl_v")){reply(handle(request));return;}
-    if(gui.contains("language") && !languageAvailable(gui["language"].toString())){reply({{"error","Unknown language: "+gui["language"].toString()}});return;}
-    const bool enabled=gui.take("dolphin_ctrl_v").toBool();request["gui_settings"]=gui;
-    if(gui.contains("request_rate_limit") && !TransferProfiles::validRate(gui["request_rate_limit"])) {reply({{"error",GAD_TR("Invalid transfer profile settings.")}});return;}
-    configureDolphin(enabled,[this,request,reply](QJsonObject result){
-        if(result.contains("error")){reply(result);return;}
-        if(request.size()==2 && request["gui_settings"].toObject().isEmpty()){reply(result);return;}
-        reply(handle(request));
-    });
+    reply(handle(request));
 }
 
 /// Traite les commandes d’interface avant délégation au moteur ; un collage en arrière-plan ne relève pas la fenêtre.
 QJsonObject Window::handle(QJsonObject request){
     const auto command = request["command"].toString();
+    const auto invalid=configurationError(request);if(!invalid.isEmpty())return {{"error",invalid}};
     if(completionExecuting && (command==Protocol::Command::Enqueue || command==Protocol::Command::StartPrepared || command==Protocol::Command::Paste || command==Protocol::Command::Configure))return {{"error",GAD_TR("A completion action is being dispatched; no operation was added")}};
     if(command==Protocol::Command::Enqueue && completionPlan.counting){completionPlan.counting=false;if(auto *dialog=findChild<QDialog *>("completionCountdown")){dialog->setObjectName("completionCountdownClosed");dialog->accept();}}
 
@@ -275,7 +316,7 @@ QJsonObject Window::handle(QJsonObject request){
     if(gui.contains("completion_action") && (!gui["completion_action"].isString() || !Completion::validAction(gui["completion_action"].toString())))return {{"error",GAD_TR("Invalid completion action")}};
     if(gui.contains("completion_delay") && !Completion::validDelay(gui["completion_delay"]))return {{"error",GAD_TR("Invalid countdown: use 5 to 3600 whole seconds.")}};
 
-    if(profileApplying && !profileCommitting && (command==Protocol::Command::Configure || command==Protocol::Command::Shutdown))return {{"error",GAD_TR("A transfer profile is already being applied.")}};
+    if(profileApplying && !profileCommitting && (command==Protocol::Command::Configure || command==Protocol::Command::Shutdown))return {{"error",GAD_TR("Settings are already being applied.")}};
     if(command==Protocol::Command::Configure) {
         if(gui.contains("request_rate_limit") && !TransferProfiles::validRate(gui["request_rate_limit"]))return {{"error",GAD_TR("Invalid transfer profile settings.")}};
         if(gui.contains("language")) {
@@ -324,6 +365,9 @@ QJsonObject Window::handle(QJsonObject request){
         refresh();
         return {{"ok",true},{"preparing",true}};
     }
+
+    // Les lectures IPC n’entraînent aucune reconstruction ou interrogation supplémentaire de l’interface.
+    if(command==Protocol::Command::Status || command==Protocol::Command::Poll || command==Protocol::Command::ErrorReport)return engine(request);
 
     auto result = command==Protocol::Command::Configure && request.size()==1 && !gui.isEmpty()?QJsonObject{{"ok",true}}:engine(request);
     if(command==Protocol::Command::Enqueue && result.contains("error"))cancelCompletion();
@@ -381,6 +425,13 @@ QJsonObject Window::handle(QJsonObject request){
             }
         }
     }
+    if(command==Protocol::Command::Enqueue && !result.contains("error")) {
+        if(auto *timer=findChild<QTimer *>("queueRefreshTimer")) {
+            timer->start(25);
+            // Le client du gestionnaire de fichiers reçoit son identifiant avant le travail d’affichage.
+            if(request["background"].toBool())return result;
+        }
+    }
     refresh(); return result;
 }
 
@@ -413,7 +464,7 @@ void Window::showRateLimit() {
     auto *dialog=new QDialog(settings && settings->isVisible()?static_cast<QWidget *>(settings):this);dialog->setObjectName("requestRateDialog");dialog->setAttribute(Qt::WA_DeleteOnClose);
     I18n::bindProperty(dialog,"windowTitle",[=]{return GAD_TR("Limit request speed");});auto *layout=new QVBoxLayout(dialog);
     auto *label=I18n::localized(new QLabel(QString()),"text",[=]{return QString(GAD_TR("Limit for each of the %1 selected request(s).\nApplies to all their rows. The global limit still applies.\n0 = unlimited.")).arg(ids.size());});label->setWordWrap(true);layout->addWidget(label);
-    auto *spin=new QDoubleSpinBox;spin->setObjectName("requestRateLimit");spin->setRange(0,1048576);spin->setDecimals(2);I18n::bindProperty(spin,"suffix",[=]{return GAD_TR(" MiB/s");});I18n::bindProperty(spin,"specialValueText",[=]{return GAD_TR("Unlimited");});spin->setValue(initial/1048576.0);layout->addWidget(spin);
+    auto *spin=new SpeedLimitSpinBox;spin->setObjectName("requestRateLimit");I18n::bindProperty(spin,"suffix",[=]{return GAD_TR(" MiB/s");});I18n::bindProperty(spin,"specialValueText",[=]{return GAD_TR("Unlimited");});spin->setValue(initial/1048576.0);layout->addWidget(spin);
     auto *buttons=new QDialogButtonBox(QDialogButtonBox::Ok|QDialogButtonBox::Cancel);layout->addWidget(buttons);
     connect(buttons,&QDialogButtonBox::rejected,dialog,&QDialog::reject);
     connect(buttons,&QDialogButtonBox::accepted,dialog,[this,dialog,spin,ids]{
@@ -485,6 +536,8 @@ void Window::setupExclusions(QVBoxLayout *layout) {
     auto *fileLabel=I18n::localized(new QLabel,"text",[]{return GAD_TR("Excluded files and symbolic links");});fileLabel->setBuddy(files);layout->addWidget(fileLabel);layout->addWidget(files);
     const auto bind=[this](ExclusionEdit *edit,const QString &key){
         edit->commit=[this,edit,key]{
+            // Désactiver l’onglet peut retirer le focus : conserver le brouillon sans commande concurrente.
+            if(!edit->isEnabled())return;
             const auto patterns=QJsonArray::fromStringList(edit->toPlainText().split('\n',Qt::SkipEmptyParts));
             if(patterns==exclusionRules[key].toArray())return;
             auto rules=exclusionRules;rules[key]=patterns;

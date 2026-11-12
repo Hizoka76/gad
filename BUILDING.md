@@ -128,9 +128,9 @@ Ne pas l’exécuter pendant une compilation ou la préparation de paquets.
 ## Version Debian et fonction SOURCE
 
 La version du paquet provient uniquement de `debian/changelog` :
-`0.3.0a-0~resolute`. Pour la prochaine révision de test, remplacer `a` par `b`
+`0.4.0a-0~resolute`. Pour la prochaine révision de test, remplacer `a` par `b`
 dans ce fichier pour une révision de test seule. Pour une nouvelle version
-applicative, mettre aussi à jour `Cargo.toml`, `Cargo.lock` et les guides. Les archives upstream utilisent le préfixe `gad_0.3.0a`.
+applicative, mettre aussi à jour `Cargo.toml`, `Cargo.lock` et les guides. Les archives upstream utilisent le préfixe `gad_0.4.0a`.
 
 Pour utiliser la fonction personnelle `SOURCE` du script `hizo`, préparer d’abord
 un arbre isolé contenant les crates Rust. Cela évite d’archiver le dépôt Git, les
@@ -144,16 +144,16 @@ cd target/ppa-source
 hizo --source
 ```
 
-Choisir le dossier `gad-0.3.0a`, la distribution **resolute**, la création avec
+Choisir le dossier `gad-0.4.0a`, la distribution **resolute**, la création avec
 l’archive orig puis `ppa:hizo/tests`. Ne pas sélectionner toutes les versions
 Ubuntu : chaque série doit disposer des dépendances Qt/KF6 et Rust déclarées.
 Le script `hizo` reste inchangé. Sans cette fonction, les commandes de construction,
 `debsign` et `dput` décrites ci-dessus restent utilisables.
 
-## Publication 0.3.0
+## Publication 0.4.0
 
-La version applicative est `0.3.0` dans `Cargo.toml` et `Cargo.lock`. La révision
-Debian est indépendante (`0.3.0-0~resolute`, avec un suffixe adapté à chaque série).
+La version applicative est `0.4.0` dans `Cargo.toml` et `Cargo.lock`. La révision
+Debian est indépendante (`0.4.0a-0~resolute`, avec un suffixe adapté à chaque série).
 Cette publication est envoyée sur `ppa:hizo/tests` pour Resolute, Stonking et
 Tenacious ; `ppa:hizo/gad` reste le canal d’installation documenté.
 Les releases GitHub fournissent les sources autonomes avec dépendances Rust

@@ -14,6 +14,13 @@ def prepare(output, orig_format="xz"):
     """Limiter les sources aux fichiers du projet et verrouiller les crates embarquées."""
     if orig_format not in {"xz", "gz"}:
         raise ValueError('Format orig non pris en charge.')
+    output = Path(output).resolve()
+    # La copie des sources puis de debian/ ne doit jamais englober sa propre sortie.
+    # Résoudre aussi les liens avant toute création et tout appel à Cargo/dpkg.
+    for name in ('src', 'native', 'scripts', 'tests', 'translations', 'assets', 'docs', 'packaging', 'debian'):
+        original = (PROJECT / name).resolve()
+        if output == original or original in output.parents:
+            raise ValueError('La sortie ne peut pas se trouver dans un répertoire source : ' + name)
     debian_version = subprocess.check_output(
         ['dpkg-parsechangelog', '-l' + str(PROJECT / 'debian/changelog'), '-S', 'Version'],
         text=True).strip()

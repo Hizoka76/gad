@@ -143,54 +143,86 @@ fn assess(
     }
     Ok(shown.join(" · "))
 }
-/// Seuls les blocs d’un temporaire appartenant encore au journal sont déjà payés.
+/// Capture minimale sans E/S : seules les données utiles quittent le verrou moteur.
+struct PendingDemand {
+    demand: Demand,
+    staging: Option<(PathBuf, undo::Stamp)>,
+}
+impl PendingDemand {
+    fn capture(id: u64, remote: bool, entry: &Entry) -> Self {
+        Self {
+            demand: Demand {
+                job: id,
+                path: entry.destination.clone(),
+                size: entry.size,
+                resident: 0,
+                resident_device: None,
+                remote,
+            },
+            staging: entry
+                .undo
+                .as_ref()
+                .and_then(|record| Some((record.staging.clone()?, record.staging_stamp.clone()?))),
+        }
+    }
+    /// Les blocs sont lus après déverrouillage et seulement si le temporaire possède encore la bonne identité.
+    fn resolve(mut self) -> Demand {
+        if let Some((path, stamp)) = &self.staging {
+            if let Some((resident, device)) = owned_blocks(path, stamp) {
+                self.demand.resident = resident;
+                self.demand.resident_device = Some(device);
+            }
+        }
+        self.demand
+    }
+}
+/// Le même contrôle d’identité sert aux captures différées et aux simulations déjà hors verrou.
+fn owned_blocks(path: &Path, stamp: &undo::Stamp) -> Option<(u64, u64)> {
+    let meta = fs::symlink_metadata(path).ok()?;
+    (meta.is_file() && stamp.owns_metadata(&meta))
+        .then(|| (meta.blocks().saturating_mul(512), meta.dev()))
+}
+/// La simulation emprunte son reçu existant sans en recopier les chemins ni les empreintes.
 fn demand(id: u64, remote: bool, entry: &Entry) -> Demand {
-    let (resident, resident_device) = entry
-        .undo
-        .as_ref()
-        .and_then(|r| {
-            let path = r.staging.as_ref()?;
-            let stamp = r.staging_stamp.as_ref()?;
-            let meta = fs::symlink_metadata(path).ok()?;
-            (meta.is_file() && stamp.owns_metadata(&meta))
-                .then(|| (meta.blocks().saturating_mul(512), Some(meta.dev())))
-        })
-        .unwrap_or((0, None));
+    let allocation = entry.undo.as_ref().and_then(|record| {
+        owned_blocks(record.staging.as_deref()?, record.staging_stamp.as_ref()?)
+    });
     Demand {
         job: id,
         path: entry.destination.clone(),
         size: entry.size,
-        resident,
-        resident_device,
+        resident: allocation.map_or(0, |value| value.0),
+        resident_device: allocation.map(|value| value.1),
         remote,
     }
 }
+
 impl Engine {
     /// Capture la file sous verrou, puis consulte les volumes et temporaires sans verrou.
     pub(super) fn check_queue_space(&self, id: u64) -> Result<(), String> {
-        let jobs = {
+        let pending = {
             let state = self.shared.state.lock().unwrap();
             state
                 .jobs
                 .iter()
                 .filter(|j| !terminal(&j.state) && !j.cancel && !j.undo_requested && !j.fast_move)
-                .map(|j| j.snapshot())
+                .flat_map(|j| {
+                    j.entries
+                        .iter()
+                        .filter(|e| {
+                            e.kind == "file"
+                                && !terminal(&e.state)
+                                && e.state != TransferState::Skipped
+                                && !e.cancel
+                                && !e.hidden
+                        })
+                        .map(|e| PendingDemand::capture(j.id, j.destination_url.is_some(), e))
+                })
                 .collect::<Vec<_>>()
         };
-        let demands = jobs
-            .iter()
-            .flat_map(|j| {
-                j.entries
-                    .iter()
-                    .filter(|e| {
-                        e.kind == "file"
-                            && !terminal(&e.state)
-                            && e.state != TransferState::Skipped
-                            && !e.cancel
-                            && !e.hidden
-                    })
-                    .map(|e| demand(j.id, j.destination_url.is_some(), e))
-            })
+        let demands = pending
+            .into_iter()
+            .map(PendingDemand::resolve)
             .collect::<Vec<_>>();
         let warning = assess(&demands, id, volume)?;
         self.update(id, |job| job.space_warning = warning);
@@ -206,20 +238,17 @@ impl Engine {
         if effective.kind != "file" {
             return Ok(());
         }
-        let (record, remote) = {
+        let mut pending = {
             let state = self.shared.state.lock().unwrap();
             let job = state.jobs.iter().find(|j| j.id == id).ok_or("Lot absent")?;
             if !job.verify_space {
                 return Ok(());
             }
-            (
-                job.entries[index].undo.clone(),
-                job.destination_url.is_some(),
-            )
+            PendingDemand::capture(id, job.destination_url.is_some(), &job.entries[index])
         };
-        let mut current = effective.clone();
-        current.undo = record;
-        let warning = assess(&[demand(id, remote, &current)], id, volume)?;
+        pending.demand.path = effective.destination.clone();
+        pending.demand.size = effective.size;
+        let warning = assess(&[pending.resolve()], id, volume)?;
         if !warning.is_empty() {
             self.update(id, |job| job.space_warning = warning);
         }
@@ -387,6 +416,45 @@ mod tests {
             available: 100,
             block: 1,
         })
+    }
+    #[test]
+    /// Le sondage différé lit les blocs actuels mais ne crédite jamais un temporaire remplacé.
+    fn minimal_demand_probes_fresh_owned_staging_after_capture() {
+        struct Cleanup(PathBuf);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                let _ = fs::remove_dir_all(&self.0);
+            }
+        }
+        let root = std::env::temp_dir().join(format!(
+            "gad-space-capture-{}-{}",
+            std::process::id(),
+            snapshot::touch()
+        ));
+        fs::create_dir(&root).unwrap();
+        let _cleanup = Cleanup(root.clone());
+        let staging = root.join("staging");
+        fs::write(&staging, []).unwrap();
+        let mut entry: Entry = serde_json::from_value(json!({"source":"/unused-source","destination":"/destination/f","kind":"file","size":65536,"copied":0,"verified":0,"state":"waiting","error":""})).unwrap();
+        entry.undo = Some(undo::Record {
+            staging: Some(staging.clone()),
+            staging_stamp: Some(undo::Stamp::read(&staging).unwrap()),
+            ..Default::default()
+        });
+        let pending = PendingDemand::capture(7, false, &entry);
+        fs::write(&staging, vec![7; 65536]).unwrap();
+        let metadata = fs::symlink_metadata(&staging).unwrap();
+        let current = pending.resolve();
+        assert_eq!(current.resident, metadata.blocks().saturating_mul(512));
+        assert_eq!(current.resident_device, Some(metadata.dev()));
+        assert_eq!(current.path, entry.destination);
+        assert_eq!(current.size, 65536);
+        let pending = PendingDemand::capture(7, false, &entry);
+        fs::rename(&staging, root.join("original")).unwrap();
+        fs::write(&staging, b"external").unwrap();
+        let replaced = pending.resolve();
+        assert_eq!(replaced.resident, 0);
+        assert_eq!(replaced.resident_device, None);
     }
     #[test]
     fn waiting_and_paused_batches_share_capacity_without_subtracting_old_targets() {

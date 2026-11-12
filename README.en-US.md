@@ -17,7 +17,7 @@ Gad brings file copies and moves into one native KDE Plasma window. Its transfer
 - Local and remote sources and destinations through KIO Fuse: KDE Connect, FTP, SFTP, and SMB.
 
 
-**0.3.0** — Choose the destination and options, then add files in Gad. When idle, review the list and click **Start**. External paste from the file manager starts automatically; additions during a transfer join the queue. **Ctrl+C** copies and **Ctrl+X** moves. Drag and drop into Gad always prepares a copy.
+**0.4.0** — Choose the destination and options, then add files in Gad. When idle, review the list and click **Start**. External paste from the file manager starts automatically; additions during a transfer join the queue. **Ctrl+C** copies and **Ctrl+X** moves. Drag and drop into Gad always prepares a copy.
 
 ## Documentation
 

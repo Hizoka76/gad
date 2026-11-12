@@ -3,10 +3,11 @@
 #include "presentation.h"
 #include <algorithm>
 namespace Completion {
-inline bool validAction(const QString &action){return QStringList{"none","notify","quit","suspend","poweroff"}.contains(action);}
+inline bool validAction(const QString &action){return QStringList{"none","notify","clear","quit","suspend","poweroff"}.contains(action);}
 inline bool validDelay(const QJsonValue &value){const auto n=value.toDouble(-1);return value.isDouble() && n>=5 && n<=3600 && n==qint64(n);}
 inline QString label(const QString &action){
     if(action=="notify")return GAD_TR("Notify");
+    if(action=="clear")return GAD_TR("Clear the list");
     if(action=="quit")return GAD_TR("Quit Gad");
     if(action=="suspend")return GAD_TR("Suspend the computer");
     if(action=="poweroff")return GAD_TR("Power off the computer");
@@ -33,7 +34,7 @@ struct Plan {
         const auto guard=state["queue_guard"].toObject();if(guard.isEmpty())return abort(GAD_TR("Batch completion guard unavailable. Restart Gad before arming an action."));
         const auto current=guard["epoch"].toInteger();if(current!=epoch){
             const auto command=guard["last_command"].toString();
-            if(!QStringList{"enqueue","pause","resolve","retry_selection","retry_errors","resume_interrupted","reorder_queue","reorder_rows"}.contains(command))return abort(GAD_TR("The completion action was canceled because operations were canceled, removed or restored."));
+            if(!QStringList{"enqueue","start_prepared","pause","pause_selection","resolve","retry_selection","retry_errors","resume_interrupted","reorder_queue","reorder_rows"}.contains(command))return abort(GAD_TR("The completion action was canceled because operations were canceled, removed or restored."));
             counting=false;epoch=current;
         }
         next=guard["next_id"].toInteger();sawPreparation |= preparing;

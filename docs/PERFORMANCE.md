@@ -264,3 +264,148 @@ dbus-run-session -- python3 scripts/benchmark_startup.py --binary target/release
 ```
 
 Validation : 317 tests Rust réussis en modes normal et optimisé, 17 benchmarks ignorés par défaut, 108 tests Python, suites Qt, paramètres CLI et intégration réelle. La reprise du même temporaire après SIGKILL reste vérifiée par MD5. Clippy, formatage, traductions, manpages et exports de documentation vérifiés. Le libellé de sélection du menu contextuel devient « Sélectionner le lot entier » ; son changement à la volée français/anglais est testé avec la sélection effective des lignes du lot.
+
+## Couper-coller local — 11 novembre 2026
+
+Les comparaisons utilisent des instances privées, des fichiers temporaires sur le même système de fichiers et trois essais alternés avant/après, sans compilation concurrente. Le presse-papiers de la session utilisateur n’est pas utilisé. Les mesures de négociation utilisent cinq requêtes par version après un historique de 5 000 fichiers.
+
+| Mesure | Avant | Après |
+| --- | ---: | ---: |
+| Négociation de version, historique de 5 000 fichiers | 215,124 ms | 0,101 ms |
+| Taille de la réponse de négociation | environ 5,8 Mo | 23 octets |
+| Nouvelle commande `--move` après cet historique | 775,35 ms | 525,80 ms |
+| Renommage effectif, 1 000 fichiers | 77,89 ms | 60,09 ms |
+| Renommage effectif, 5 000 fichiers | 526,26 ms | 434,74 ms |
+| Finalisation observée par IPC, 1 000 fichiers | 253,02 ms | 205,24 ms |
+| Finalisation observée par IPC, 5 000 fichiers | 1 052,20 ms | 1 065,30 ms |
+
+La dernière ligne ne montre pas de gain de finalisation sur ce grand arbre ; le journal, la construction des instantanés et l’observation par IPC restent coûteux. Le test `--move` inclut le démarrage du client Qt et l’affichage de la fenêtre : il ne mesure pas un collage Wayland caché de bout en bout. Les durées dépendent du stockage et de la charge ; les gains de négociation ne représentent pas à eux seuls le temps total d’un déplacement.
+
+Optimisations retenues :
+
+- `STATX_MNT_ID` remplace l’ouverture O_PATH et la lecture de fdinfo pour les chemins. Les liens ne sont pas suivis, aucun automontage ni synchronisation réseau n’est forcé, et la méthode par descripteur reste le repli.
+- Les contrôles d’arbre réutilisent les métadonnées du premier parcours ; le dernier contrôle vérifie ensemble noms, identités et versions. La sauvegarde durable avant renommage reste obligatoire.
+- La négociation client demande uniquement `protocol_version`. Le statut complet reste disponible pour les autres usages.
+- Les lectures IPC ne déclenchent plus un rafraîchissement supplémentaire de la fenêtre. Les ajouts externes reçoivent leur réponse avant le travail d’affichage.
+- Les petits renommages bénéficient d’un premier rafraîchissement à 25 ms, puis d’une cadence de 50 ms si nécessaire. Les grands lots conservent une cadence modérée.
+- Une préférence de débit inchangée n’est plus réécrite à chaque rafraîchissement.
+
+Validation : 324 tests Rust, 109 tests Python, suites Qt (dont 145 tests d’actions), Clippy, intégration avec interruption/reprise et comparaison MD5. Les tests couvrent le repli du sondage de montage, les liens, les chemins absents, les modifications d’arbre, les contrôles de version de fichier, l’absence de mutation du statut résumé et l’absence d’écriture de configuration au repos. Le test de protection par ctime produit explicitement un changement d’horodatage observable pour éviter une dépendance au tick de tmpfs.
+
+Les données détaillées de cette session restent sous `target/paste-final-comparison.json`, `target/paste-client-comparison.json`, `target/paste-probe-comparison.json` et `target/rename-performance/`.
+
+
+## Suivi fin, copies et interface — 11 novembre 2026
+
+Cette passe conserve les contrôles de contenu, les revalidations d’identité et les barrières durables. Elle comprend :
+
+- des deltas de progression par entrée et des deltas de débit par lot, demandés par Qt avec `entry_deltas: true` ; les transitions générales continuent à transmettre un lot complet ;
+- la fusion transactionnelle de ces deltas côté Qt et une resynchronisation complète si la base ou l’indice manque ; une référence Qt temporaire qui pouvait perdre l’ordre des lignes est également corrigée ;
+- un index dérivé des identifiants de lots, revalidé après les retraits et réorganisations, pour les contrôles fréquents ;
+- une seule publication de progression par fraction écrite, sans réveiller les travailleurs pour chaque compteur, et sans changer de révision pour une valeur identique ;
+- un chemin sans bucket de débit lorsque les deux plafonds sont nuls, avec remise à zéro explicite des crédits lorsqu’un plafond change ;
+- la réutilisation d’une capture fraîche des métadonnées pour identité, propriétés et ctime dans une même vérification ; les contrôles séparés avant/après une E/S restent distincts ;
+- une seule synchronisation finale du fichier après ses données, permissions et dates, avant l’enregistrement du point de reprise ;
+- un classement KIO conservé pendant la vie du descripteur de sortie, et aucune lecture de fdinfo quand la table courante ne contient aucun montage KIO Fuse ;
+- l’omission des champs optionnels vides des reçus, tout en conservant les booléens explicites et la lecture des anciens journaux ;
+- les mots et chemins normalisés de recherche mis en cache, avec invalidation sur changement, ainsi qu’un contrôle linéaire des branches déjà triées ;
+- des tableaux de compteurs natifs indexés par lot/entrée plutôt que des clés textuelles par fichier, et aucune republication D-Bus d’un compte à rebours inchangé ;
+- un chemin court pour le diagnostic lorsque tous les lots non terminés attendent une validation manuelle, et la suppression d’un rafraîchissement d’ajout en double.
+
+### Comparaison finale
+
+Les versions sont alternées, quatre essais par version pour les copies et trois pour les déplacements. Les fichiers contiennent neuf octets, l’historique est conservé, les vérifications facultatives sont désactivées dans ces instances privées, et les contenus finaux sont vérifiés. Pour les déplacements, l’inode de l’arbre et le reçu de renommage sont aussi contrôlés. Aucune compilation ni autre série de benchmarks ne tourne en parallèle.
+
+| Situation | Avant cette passe | Binaire final |
+| --- | ---: | ---: |
+| Copie · 100 fichiers | 1 600,76 ms | 1 416,60 ms |
+| Copie · 500 fichiers | 12 501,05 ms | 11 235,64 ms |
+| Déplacement, fin observée · 1 000 fichiers | 215,41 ms | 166,77 ms |
+| Déplacement, fin observée · 5 000 fichiers | 1 039,40 ms | 926,01 ms |
+
+Le changement physique de nom de l’arbre de 1 000 fichiers reste proche : **61,62 contre 62,60 ms**. Cette série n’établit donc pas de gain à cette étape ; le gain de finalisation ne doit pas être présenté comme une accélération du seul appel de renommage. Pour 5 000 fichiers, les médianes correspondantes sont 447,41 et 438,90 ms. Les séries sont courtes, sur caches chauds et avec une charge de bureau non contrôlée : les valeurs ne garantissent pas le même gain sur un autre stockage.
+
+### Suivi d’un lot préparé de 5 000 fichiers
+
+Deux instances par version, cinq modifications de débit dans chaque instance, ordre de passage contrebalancé. Aucune copie ne démarre ; les destinations restent vides.
+
+| Mesure | Avant | Après |
+| --- | ---: | ---: |
+| Taille médiane du JSON compact du client | 2 807 755 octets | 685 octets |
+| Lecture de suivi, IPC et décodage Python compris | 93,53 ms | 14,88 ms |
+| Commande de changement de débit, avec rafraîchissement | 181,28 ms | 137,72 ms |
+
+La taille est celle du JSON réencodé par le client, et non un compteur exact des octets de socket. Le statut complet et les transitions générales restent plus coûteux. Cette mesure d’un lot préparé ne représente pas le temps total d’une copie active.
+
+### Appels système et limites
+
+Sur une exécution séparée de 100 petits fichiers sous trace, démarrage et fermeture inclus : `fsync` passe de **1 036 à 936**, `statx` de **8 063 à 7 343**, `openat` de **2 300 à 1 995**, les ouvertures de `mountinfo` de **308 à 208**, celles de `fdinfo` de **203 à zéro**. Les durées sous trace ne servent pas à comparer les performances.
+
+Le journal continue de sérialiser un lot entier avant de construire son delta textuel et garde son verrou pendant les écritures durables. Les gros lots de petits fichiers restent donc coûteux. Le journal sémantique par entrée, la séparation du rédacteur et un modèle Qt paresseux restent des chantiers distincts de l’[audit](PERFORMANCE_AUDIT.md) ; ils ne sont pas annoncés comme réalisés ici.
+
+Validation finale : **331 tests Rust réussis, 17 benchmarks ignorés par défaut, 109 tests Python**, suites Qt dont 147 tests d’actions, cinq Konqueror, 11 interactions et 11 du watchdog Dolphin. Presse-papiers et protocole des notifications réussis. Clippy sans avertissement, formatage et catalogues de traduction vérifiés. Les essais d’intégration et paramètres CLI passent, y compris reprise du même temporaire après SIGKILL, comparaison MD5, restauration et permissions.
+
+Les nouvelles régressions couvrent les métadonnées partagées et liens pendants, les compteurs identiques, les crédits de débit réactivés, les deltas coalescés et leur repli complet, les indices de lots retirés/réordonnés, les reçus compacts et anciens defaults, les diagnostics de lots préparés, la recherche Unicode et ses invalidations, ainsi que la fusion Qt sans perte de l’ordre des lignes.
+
+Les résultats détaillés sont dans `target/efficiency-audit/comparison-results.json`, `comparison-summary.json`, `poll-comparison.json`, `after-copy-syscalls.json` et `delivery.json`. Le premier essai intermédiaire reste dans les fichiers `pass9-*` ; il n’est pas utilisé pour les valeurs finales ci-dessus.
+
+
+## Publication vers SSHFS — 11 novembre 2026
+
+Une copie vers un montage `fuse.sshfs` pouvait transférer tous les octets puis échouer à la publication avec `EINVAL`. Certaines versions de [SSHFS refusent les indicateurs de renommage](https://github.com/libfuse/sshfs/blob/sshfs-3.7.3/sshfs.c#L2356-L2366), notamment `RENAME_NOREPLACE`.
+
+`publication.rs` ajoute un repli uniquement pour les erreurs de fonctionnalité non prise en charge : lien physique pour un fichier, création exclusive pour un lien symbolique ou un dossier privé vide. Une destination existante n’est jamais écrasée. Le journal reçoit l’identité réelle du nouveau nom avant le retrait du temporaire, car SSHFS peut lui attribuer un autre inode FUSE. Les chemins de sauvegarde et de restauration utilisent le même acquittement. Un échec d’acquittement conserve les deux noms ; la restauration reste prudente lorsqu’une étape interrompue ne peut plus être reconnue.
+
+Le renommage natif reste le premier choix et ne déclenche pas cet acquittement supplémentaire lorsqu’il réussit. Un dossier non vide, une erreur de permission ou un conflit n’autorise pas ce repli.
+
+Validation : 334 tests Rust réussis, 17 benchmarks ignorés, Clippy et formatage vérifiés. Des erreurs injectées couvrent les fichiers, dossiers et liens, une destination concurrente et le refus du journal. Des essais isolés sur un montage SSHFS réel vérifient copie MD5, arborescence avec lien, remplacement et restauration de l’ancienne destination, déplacement vers le montage et retour arrière, déplacement depuis le montage et restauration de la source distante. Les tests d’intégration locaux, reprise après SIGKILL et paramètres CLI passent également. Les essais distants n’utilisent que leurs propres dossiers temporaires, supprimés à la fin.
+
+
+## Revérification après acquittement et capture d’espace — 11 novembre 2026
+
+Le repli de publication pouvait retirer un nom source remplacé pendant l’acquittement du journal, ou retirer le temporaire alors que le résultat avait été remplacé entre-temps. Les deux versions sont maintenant revérifiées après l’acquittement, avant le retrait du nom source. Une modification de contenu avec taille et mtime rétablies reste détectée par ctime. Ce contrôle réduit la fenêtre de course ; il ne constitue pas une isolation contre des modifications malveillantes entre la dernière lecture de métadonnées et le retrait.
+
+Le nettoyage des temporaires vérifie également leur type, en plus du périphérique et de l’inode, pour refuser un reçu incohérent avec le fichier présent.
+
+Les contrôles d’espace capturent seulement chemin cible, taille, caractère distant et identité éventuelle du temporaire. Ils ne clonent plus les lots entiers ni les reçus complets. Les blocs réellement occupés sont toujours interrogés après libération du verrou et ne sont déduits que si l’identité du temporaire correspond encore. La simulation emprunte ses reçus existants, sans recopier leurs empreintes.
+
+Validation : 338 tests Rust réussis, 17 benchmarks ignorés, 109 tests Python, Clippy sans avertissement et formatage vérifiés. Les quatre nouvelles régressions couvrent les substitutions source/destination pendant l’acquittement, le contenu modifié à taille et mtime constantes, le type du temporaire et le sondage différé de ses blocs. Les essais d’intégration locaux et de paramètres CLI passent, y compris la reprise du même temporaire après SIGKILL. Les cinq scénarios SSHFS précédents ont été rejoués avec MD5 et vérification d’espace activés, uniquement dans des dossiers temporaires dédiés : copie, arborescence avec lien, remplacement/restauration et déplacements dans les deux sens avec retour arrière.
+
+
+## Identité des temporaires pendant le transfert — 11 novembre 2026
+
+Un test a reproduit un faux succès lorsque le nom `.part` était remplacé pendant une copie : le descripteur continuait à écrire l’ancien fichier, tandis que la publication utilisait le nouveau nom. Sans comparaison MD5, le remplacement pouvait devenir le résultat final ; un déplacement pouvait alors retirer sa source. Le nettoyage automatique pouvait également supprimer ce fichier de remplacement après une erreur ou une annulation.
+
+L’identité initiale du temporaire est maintenant capturée sur le descripteur ouvert. Les points de reprise vérifient le descripteur et son nom, puis la publication contrôle l’identité enregistrée et revalide sa version après les écritures du journal. Les gardes de nettoyage ne retirent que leur propre inode, sur le bon périphérique et du bon type. Les dossiers de préparation sont également contrôlés avant publication ; la conversion volontaire d’un fichier vide en lien symbolique actualise explicitement l’identité du garde.
+
+Le nettoyage d’un temporaire déjà publié reste silencieux et ne construit pas de message d’erreur pour son absence attendue. Le nouveau diagnostic de modification avant finalisation est traduit dans tous les catalogues.
+
+Validation : 340 tests Rust réussis, 17 benchmarks ignorés, 109 tests Python, suites Qt (dont 147 tests d’actions, cinq Konqueror et 11 interactions), Clippy et formatage. Deux nouvelles régressions couvrent huit scénarios de copie/déplacement, MD5 activé/désactivé et annulation/reprise, ainsi que les nettoyages de fichiers et dossiers réellement possédés ou remplacés. Les essais locaux de copie, restauration et reprise après SIGKILL, les paramètres CLI et les cinq scénarios SSHFS avec vérification d’espace ont été rejoués sur le binaire final.
+
+## Temporaires de restauration et reprise après pause — 12 novembre 2026
+
+Une régression reproduit le remplacement du temporaire pendant la sauvegarde du journal de retour arrière. La restauration pouvait publier ce fichier étranger à la source, ou le supprimer si la sauvegarde échouait. Les restaurations de fichiers et de dossiers utilisent maintenant des gardes fondés sur l’identité du temporaire. Le fichier ouvert reste conservé jusqu’après le nettoyage, et sa version est revérifiée après le journal, avant publication. Une modification sur le même inode est également refusée. La synchronisation du fichier restauré intervient après ses permissions et dates, pour couvrir données et métadonnées dans le même acquittement.
+
+La reprise revérifie le préfixe après une éventuelle pause et lors de sa réouverture en écriture, avant toute troncature. Elle accepte toujours un temporaire valide en lecture seule en restaurant le droit d’écriture nécessaire. Ces contrôles ne relisent pas une seconde fois tout le contenu : ils comparent les métadonnées de la version déjà vérifiée.
+
+Validation : 342 tests Rust réussis, 17 benchmarks ignorés, 109 tests Python et Clippy sans avertissement. Les nouvelles régressions couvrent les remplacements avant publication, les échecs de journal, les modifications sur le même inode et la réouverture d’un préfixe en lecture seule.
+
+Les suites Qt passent également : 147 tests d’actions, cinq Konqueror et 11 interactions, ainsi que presse-papiers et notifications. Les essais locaux et CLI passent, notamment la reprise après SIGKILL avec comparaison MD5. Les scénarios SSHFS n’ont pas pu être rejoués lors de cette passe : le montage `/media/sftp/HizoServeur/internet/` est indisponible dans la session. Aucun résultat distant nouveau n’est revendiqué.
+
+## Vérification itérative du retour arrière — 12 novembre 2026
+
+Deux défauts supplémentaires ont été reproduits par des tests échouant avant correction. La restauration des métadonnées appliquait les permissions avant de rouvrir le fichier pour sa date ; un mode sans lecture, notamment `000` ou `200`, provoquait un refus. La date est maintenant restaurée avant les restrictions de permissions.
+
+La finalisation d’un dossier restauré ne revérifiait pas son identité avant de retirer le dossier destination et de rétablir ses propriétés. Un remplacement externe pouvait recevoir les droits de l’ancien dossier, y compris via un lien symbolique. L’analyse préalable, la finalisation et la remise des propriétés des parents refusent désormais les sources étrangères. Le contrôle précède le retrait du résultat destination.
+
+Les régressions couvrent quatre modes de permissions, les dossiers remplacés et les liens symboliques, pour les restaurations complètes et les propriétés des parents. Les passes suivantes sur la reprise, les limites de débit, les exclusions, les duplications et la barrière de fin de lot n’ont pas révélé d’autre défaut concret à corriger dans cette vérification.
+
+Validation finale de cette boucle : 344 tests Rust réussis, 17 benchmarks ignorés, 109 tests Python, suites Qt réussies (147 actions, cinq Konqueror, 11 interactions, presse-papiers et notifications), Clippy, formatage et catalogues vérifiés. Les intégrations locales et CLI passent, dont la reprise après SIGKILL avec MD5. Le montage SSHFS reste indisponible : aucun essai distant nouveau n’est annoncé.
+
+## Permissions lors d’une publication de dossier sans renommage atomique — 12 novembre 2026
+
+Le repli de publication recréait les dossiers avec les permissions souhaitées passées à `mkdir`. Le masque de création du processus les réduisait silencieusement : un test isolé avec `umask 077` reproduit un dossier `775` publié en `700`. Le dossier est maintenant créé privé, ouvert sans suivre les liens, puis ses permissions sont appliquées par son descripteur avant acquittement dans le journal. Les services KIO qui imposent leurs droits restent dispensés de `chmod`, comme pour les copies ordinaires.
+
+Le test lance un sous-processus pour ne jamais changer le masque des autres tests parallèles ; il contrôle les droits au moment de l’acquittement et après publication. La passe suivante sur les contrôles de propriétés, les conflits, le journal, la reconnexion et les réessais n’a pas révélé de nouvelle correction concrète dans ces chemins.
+
+Validation : 345 tests Rust réussis, 17 benchmarks ignorés, 109 tests Python, tests Qt (147 actions, cinq Konqueror, 11 interactions, presse-papiers et notifications), Clippy, formatage et traductions vérifiés. Les intégrations locales et CLI réussissent, y compris la reprise après SIGKILL et la comparaison MD5. Le montage SSHFS demeure indisponible dans la session ; le cas corrigé est reproduit par injection du refus de renommage sur un système de fichiers local.

@@ -54,6 +54,10 @@ impl Bucket {
     }
 }
 impl Limiter {
+    /// Un changement explicite de limite invalide les anciens crédits, même après une phase illimitée.
+    pub(super) fn reset_global(&mut self) {
+        self.global = Bucket::default();
+    }
     /// Une observation expire après une seconde ; une limite configurée ne prouve pas une attente.
     pub(super) fn waiting(&self, id: u64, now: Instant) -> (bool, bool) {
         let recent = |time: Option<Instant>| {
@@ -124,11 +128,7 @@ impl Engine {
                 self.check_connection(id)?;
             }
             let state = self.shared.state.lock().unwrap();
-            let job = state
-                .jobs
-                .iter()
-                .find(|j| j.id == id)
-                .ok_or("Operation absent")?;
+            let job = &state.jobs[state.job_position(id).ok_or("Operation absent")?];
             if job.cancel
                 || job.entries[index].cancel
                 || self.shared.stop.load(std::sync::atomic::Ordering::SeqCst)
@@ -137,6 +137,10 @@ impl Engine {
             }
             if state.paused || job.paused || job.entries[index].paused {
                 continue;
+            }
+            // Le contrôle de pause et d’annulation reste frais ; aucun bucket n’est utile sans plafond.
+            if state.rate_limit == 0 && job.rate_limit == 0 {
+                return Ok(bytes);
             }
             let grant = self.shared.limiter.lock().unwrap().grant(
                 id,
@@ -171,8 +175,9 @@ impl Engine {
                 return Err("Demande absente".into());
             }
             for job in &mut state.jobs {
-                if ids.contains(&job.id) {
-                    job.rate_limit = limit;
+                if ids.contains(&job.id) && job.rate_limit != limit {
+                    self.shared.limiter.lock().unwrap().forget(job.id);
+                    job.set_rate(limit);
                 }
             }
         }
@@ -185,6 +190,22 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    /// Une réactivation des plafonds n’hérite pas d’un ancien crédit après le chemin illimité.
+    fn explicit_limit_changes_reset_previously_accumulated_credit() {
+        let now = Instant::now();
+        let later = now + Duration::from_secs(1);
+        let mut limiter = Limiter::default();
+        assert!(limiter.grant(1, 100, 0, 5, now).is_err());
+        assert_eq!(limiter.grant(1, 100, 0, 5, later), Ok(5));
+        limiter.reset_global();
+        assert!(limiter.grant(1, 100, 0, 5, later).is_err());
+        let mut local = Limiter::default();
+        assert!(local.grant(2, 0, 100, 5, now).is_err());
+        assert_eq!(local.grant(2, 0, 100, 5, later), Ok(5));
+        local.forget(2);
+        assert!(local.grant(2, 0, 100, 5, later).is_err());
+    }
     #[test]
     /// Deux travailleurs partagent un seul crédit global ; leurs limites individuelles s’ajoutent comme contraintes.
     fn aggregate_budget_and_individual_caps() {

@@ -42,7 +42,7 @@ inline void sort(QTreeWidget *tree,const Settings &settings) {
     while(!parents.isEmpty()) {
         auto *parent=parents.takeLast();QList<QTreeWidgetItem *> rows;
         for(int i=0;i<(parent?parent->childCount():tree->topLevelItemCount());++i)rows.append(parent?parent->child(i):tree->topLevelItem(i));
-        std::stable_sort(rows.begin(),rows.end(),[&](const auto *a,const auto *b){
+        const auto less=[&](const auto *a,const auto *b){
             for(const auto &key:settings.sorts) {
                 int comparison=0;
                 if(key.column==OrderColumn) {
@@ -56,7 +56,9 @@ inline void sort(QTreeWidget *tree,const Settings &settings) {
                 if(comparison)return key.order==Qt::AscendingOrder?comparison<0:comparison>0;
             }
             return a->data(0,QueueRankRole).toLongLong()<b->data(0,QueueRankRole).toLongLong();
-        });
+        };
+        // Une progression sans changement de clé conserve un ordre déjà correct en temps linéaire.
+        if(!std::is_sorted(rows.cbegin(),rows.cend(),less))std::stable_sort(rows.begin(),rows.end(),less);
         for(int i=0;i<rows.size();++i){if((parent?parent->child(i):tree->topLevelItem(i))!=rows[i])RowTree::attach(rows[i],parent,tree,i);if(rows[i]->childCount())parents.append(rows[i]);}
     }
     tree->verticalScrollBar()->setValue(scroll);

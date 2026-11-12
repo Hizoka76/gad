@@ -90,7 +90,7 @@ manpages-check:
 # Aucun transfert réel : toutes les préférences et le serveur utilisent un compte temporaire.
 .PHONY: test-cli-settings
 test-cli-settings: build
-	dbus-run-session -- $(PYTHON) scripts/test_cli_settings.py
+	$(PYTHON) scripts/test_cli_settings.py
 
 # Simulation de la perte des raccourcis et contrôle de la réparation périodique.
 .PHONY: test-dolphin-watchdog

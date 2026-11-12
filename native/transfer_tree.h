@@ -23,7 +23,9 @@ public:
     explicit TransferHeader(QWidget *parent):QHeaderView(Qt::Horizontal,parent){}
     Qt::KeyboardModifiers clickModifiers() const {return modifiers;}
     void setSortIndicators(const QList<TableView::SortKey> &keys) {
-        indicators.clear();for(const auto &key:keys)indicators.insert(key.column,key.order);
+        QHash<int,Qt::SortOrder> desired;for(const auto &key:keys)desired.insert(key.column,key.order);
+        if(indicators==desired && isSortIndicatorShown()==!keys.isEmpty() && (keys.isEmpty() || (sortIndicatorSection()==keys.first().column && sortIndicatorOrder()==keys.first().order)))return;
+        indicators=desired;
         setSortIndicatorShown(!keys.isEmpty());
         if(!keys.isEmpty())setSortIndicator(keys.first().column,keys.first().order);
         viewport()->update();

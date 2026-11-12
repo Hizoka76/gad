@@ -99,9 +99,8 @@ impl Engine {
         state.next_id = state
             .next_id
             .max(state.jobs.iter().map(|j| j.id).max().unwrap_or(0));
-        let engine = Self::start(state, Some(path));
-        engine.shared.writer.lock().unwrap().sequence = sequence;
-        engine.save()?;
+        let engine = Self::unstarted(state, Some(path));
+        engine.initialize_history(sequence)?;
         for id in resume_ids {
             if let Err(error) = engine.resume_interrupted(&[id]) {
                 engine.update(id, |job| {
@@ -110,6 +109,13 @@ impl Engine {
             }
         }
         Ok(engine)
+    }
+    /// L’étape initiale possède encore la seule poignée externe et peut échouer sans fuite.
+    pub(super) fn initialize_history(&self, sequence: u64) -> Result<(), String> {
+        self.shared.writer.lock().unwrap().sequence = sequence;
+        self.save()?;
+        self.start_workers();
+        Ok(())
     }
     /// Persiste seulement les lots modifiés, sans réduire les frontières de durabilité.
     pub(super) fn save(&self) -> Result<(), String> {
@@ -155,6 +161,10 @@ impl Engine {
         &self,
         selected: Option<&std::collections::HashSet<u64>>,
     ) -> Result<(), String> {
+        // Une annulation sans historique à retirer ne doit jamais attendre sa propre restauration.
+        if selected.is_some_and(std::collections::HashSet::is_empty) {
+            return Ok(());
+        }
         // Le nettoyage et la restauration ne doivent pas libérer les mêmes sauvegardes en parallèle.
         let _maintenance = self.shared.maintenance.lock().unwrap();
         let completed = {

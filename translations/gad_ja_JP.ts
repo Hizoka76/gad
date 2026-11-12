@@ -24,7 +24,7 @@ Modified: </source>
 変更: </translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="111" />
+      <location filename="../native/clipboard.h" line="126" />
       <source>
 If files are visible in the KDE clipboard, check that wl-paste (the wl-clipboard package) is installed.</source>
       <translation>
@@ -38,22 +38,22 @@ A conflict needs your decision</source>
 紛争にはあなたの決断が必要です</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="118" />
+      <location filename="../native/kio_sources.h" line="119" />
       <source>
 Check the connection and whether the kio-fuse package is installed.</source>
       <translation>
 接続を確認し、kio-fuse パッケージがインストールされているかどうかを確認してください。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="79" />
-      <location filename="../native/window_commands.cpp" line="416" />
-      <location filename="../native/window.cpp" line="238" />
-      <location filename="../native/window.cpp" line="221" />
+      <location filename="../native/window_profiles.cpp" line="104" />
+      <location filename="../native/window_commands.cpp" line="467" />
+      <location filename="../native/window.cpp" line="239" />
+      <location filename="../native/window.cpp" line="222" />
       <source> MiB/s</source>
       <translation> MiB/s</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="212" />
+      <location filename="../native/notifications.h" line="233" />
       <source> · %1 batch(es) queued</source>
       <translation> · %1 個のバッチがキューに入れられました</translation>
     </message>
@@ -63,17 +63,17 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation> · &lt;a href="gad://show"&gt;Gad を表示&lt;/a&gt;</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="211" />
+      <location filename="../native/notifications.h" line="232" />
       <source> · Scanning…</source>
       <translation> · ファイルを確認中…</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="214" />
+      <location filename="../native/notifications.h" line="235" />
       <source> · Conflict: open Gad</source>
       <translation> · 競合: Gad を開いてください</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="210" />
+      <location filename="../native/notifications.h" line="231" />
       <source> · Waiting for device</source>
       <translation> · デバイスを待機中</translation>
     </message>
@@ -93,12 +93,12 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation> · MD5 時間はまだ推定されていません</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="215" />
+      <location filename="../native/notifications.h" line="236" />
       <source> · Restoring</source>
       <translation> ・復元中</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="213" />
+      <location filename="../native/notifications.h" line="234" />
       <source> · MD5 verification</source>
       <translation> · MD5 検証</translation>
     </message>
@@ -128,17 +128,17 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation> · 合計残り時間はまだ見積もられていません</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="219" />
+      <location filename="../native/notifications.h" line="241" />
       <source>%1 / %2 completed</source>
       <translation>%1 / %2 完了</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="219" />
+      <location filename="../native/notifications.h" line="241" />
       <source>%1 / %2 processed</source>
       <translation>%1 / %2 処理済み</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="283" />
+      <location filename="../native/window.cpp" line="284" />
       <source>%1 older operation(s) have no journal and cannot be restored. Other operations will be restored.</source>
       <translation>%1 の古い操作にはジャーナルがないため、復元できません。他の操作は復元されます。</translation>
     </message>
@@ -148,7 +148,7 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>%1 ファイル名の競合を解決する必要があります</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="57" />
+      <location filename="../native/window_errors.cpp" line="58" />
       <source>%1 error(s) · %2 retryable item(s). Retrying keeps completed files and respects the global pause.</source>
       <translation>%1 エラー · %2 再試行可能な項目。再試行すると、完了したファイルが保持され、グローバルな一時停止が尊重されます。</translation>
     </message>
@@ -163,7 +163,7 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>%1 日 %2 時間</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="223" />
+      <location filename="../native/notifications.h" line="245" />
       <source>%1 batch(es) failed.</source>
       <translation>%1 バッチが失敗しました。</translation>
     </message>
@@ -183,12 +183,12 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>%1 秒</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="101" />
+      <location filename="../native/window_rows.cpp" line="104" />
       <source>%1 item(s) already queued: not added</source>
       <translation>%1 アイテムはすでにキューに入れられています: 追加されていません</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="209" />
+      <location filename="../native/notifications.h" line="230" />
       <source>%1/%2 batch(es) completed · %3/%4 file(s)</source>
       <translation>%1/%2 バッチが完了しました · %3/%4 ファイル</translation>
     </message>
@@ -198,12 +198,12 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>0バイト/秒・残り時間不明</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="631" />
+      <location filename="../native/window.cpp" line="648" />
       <source>&lt;h2&gt;Gad&lt;/h2&gt;&lt;p&gt;&lt;b&gt;G&lt;/b&gt;estionnaire &lt;b&gt;A&lt;/b&gt;vancé de &lt;b&gt;D&lt;/b&gt;uplication&lt;br&gt;Advanced Duplication Manager&lt;/p&gt;&lt;p&gt;Gad, il copie. (Gad copies.)&lt;/p&gt;</source>
       <translation>&lt;h2&gt;Gad&lt;/h2&gt;&lt;p&gt;&lt;b&gt;G&lt;/b&gt;estionnaire &lt;b&gt;A&lt;/b&gt;vancé de &lt;b&gt;D&lt;/b&gt;uplication&lt;br&gt;高機能ファイル複製マネージャー&lt;/p&gt;&lt;p&gt;Gad, il copie.（Gad がコピーします。）&lt;/p&gt;</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="152" />
+      <location filename="../native/window_commands.cpp" line="162" />
       <source>Accessing remote files… %1 batch(es) being prepared</source>
       <translation>リモート ファイルにアクセスしています… %1 バッチを準備中です</translation>
     </message>
@@ -213,18 +213,17 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>リフレッシュ</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="71" />
-      <location filename="../native/window.cpp" line="508" />
+      <location filename="../native/window.cpp" line="509" />
       <source>Show Gad</source>
       <translation>Gad を表示</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="58" />
+      <location filename="../native/window.cpp" line="59" />
       <source>Add files…</source>
       <translation>ファイルを追加…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="61" />
+      <location filename="../native/window.cpp" line="62" />
       <source>Add folder…</source>
       <translation>フォルダを追加…</translation>
     </message>
@@ -234,32 +233,32 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>スキャン中… · キューが一時停止されました</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="302" />
+      <location filename="../native/window_rows.cpp" line="305" />
       <source>Older operation · restoration unavailable</source>
       <translation>古い操作・復元不可</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="266" />
+      <location filename="../native/window.cpp" line="267" />
       <source>Cancellation</source>
       <translation>キャンセル</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="344" />
+      <location filename="../native/window.cpp" line="345" />
       <source>Cancel and restore</source>
       <translation>キャンセルして復元する</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="287" />
+      <location filename="../native/window.cpp" line="288" />
       <source>Cancel selected operations</source>
       <translation>選択した操作をキャンセルします</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="343" />
+      <location filename="../native/window.cpp" line="344" />
       <source>Cancel and keep completed files</source>
       <translation>完了したファイルをキャンセルして保持する</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="288" />
+      <location filename="../native/window.cpp" line="289" />
       <source>Cancel, delete, and move back</source>
       <translation>キャンセル、削除、および元に戻る</translation>
     </message>
@@ -270,7 +269,7 @@ Check the connection and whether the kio-fuse package is installed.</source>
       <translation>キャンセル済み</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="348" />
+      <location filename="../native/window.cpp" line="349" />
       <source>Applies a limit to all rows in the selected requests.
 The global limit still applies.</source>
       <translation>選択したリクエストのすべての行に制限を適用します。
@@ -282,12 +281,12 @@ The global limit still applies.</source>
       <translation>この選択をバッチ #%1 の今後の競合に適用します</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="271" />
+      <location filename="../native/window.cpp" line="272" />
       <source>Stops active and queued copies and moves, keeping files already transferred.</source>
       <translation>アクティブなコピーとキューに登録されたコピーを停止し、転送済みのファイルを保持したまま移動します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="289" />
+      <location filename="../native/window.cpp" line="290" />
       <source>Stops selected operations, deletes their copies, and moves files back to their source.
 Also restores replaced files.
 Files changed since the transfer are kept with an explicit error.</source>
@@ -296,12 +295,12 @@ Files changed since the transfer are kept with an explicit error.</source>
 転送後に変更されたファイルは、明示的なエラーとともに保持されます。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="279" />
+      <location filename="../native/window.cpp" line="280" />
       <source>Stops all operations and restores copies, moves, and replacements still in history, from newest to oldest.</source>
       <translation>すべての操作を停止し、履歴に残っているコピー、移動、置換を最新のものから古いものまで復元します。</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="85" />
+      <location filename="../native/window_commands.cpp" line="95" />
       <source>Wait for the batch to finish before reactivating its canceled rows.</source>
       <translation>バッチが終了するまで待ってから、キャンセルされた行を再アクティブ化します。</translation>
     </message>
@@ -311,7 +310,7 @@ Files changed since the transfer are kept with an explicit error.</source>
       <translation>アクティブな Dolphin ウィンドウがありません。 Dolphin の宛先フォルダーから貼り付けを開始します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="120" />
+      <location filename="../native/window.cpp" line="121" />
       <source>Before each batch, estimates the space needed for queued files on each volume.
 Previous destinations remain accounted for so they can be restored.
 Prevents starting if space is insufficient.
@@ -324,17 +323,17 @@ Existing batches keep their settings.</source>
 既存のバッチは設定を保持します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="457" />
+      <location filename="../native/window.cpp" line="458" />
       <source>Error report…</source>
       <translation>エラー報告…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="38" />
+      <location filename="../native/window.cpp" line="39" />
       <source>Local path or sftp://, ftp://, smb://, kdeconnect:// address</source>
       <translation>ローカル パスまたは sftp://、ftp://、smb://、kdeconnect:// アドレス</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="111" />
+      <location filename="../native/window.cpp" line="112" />
       <source>Compares visible owner, group, permissions, ACLs, and extended attributes.
 Reports differences or incomplete checks.
 Copies are kept with a warning; a regular move keeps the source if verification fails.
@@ -345,35 +344,35 @@ Does not replicate these properties.</source>
 これらのプロパティは複製されません。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="130" />
+      <location filename="../native/window.cpp" line="131" />
       <source>Keeps operations between sessions.
 Replaced files are retained for restoration; clearing history removes this possibility.</source>
       <translation>セッション間で操作を保持します。
 置換されたファイルは復元のために保持されます。履歴をクリアすると、この可能性がなくなります。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="439" />
+      <location filename="../native/window.cpp" line="440" />
       <source>Keep existing file</source>
       <translation>既存のファイルを保持する</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="128" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="129" />
       <source>Keep history</source>
       <translation>履歴を保存</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="174" />
+      <location filename="../native/kio_sources.h" line="175" />
       <source>Empty destination context</source>
       <translation>空の宛先コンテキスト</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="384" />
+      <location filename="../native/window_rows.cpp" line="387" />
       <source>Checking the source and previously written bytes before resuming</source>
       <translation>再開する前にソースと以前に書き込まれたバイトを確認する</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="363" />
+      <location filename="../native/window_rows.cpp" line="366" />
       <source>Checking resume data…</source>
       <translation>再開データを確認中…</translation>
     </message>
@@ -383,14 +382,14 @@ Replaced files are retained for restoration; clearing history removes this possi
       <translation>再開データを確認中… · 残り時間を推定しています</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="394" />
+      <location filename="../native/window_rows.cpp" line="397" />
       <source>Property check incomplete</source>
       <translation>プロパティチェックが不完全</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="94" />
-      <location filename="../native/window_errors.cpp" line="53" />
-      <location filename="../native/error_report.h" line="22" />
+      <location filename="../native/window_errors.cpp" line="95" />
+      <location filename="../native/window_errors.cpp" line="54" />
+      <location filename="../native/error_report.h" line="32" />
       <source>Copy</source>
       <translation>コピー</translation>
     </message>
@@ -400,7 +399,7 @@ Replaced files are retained for restoration; clearing history removes this possi
       <translation>コピー: </translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="140" />
+      <location filename="../native/window.cpp" line="141" />
       <source>Creates durable checkpoints and resumes new batches after a crash or restart.
 Deliberately canceled operations are never restarted.
 Existing batches keep their settings.</source>
@@ -409,12 +408,12 @@ Existing batches keep their settings.</source>
 既存のバッチは設定を保持します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="442" />
+      <location filename="../native/window.cpp" line="443" />
       <source>Creates a copy using an available name, such as “file (copy 1).ext”.</source>
       <translation>「file (copy 1).ext」などの使用可能な名前を使用してコピーを作成します。</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
       <location filename="../native/window_diagnostics.cpp" line="14" />
       <location filename="../native/transfer_diagnostics.h" line="35" />
@@ -422,7 +421,7 @@ Existing batches keep their settings.</source>
       <translation>リクエスト</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="21" />
+      <location filename="../native/error_report.h" line="31" />
       <source>Request #%1 · %2 · %3
 Source: %4
 Destination: %5
@@ -440,31 +439,31 @@ Error: %6
       <translation>リクエスト #%1 · %2%3</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="687" />
+      <location filename="../native/window.cpp" line="704" />
       <source>Transfers are still queued or running. Let them finish or cancel the operations before quitting.</source>
       <translation>転送はまだキューに入れられているか、実行中です。終了する前に、操作を終了またはキャンセルしてもらいます。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="334" />
+      <location filename="../native/window.cpp" line="335" />
       <source>Move down</source>
       <translation>下に移動</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/window.cpp" line="33" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/window.cpp" line="34" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Destination</source>
       <translation>コピー先</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="45" />
+      <location filename="../native/window.cpp" line="46" />
       <source>Copy destination</source>
       <translation>コピー先</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="311" />
+      <location filename="../native/window_rows.cpp" line="314" />
       <source>Remote destination · permissions and dates set by the service · automatic resume unavailable</source>
       <translation>リモート接続先 · サービスによって設定された権限と日付 · 自動再開は利用不可</translation>
     </message>
@@ -474,42 +473,42 @@ Error: %6
       <translation>Dolphin は使用可能なフルパスを提供しませんでした。タイトル バーでフル パスを有効にするか、コンテキスト メニューから [Paste with Gad] を使用します。</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="25" />
+      <location filename="../native/error_report.h" line="35" />
       <source>Resumable data: %1 bytes
 </source>
       <translation>再開可能データ: %1 バイト
 </translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="369" />
+      <location filename="../native/window_rows.cpp" line="372" />
       <location filename="../native/window_conflicts.cpp" line="15" />
-      <location filename="../native/error_report.h" line="23" />
+      <location filename="../native/error_report.h" line="33" />
       <source>Folder</source>
       <translation>フォルダ</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="39" />
+      <location filename="../native/window.cpp" line="40" />
       <source>Destination folder</source>
       <translation>保存先フォルダー</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="380" />
+      <location filename="../native/window_rows.cpp" line="383" />
       <source>Folder moved by renaming</source>
       <translation>名前変更によりフォルダが移動されました</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="62" />
+      <location filename="../native/window.cpp" line="63" />
       <source>Folder to copy</source>
       <translation>コピーするフォルダー</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="81" />
-      <location filename="../native/window.cpp" line="232" />
+      <location filename="../native/window_profiles.cpp" line="106" />
+      <location filename="../native/window.cpp" line="233" />
       <source>Global speed limit:</source>
       <translation>全体の転送速度制限:</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="247" />
+      <location filename="../native/window.cpp" line="248" />
       <source>Speeds measured over the last five seconds of activity.
 Remaining time covers the whole request; if MD5 speed is unknown, only copy time is estimated.
 Times are approximate.</source>
@@ -518,7 +517,7 @@ Times are approximate.</source>
 時間はおおよその時間です。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="435" />
+      <location filename="../native/window.cpp" line="436" />
       <source>Already at destination</source>
       <translation>すでに目的地に到着しています</translation>
     </message>
@@ -528,45 +527,47 @@ Times are approximate.</source>
       <translation>Dolphin の読み取りがタイムアウトしました</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="94" />
-      <location filename="../native/window_errors.cpp" line="53" />
-      <location filename="../native/error_report.h" line="22" />
+      <location filename="../native/window_errors.cpp" line="95" />
+      <location filename="../native/window_errors.cpp" line="54" />
+      <location filename="../native/error_report.h" line="32" />
       <source>Move</source>
       <translation>移動</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="307" />
+      <location filename="../native/window_rows.cpp" line="310" />
       <source>Fast move · folder renamed as a whole</source>
       <translation>高速移動・フォルダー全体の名前が変更されました</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="304" />
+      <location filename="../native/window_rows.cpp" line="307" />
       <source>Fast move · local rename</source>
       <translation>高速移動とローカルの名前変更</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="382" />
+      <location filename="../native/window_rows.cpp" line="385" />
       <source>Fast move · no data copied</source>
       <translation>高速移動 · データはコピーされません</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="332" />
+      <location filename="../native/window.cpp" line="333" />
       <source>Reorder queue</source>
       <translation>キューを並べ替える</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Details</source>
       <translation>詳細</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="296" />
+      <location filename="../native/window_completion.cpp" line="25" />
+      <location filename="../native/window_completion.cpp" line="9" />
+      <location filename="../native/window.cpp" line="297" />
       <source>Clears completed operations and the backups needed to restore them.</source>
       <translation>完了した操作とその復元に必要なバックアップをクリアします。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="294" />
+      <location filename="../native/window.cpp" line="295" />
       <source>Clear completed operations</source>
       <translation>完了した操作をクリアする</translation>
     </message>
@@ -617,7 +618,7 @@ Times are approximate.</source>
       <translation>一時停止中・残り時間停止中</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
       <location filename="../native/presentation.h" line="52" />
       <source>Error</source>
@@ -629,7 +630,7 @@ Times are approximate.</source>
       <translation>エラー</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="87" />
+      <location filename="../native/window_errors.cpp" line="88" />
       <source>Export failed: </source>
       <translation>エクスポートに失敗しました: </translation>
     </message>
@@ -639,7 +640,7 @@ Times are approximate.</source>
       <translation>フィルターによって非表示になっている行を含む、完全なレポートをテキストまたは JSON としてエクスポートします。</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="83" />
+      <location filename="../native/window_errors.cpp" line="84" />
       <source>Export error report</source>
       <translation>エラーレポートのエクスポート</translation>
     </message>
@@ -649,16 +650,16 @@ Times are approximate.</source>
       <translation>エクスポート…</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="173" />
+      <location filename="../native/window_profiles.cpp" line="198" />
       <location filename="../native/window_errors.cpp" line="31" />
       <location filename="../native/window_diagnostics.cpp" line="13" />
-      <location filename="../native/window.cpp" line="642" />
-      <location filename="../native/window.cpp" line="95" />
+      <location filename="../native/window.cpp" line="659" />
+      <location filename="../native/window.cpp" line="96" />
       <source>Close</source>
       <translation>閉じる</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="23" />
+      <location filename="../native/error_report.h" line="33" />
       <source>File</source>
       <translation>ファイル</translation>
     </message>
@@ -668,13 +669,13 @@ Times are approximate.</source>
       <translation>ファイルが利用できません</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="24" />
+      <location filename="../native/error_report.h" line="34" />
       <source>Partial file: </source>
       <translation>部分ファイル: </translation>
     </message>
     <message>
       <location filename="../native/window_conflicts.cpp" line="35" />
-      <location filename="../native/window.cpp" line="434" />
+      <location filename="../native/window.cpp" line="435" />
       <source>File to copy</source>
       <translation>コピーするファイル</translation>
     </message>
@@ -684,12 +685,12 @@ Times are approximate.</source>
       <translation>移動するファイル</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="219" />
+      <location filename="../native/notifications.h" line="241" />
       <source>Files</source>
       <translation>ファイル</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="59" />
+      <location filename="../native/window.cpp" line="60" />
       <source>Files to copy</source>
       <translation>コピーするファイル</translation>
     </message>
@@ -699,20 +700,21 @@ Times are approximate.</source>
       <translation>リクエスト、ファイル、宛先、またはメッセージでフィルターします...</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="18" />
+      <location filename="../native/window.cpp" line="19" />
       <source>Gad - Advanced Duplication Manager</source>
       <translation>Gad - 高度な複製マネージャー</translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="187" />
-      <location filename="../native/application.cpp" line="173" />
+      <location filename="../native/application.cpp" line="206" />
+      <location filename="../native/application.cpp" line="191" />
+      <location filename="../native/application.cpp" line="165" />
       <source>Gad is not responding
 </source>
       <translation>Gad が応答しません
 </translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="179" />
+      <location filename="../native/application.cpp" line="198" />
       <source>Gad is not running
 </source>
       <translation>Gad は起動していません
@@ -733,7 +735,7 @@ Files: %5 active · %6 queued</source>
       <translation>Gad — エラーレポート</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="34" />
+      <location filename="../native/error_report.h" line="45" />
       <source>Gad — Error report
 Date: %1
 %2 error(s)
@@ -746,7 +748,7 @@ Date: %1
 </translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="100" />
+      <location filename="../native/application.cpp" line="101" />
       <source>Gad copies. — File transfer manager for KDE
   gad
   gad --background
@@ -767,7 +769,7 @@ Date: %1
   ファイルの内容を検証するには --md5 を追加してください。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="439" />
+      <location filename="../native/window.cpp" line="440" />
       <source>Keep both</source>
       <translation>両方を保持</translation>
     </message>
@@ -777,30 +779,30 @@ Date: %1
       <translation>スキップ済み</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="79" />
-      <location filename="../native/window_commands.cpp" line="416" />
-      <location filename="../native/window.cpp" line="238" />
-      <location filename="../native/window.cpp" line="221" />
+      <location filename="../native/window_profiles.cpp" line="104" />
+      <location filename="../native/window_commands.cpp" line="467" />
+      <location filename="../native/window.cpp" line="239" />
+      <location filename="../native/window.cpp" line="222" />
       <location filename="../native/transfer_diagnostics.h" line="33" />
       <source>Unlimited</source>
       <translation>無制限</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="93" />
+      <location filename="../native/clipboard.h" line="108" />
       <source>Unable to read files from the Wayland clipboard. Paste again.</source>
       <translation>Wayland クリップボードからファイルを読み取ることができません。もう一度貼り付けます。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="66" />
-      <location filename="../native/window_profiles.cpp" line="43" />
-      <location filename="../native/window_profiles.cpp" line="43" />
-      <location filename="../native/window_commands.cpp" line="366" />
-      <location filename="../native/window.cpp" line="155" />
+      <location filename="../native/window_profiles.cpp" line="91" />
+      <location filename="../native/window_profiles.cpp" line="51" />
+      <location filename="../native/window_profiles.cpp" line="51" />
+      <location filename="../native/window_commands.cpp" line="410" />
+      <location filename="../native/window.cpp" line="156" />
       <source>Unable to change Gad's startup setting.</source>
       <translation>Gad の起動設定を変更できません。</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="118" />
+      <location filename="../native/kio_sources.h" line="119" />
       <source>Unable to access remote files through KIO Fuse: </source>
       <translation>KIO Fuse を介してリモート ファイルにアクセスできません: </translation>
     </message>
@@ -820,7 +822,7 @@ Date: %1
       <translation>ファイルを開けません: </translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="120" />
+      <location filename="../native/kio_sources.h" line="121" />
       <source>KIO Fuse did not provide a valid file path.</source>
       <translation>KIO Fuse は有効なファイル パスを提供しませんでした。</translation>
     </message>
@@ -830,46 +832,46 @@ Date: %1
       <translation>目的地は空いています。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="563" />
+      <location filename="../native/window.cpp" line="580" />
       <source>The language changes immediately without interrupting transfers.</source>
       <translation>転送を中断することなく、言語がすぐに変わります。</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="67" />
+      <location filename="../native/clipboard.h" line="82" />
       <source>The clipboard file list is empty or inaccessible.</source>
       <translation>クリップボード ファイル リストが空であるか、アクセスできません。</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="134" />
+      <location filename="../native/kio_sources.h" line="135" />
       <location filename="../native/application.cpp" line="55" />
       <source>The selection does not share a single destination folder</source>
       <translation>選択内容は単一の宛先フォルダーを共有しません</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="150" />
+      <location filename="../native/window.cpp" line="151" />
       <source>Starts Gad in the system tray when you sign in.</source>
       <translation>サインインすると、システム トレイで Gad が起動します。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="89" />
-      <location filename="../native/window.cpp" line="148" />
+      <location filename="../native/window_profiles.cpp" line="114" />
+      <location filename="../native/window.cpp" line="149" />
       <source>Launch at startup</source>
       <translation>起動時に起動する</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="317" />
+      <location filename="../native/window.cpp" line="318" />
       <source>Open file</source>
       <translation>ファイルを開く</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="92" />
-      <location filename="../native/window.cpp" line="563" />
-      <location filename="../native/window.cpp" line="562" />
+      <location filename="../native/window_profiles.cpp" line="117" />
+      <location filename="../native/window.cpp" line="580" />
+      <location filename="../native/window.cpp" line="579" />
       <source>Language</source>
       <translation>言語</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="447" />
+      <location filename="../native/window_commands.cpp" line="498" />
       <source>The remote mount path has changed; restore the original mount or add the files again.</source>
       <translation>リモート マウント パスが変更されました。元のマウントを復元するか、ファイルを再度追加してください。</translation>
     </message>
@@ -886,27 +888,28 @@ Date: %1
       <translation>Dolphin が提供するフォルダーが開かなくなりました。もう一度貼り付けます。</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="53" />
+      <location filename="../native/clipboard.h" line="78" />
+      <location filename="../native/clipboard.h" line="54" />
       <source>The clipboard changed while being read. Paste again.</source>
       <translation>読み取り中にクリップボードが変更されました。もう一度貼り付けます。</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="108" />
+      <location filename="../native/clipboard.h" line="123" />
       <source>The clipboard is inaccessible. Try again with the Gad window active.</source>
       <translation>クリップボードにアクセスできません。 Gad ウィンドウをアクティブにしてもう一度試してください。</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="46" />
+      <location filename="../native/clipboard.h" line="47" />
       <source>The clipboard does not contain a file list. Copy or cut files in your file manager.</source>
       <translation>クリップボードにファイル一覧がありません。ファイルマネージャーでファイルをコピーまたは切り取ってください。</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="383" />
+      <location filename="../native/window_rows.cpp" line="386" />
       <source>Reading and comparing source and destination contents</source>
       <translation>ソースと宛先のコンテンツの読み取りと比較</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="290" />
+      <location filename="../native/window.cpp" line="291" />
       <source>Menu commands apply to operations.
 Delete handles each selected row according to its state.
 Backspace also restores completed rows.</source>
@@ -915,7 +918,7 @@ Backspace also restores completed rows.</source>
 Backspace キーを使用すると、完了した行も復元されます。</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="23" />
+      <location filename="../native/error_report.h" line="33" />
       <source>Symbolic link</source>
       <translation>シンボリックリンク</translation>
     </message>
@@ -925,7 +928,7 @@ Backspace キーを使用すると、完了した行も復元されます。</tr
       <translation>シンボリックリンク→ </translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="222" />
+      <location filename="../native/window.cpp" line="223" />
       <source>Total speed limit for copies and moves that copy data.
 0 = unlimited.
 Can be changed during transfers; fast renames are not throttled.</source>
@@ -934,17 +937,17 @@ Can be changed during transfers; fast renames are not throttled.</source>
 転送中に変更できます。高速な名前変更は抑制されません。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="346" />
+      <location filename="../native/window.cpp" line="347" />
       <source>Limit request speed…</source>
       <translation>リクエスト速度を制限します…</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="414" />
+      <location filename="../native/window_commands.cpp" line="465" />
       <source>Limit request speed</source>
       <translation>リクエスト速度を制限する</translation>
     </message>
     <message>
-      <location filename="../native/clipboard.h" line="42" />
+      <location filename="../native/clipboard.h" line="43" />
       <source>Invalid clipboard file list.</source>
       <translation>クリップボード ファイル リストが無効です。</translation>
     </message>
@@ -954,17 +957,17 @@ Can be changed during transfers; fast renames are not throttled.</source>
       <translation>バッチ #%1 — %2</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="219" />
+      <location filename="../native/notifications.h" line="241" />
       <source>Batches</source>
       <translation>バッチ</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="111" />
+      <location filename="../native/kio_sources.h" line="112" />
       <source>Remote access is taking too long to respond. Check the connection.</source>
       <translation>リモート アクセスの応答に時間がかかりすぎます。接続を確認してください。</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="368" />
+      <location filename="../native/window_rows.cpp" line="371" />
       <source>MD5 </source>
       <translation>MD5 </translation>
     </message>
@@ -974,69 +977,69 @@ Can be changed during transfers; fast renames are not throttled.</source>
       <translation>MD5: </translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="373" />
+      <location filename="../native/window_rows.cpp" line="376" />
       <source>MD5 OK · </source>
       <translation>MD5 OK · </translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="350" />
+      <location filename="../native/window.cpp" line="351" />
       <source>Pause</source>
       <translation>一時停止</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="336" />
+      <location filename="../native/window.cpp" line="337" />
       <source>Changes the priority of queued rows.
 Folders keep their descendants; destinations and active transfers are unchanged.</source>
       <translation>キューに入れられた行の優先順位を変更します。
 フォルダーはその子孫を保持します。宛先とアクティブな転送は変更されません。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="333" />
+      <location filename="../native/window.cpp" line="334" />
       <source>Move up</source>
       <translation>上に移動</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="442" />
+      <location filename="../native/window.cpp" line="443" />
       <source>Skips this file and keeps its source, including during moves.</source>
       <translation>このファイルをスキップし、移動中も含めてそのソースを保持します。</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
       <source>Operation</source>
       <translation>操作</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="92" />
+      <location filename="../native/window_commands.cpp" line="102" />
       <source>Opens with the associated application:
 </source>
       <translation>関連するアプリケーションで開きます。
 </translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="91" />
+      <location filename="../native/window_commands.cpp" line="101" />
       <source>Opens a file's parent folder, the selected folder, or a batch destination.
 Duplicates are grouped together.</source>
       <translation>ファイルの親フォルダー、選択したフォルダー、またはバッチの宛先を開きます。
 重複はグループ化されます。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="316" />
+      <location filename="../native/window.cpp" line="317" />
       <source>Open containing folder</source>
       <translation>含まれているフォルダーを開く</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="41" />
+      <location filename="../native/window.cpp" line="42" />
       <source>Browse…</source>
       <translation>参照…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="335" />
+      <location filename="../native/window.cpp" line="336" />
       <source>Move to end of queue</source>
       <translation>キューの最後に移動</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="415" />
+      <location filename="../native/window_commands.cpp" line="466" />
       <source>Limit for each of the %1 selected request(s).
 Applies to all their rows. The global limit still applies.
 0 = unlimited.</source>
@@ -1050,41 +1053,41 @@ Applies to all their rows. The global limit still applies.
       <translation>複数の Dolphin ウィンドウがアクティブになっているように見えます。ターゲットウィンドウから再度貼り付けます。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Progress</source>
       <translation>進行状況</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="28" />
+      <location filename="../native/error_report.h" line="38" />
       <source>Properties:
 </source>
       <translation>プロパティ:
 </translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="458" />
-      <location filename="../native/window_rows.cpp" line="409" />
+      <location filename="../native/window_rows.cpp" line="461" />
+      <location filename="../native/window_rows.cpp" line="412" />
       <source>Properties: %1 warning(s)</source>
       <translation>プロパティ: %1 警告</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="394" />
+      <location filename="../native/window_rows.cpp" line="397" />
       <source>Properties differ</source>
       <translation>プロパティが異なります</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="394" />
+      <location filename="../native/window_rows.cpp" line="397" />
       <source>Visible properties match</source>
       <translation>表示されているプロパティが一致する</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="458" />
+      <location filename="../native/window_rows.cpp" line="461" />
       <source>Properties verified: %1</source>
       <translation>検証されたプロパティ: %1</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="249" />
+      <location filename="../native/window.cpp" line="250" />
       <source>Ready to copy</source>
       <translation>コピーの準備ができました</translation>
     </message>
@@ -1094,23 +1097,23 @@ Applies to all their rows. The global limit still applies.
       <translation>デバイスが切断され、一時停止されました</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="515" />
-      <location filename="../native/completion_plan.h" line="10" />
+      <location filename="../native/window.cpp" line="516" />
+      <location filename="../native/completion_plan.h" line="11" />
       <source>Quit Gad</source>
       <translation>Gad を終了</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="82" />
+      <location filename="../native/window_errors.cpp" line="83" />
       <source>Text report (*.txt)</source>
       <translation>テキストレポート (*.txt)</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="83" />
+      <location filename="../native/window_errors.cpp" line="84" />
       <source>Text report (*.txt);;JSON report (*.json)</source>
       <translation>テキストレポート (*.txt);;JSON レポート (*.json)</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="102" />
+      <location filename="../native/window.cpp" line="103" />
       <source>Reads and compares source and destination contents before marking each file complete.
 Applies to new transfers, including those started from Dolphin.</source>
       <translation>各ファイルに完了のマークを付ける前に、ソースと宛先の内容を読み取り、比較します。
@@ -1122,7 +1125,7 @@ Dolphin から開始された転送を含む、新しい転送に適用されま
       <translation>復元されました</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="301" />
+      <location filename="../native/window_rows.cpp" line="304" />
       <source>Restoration requested · waiting for active transfers to finish</source>
       <translation>復元が要求されました。アクティブな転送が完了するのを待っています</translation>
     </message>
@@ -1142,14 +1145,14 @@ Dolphin から開始された転送を含む、新しい転送に適用されま
       <translation>復元中…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="442" />
+      <location filename="../native/window.cpp" line="443" />
       <source>Replaces the destination with the source.
 The previous destination is retained in the restoration journal.</source>
       <translation>宛先をソースに置き換えます。
 以前の宛先は復元ジャーナルに保持されます。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="439" />
+      <location filename="../native/window.cpp" line="440" />
       <source>Replace existing file</source>
       <translation>既存のファイルを置き換える</translation>
     </message>
@@ -1159,13 +1162,13 @@ The previous destination is retained in the restoration journal.</source>
       <translation>ローカルの名前変更 · データはコピーされません</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="351" />
+      <location filename="../native/window.cpp" line="352" />
       <source>Resume</source>
       <translation>再開する</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="138" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="139" />
       <source>Resume after interruption</source>
       <translation>中断後の再開</translation>
     </message>
@@ -1176,24 +1179,24 @@ The previous destination is retained in the restoration journal.</source>
       <translation>キューを再開する</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="355" />
+      <location filename="../native/window.cpp" line="356" />
       <source>Resume interrupted batches</source>
       <translation>中断されたバッチを再開する</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="387" />
+      <location filename="../native/window_rows.cpp" line="390" />
       <source>Resumed from </source>
       <translation>から再開 </translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="370" />
+      <location filename="../native/window_rows.cpp" line="373" />
       <source>Resume </source>
       <translation>再開する </translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="272" />
-      <location filename="../native/window_commands.cpp" line="227" />
-      <location filename="../native/application.cpp" line="215" />
+      <location filename="../native/window_commands.cpp" line="313" />
+      <location filename="../native/window_commands.cpp" line="268" />
+      <location filename="../native/application.cpp" line="234" />
       <source>Invalid request</source>
       <translation>無効なリクエスト</translation>
     </message>
@@ -1203,29 +1206,29 @@ The previous destination is retained in the restoration journal.</source>
       <translation>修復が未完了</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="371" />
+      <location filename="../native/window.cpp" line="372" />
       <source>Remove from list / stop</source>
       <translation>リストから削除/停止</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="85" />
+      <location filename="../native/window_commands.cpp" line="95" />
       <source>Reactivates canceled rows after preparing their restoration.</source>
       <translation>復元を準備した後、キャンセルされた行を再アクティブ化します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="352" />
+      <location filename="../native/window.cpp" line="353" />
       <source>Reactivate canceled rows</source>
       <translation>キャンセルされた行を再アクティブ化する</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="29" />
+      <location filename="../native/error_report.h" line="39" />
       <source>Retry available (recognized remnants will be restored before copying again).
 </source>
       <translation>再試行が可能です (認識された残りの部分は再度コピーする前に復元されます)。
 </translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="29" />
+      <location filename="../native/error_report.h" line="39" />
       <source>Retry unavailable: </source>
       <translation>再試行はできません: </translation>
     </message>
@@ -1245,42 +1248,42 @@ The global pause still applies.</source>
     </message>
     <message>
       <location filename="../native/window_errors.cpp" line="26" />
-      <location filename="../native/window.cpp" line="353" />
+      <location filename="../native/window.cpp" line="354" />
       <source>Retry failed files only</source>
       <translation>失敗したファイルのみを再試行します</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/window.cpp" line="29" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/window.cpp" line="30" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Source</source>
       <translation>コピー元</translation>
     </message>
     <message>
-      <location filename="../native/kio_sources.h" line="163" />
+      <location filename="../native/kio_sources.h" line="164" />
       <source>Invalid copy source.</source>
       <translation>コピー元が無効です。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="311" />
+      <location filename="../native/window.cpp" line="312" />
       <source>Delete: removes completed rows, cancels active rows, and removes queued rows. Backspace: restores selected completed copies and moves; otherwise acts like Delete. Two operations can run together on separate disks. Right-click: Process next and Reorder queue change the order of queued batches.</source>
       <translation>削除: 完了した行を削除し、アクティブな行をキャンセルし、キューに入れられた行を削除します。 Backspace: 選択した完了したコピーを復元し、移動します。それ以外の場合は、削除と同様に動作します。 2 つの操作を別々のディスク上で同時に実行できます。右クリック: [次の処理] および [キューの並べ替え] により、キューに入れられたバッチの順序が変更されます。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="91" />
-      <location filename="../native/window.cpp" line="547" />
+      <location filename="../native/window_profiles.cpp" line="116" />
+      <location filename="../native/window.cpp" line="564" />
       <source>System</source>
       <translation>システム設定</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="322" />
+      <location filename="../native/window.cpp" line="323" />
       <source>Select entire batch</source>
       <translation>バッチ全体を選択</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="92" />
+      <location filename="../native/window_commands.cpp" line="102" />
       <source>Select a single file to open it.</source>
       <translation>単一のファイルを選択して開きます。</translation>
     </message>
@@ -1302,35 +1305,35 @@ The global pause still applies.</source>
       <translation>すべてのファイル</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="269" />
+      <location filename="../native/window.cpp" line="270" />
       <source>Cancel all</source>
       <translation>すべてキャンセル</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="277" />
+      <location filename="../native/window.cpp" line="278" />
       <source>Cancel all and restore</source>
       <translation>すべてキャンセルして復元する</translation>
     </message>
     <message>
       <location filename="../native/window_rows.cpp" line="76" />
       <location filename="../native/window_rows.cpp" line="58" />
-      <location filename="../native/window.cpp" line="510" />
-      <location filename="../native/window.cpp" line="256" />
+      <location filename="../native/window.cpp" line="511" />
+      <location filename="../native/window.cpp" line="257" />
       <source>Pause all</source>
       <translation>すべて一時停止する</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="331" />
+      <location filename="../native/window.cpp" line="332" />
       <source>Process next</source>
       <translation>次の工程</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="219" />
+      <location filename="../native/notifications.h" line="241" />
       <source>Gad transfers</source>
       <translation>Gad の転送</translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="23" />
+      <location filename="../native/error_report.h" line="33" />
       <source>Type: %1
 Copied: %2 / %3 bytes
 </source>
@@ -1339,7 +1342,7 @@ Copied: %2 / %3 bytes
 </translation>
     </message>
     <message>
-      <location filename="../native/error_report.h" line="26" />
+      <location filename="../native/error_report.h" line="36" />
       <source>A file has already been created; it will be verified before any retry.
 </source>
       <translation>ファイルはすでに作成されています。再試行の前に検証されます。
@@ -1351,12 +1354,12 @@ Copied: %2 / %3 bytes
       <translation>ファイルはすでに存在します</translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="159" />
+      <location filename="../native/application.cpp" line="169" />
       <source>An older version of Gad is still running. Let its transfers finish, then quit and restart Gad to enable this feature. No transfer has been added.</source>
       <translation>Gad の古いバージョンはまだ実行されています。転送が完了したら、Gad を終了して再起動し、この機能を有効にします。転送は追加されていません。</translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="194" />
+      <location filename="../native/application.cpp" line="213" />
       <source>An instance is starting or not responding
 </source>
       <translation>インスタンスが起動中か応答していません
@@ -1373,7 +1376,7 @@ Copied: %2 / %3 bytes
       <translation>ローカル ファイル、または kdeconnect://、ftp://、sftp://、または smb:// アドレスを使用します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="633" />
+      <location filename="../native/window.cpp" line="650" />
       <source>Version: %1
 Build date: %2</source>
       <translation>バージョン: %1
@@ -1385,7 +1388,7 @@ Build date: %2</source>
       <translation>リストで表示</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="418" />
+      <location filename="../native/window.cpp" line="419" />
       <source>Show file in list</source>
       <translation>ファイルをリストに表示</translation>
     </message>
@@ -1395,31 +1398,31 @@ Build date: %2</source>
       <translation>MD5を検証中…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="357" />
+      <location filename="../native/window.cpp" line="358" />
       <source>Verifies and resumes interrupted batches containing the selected rows, without copying completed files again.</source>
       <translation>完了したファイルを再度コピーすることなく、選択した行を含む中断されたバッチを検証して再開します。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="100" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="101" />
       <source>Verify files using MD5</source>
       <translation>MD5 を使用してファイルを検証する</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="109" />
-      <location filename="../native/application.cpp" line="102" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="110" />
+      <location filename="../native/application.cpp" line="103" />
       <source>Verify properties</source>
       <translation>プロパティの検証</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="118" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="119" />
       <source>Check available space</source>
       <translation>空きスペースを確認する</translation>
     </message>
     <message>
-      <location filename="../native/application.cpp" line="140" />
+      <location filename="../native/application.cpp" line="141" />
       <source>XDG_RUNTIME_DIR not found
 </source>
       <translation>XDG_RUNTIME_DIR が見つかりません
@@ -1436,7 +1439,7 @@ Build date: %2</source>
       <translation>未知</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="633" />
+      <location filename="../native/window.cpp" line="650" />
       <source>not specified</source>
       <translation>指定されていない</translation>
     </message>
@@ -1451,21 +1454,21 @@ Build date: %2</source>
       <translation>要決断・残り時間不明</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="453" />
+      <location filename="../native/window.cpp" line="454" />
       <source>About</source>
       <translation>このアプリについて</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="627" />
+      <location filename="../native/window.cpp" line="644" />
       <source>About Gad</source>
       <translation>Gad について</translation>
     </message>
     <message>
-      <location filename="../native/window_errors.cpp" line="89" />
+      <location filename="../native/window_errors.cpp" line="90" />
       <location filename="../native/window_errors.cpp" line="23" />
       <location filename="../native/window_diagnostics.cpp" line="14" />
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Status</source>
       <translation>状態</translation>
     </message>
@@ -1482,64 +1485,64 @@ Build date: %2</source>
       <translation>転送追跡は終了しました。</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="224" />
+      <location filename="../native/notifications.h" line="246" />
       <source>%1 batch(es) canceled.</source>
       <translation>%1 個のバッチがキャンセルされました。</translation>
     </message>
     <message>
-      <location filename="../native/notifications.h" line="225" />
+      <location filename="../native/notifications.h" line="247" />
       <source>%1 batch(es) completed.</source>
       <translation>%1 バッチが完了しました。</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="156" />
+      <location filename="../native/transfer_tree.h" line="158" />
       <source>Sort ascending</source>
       <translation>昇順に並べ替えます</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="158" />
+      <location filename="../native/transfer_tree.h" line="160" />
       <source>Sort descending</source>
       <translation>降順で並べ替え</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="160" />
+      <location filename="../native/transfer_tree.h" line="162" />
       <source>Transfer queue order</source>
       <translation>転送キューの順序</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="166" />
+      <location filename="../native/transfer_tree.h" line="168" />
       <source>Contains…</source>
       <translation>含まれるもの…</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="166" />
+      <location filename="../native/transfer_tree.h" line="168" />
       <source>Filter this column</source>
       <translation>この列をフィルタリングする</translation>
     </message>
     <message>
       <location filename="../native/window_history.cpp" line="22" />
-      <location filename="../native/transfer_tree.h" line="178" />
-      <location filename="../native/transfer_tree.h" line="169" />
+      <location filename="../native/transfer_tree.h" line="180" />
+      <location filename="../native/transfer_tree.h" line="171" />
       <source>All statuses</source>
       <translation>すべてのステータス</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="182" />
+      <location filename="../native/transfer_tree.h" line="184" />
       <source>Progress range (%)</source>
       <translation>進捗範囲(%)</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="192" />
+      <location filename="../native/transfer_tree.h" line="194" />
       <source>Clear this column's filter</source>
       <translation>この列のフィルターをクリアします</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="193" />
+      <location filename="../native/transfer_tree.h" line="195" />
       <source>Clear header filters</source>
       <translation>ヘッダーフィルターをクリアする</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="199" />
+      <location filename="../native/transfer_tree.h" line="201" />
       <source>Click to sort; Ctrl+click to add a sort column; right-click for filters.
 Numbers show sort priority.
 Restore transfer queue order to drag rows.</source>
@@ -1548,33 +1551,33 @@ Restore transfer queue order to drag rows.</source>
 行をドラッグするための転送キューの順序を復元します。</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="186" />
+      <location filename="../native/transfer_tree.h" line="188" />
       <source>Minimum progress</source>
       <translation>最小限の進捗</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="186" />
+      <location filename="../native/transfer_tree.h" line="188" />
       <source>Maximum progress</source>
       <translation>最大の進歩</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="162" />
+      <location filename="../native/transfer_tree.h" line="164" />
       <source>Remove this column from sorting</source>
       <translation>この列を並べ替えから削除します</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="307" />
-      <location filename="../native/transfer_tree.h" line="101" />
+      <location filename="../native/window.cpp" line="308" />
+      <location filename="../native/transfer_tree.h" line="103" />
       <source>Order</source>
       <translation>処理順</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="177" />
+      <location filename="../native/window_rows.cpp" line="180" />
       <source>Batch #%1</source>
       <translation>バッチ #%1</translation>
     </message>
     <message>
-      <location filename="../native/transfer_tree.h" line="108" />
+      <location filename="../native/transfer_tree.h" line="110" />
       <source>Position in the queue, including retained history, independent of display sorting and filters.
 This is not a completion order; transfers may run in parallel.</source>
       <translation>表示の並べ替えやフィルターとは独立した、保持された履歴を含むキュー内の位置。
@@ -1586,13 +1589,13 @@ This is not a completion order; transfers may run in parallel.</source>
       <translation>制限: %1 MiB/秒</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="85" />
-      <location filename="../native/window.cpp" line="187" />
+      <location filename="../native/window_profiles.cpp" line="110" />
+      <location filename="../native/window.cpp" line="188" />
       <source>Include hidden items</source>
       <translation>隠しファイルとフォルダーを含める</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="188" />
+      <location filename="../native/window.cpp" line="189" />
       <source>Hidden items have a name starting with a dot.
 This option applies to new copies and moves only.</source>
       <translation>非表示の項目には、ドットで始まる名前が付いています。
@@ -1608,17 +1611,17 @@ Excluded items stay at the source during moves.</source>
 除外されたアイテムは、移動中もソースに残ります。</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="462" />
+      <location filename="../native/window_commands.cpp" line="513" />
       <source>%1 folder rule(s) · %2 file rule(s)</source>
       <translation>%1 フォルダー ルール · %2 ファイル ルール</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="462" />
+      <location filename="../native/window_commands.cpp" line="513" />
       <source>No name exclusions</source>
       <translation>名前による除外なし</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="480" />
+      <location filename="../native/window_commands.cpp" line="531" />
       <source>One name pattern per line, at any depth.
 * matches any text; ? matches one character.
 Folder exclusions skip their entire contents.
@@ -1629,30 +1632,30 @@ Rules apply to new transfers only; excluded items are kept at the source during 
 ルールは新規転送にのみ適用されます。除外されたアイテムは、移動中もソースに保持されます。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="87" />
-      <location filename="../native/window_commands.cpp" line="484" />
+      <location filename="../native/window_profiles.cpp" line="112" />
+      <location filename="../native/window_commands.cpp" line="535" />
       <source>Excluded folders</source>
       <translation>除外するフォルダー</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="87" />
-      <location filename="../native/window_commands.cpp" line="485" />
+      <location filename="../native/window_profiles.cpp" line="112" />
+      <location filename="../native/window_commands.cpp" line="536" />
       <source>Excluded files and symbolic links</source>
       <translation>除外されたファイルとシンボリックリンク</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="300" />
+      <location filename="../native/window_rows.cpp" line="303" />
       <source>No items to transfer after exclusions.</source>
       <translation>除外後に転送するアイテムはありません。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="84" />
-      <location filename="../native/window.cpp" line="190" />
+      <location filename="../native/window_profiles.cpp" line="109" />
+      <location filename="../native/window.cpp" line="191" />
       <source>Allow duplication in the same folder</source>
       <translation>同じフォルダー内での複製を許可</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="191" />
+      <location filename="../native/window.cpp" line="192" />
       <source>Copying into the source folder creates name_copied1, name_copied2, etc.
 File extensions are preserved.
 Applies to new copies only; moves are not duplicated.</source>
@@ -1661,58 +1664,58 @@ Applies to new copies only; moves are not duplicated.</source>
 新しいコピーのみに適用され、移動では複製しません。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="87" />
-      <location filename="../native/window.cpp" line="82" />
-      <location filename="../native/window.cpp" line="77" />
+      <location filename="../native/window.cpp" line="88" />
+      <location filename="../native/window.cpp" line="83" />
+      <location filename="../native/window.cpp" line="78" />
       <source>Settings</source>
       <translation>設定</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="79" />
+      <location filename="../native/window.cpp" line="80" />
       <source>Options…</source>
       <translation>オプション…</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="465" />
-      <location filename="../native/window.cpp" line="87" />
+      <location filename="../native/window.cpp" line="466" />
+      <location filename="../native/window.cpp" line="88" />
       <source>Shortcuts</source>
       <translation>ショートカット</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="89" />
-      <location filename="../native/window.cpp" line="466" />
+      <location filename="../native/window_profiles.cpp" line="114" />
+      <location filename="../native/window.cpp" line="467" />
       <source>Ctrl+V with Gad in Dolphin</source>
       <translation>Dolphin で Ctrl+V を Gad に割り当てる</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="89" />
-      <location filename="../native/window.cpp" line="475" />
+      <location filename="../native/window_profiles.cpp" line="114" />
+      <location filename="../native/window.cpp" line="476" />
       <source>Ctrl+V with Gad in Konqueror</source>
       <translation>Konqueror で Ctrl+V を Gad に割り当てる</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="470" />
+      <location filename="../native/window.cpp" line="471" />
       <source>Restart Dolphin after changing its shortcut.</source>
       <translation>ショートカットを変更した後は Dolphin を再起動してください。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="476" />
+      <location filename="../native/window.cpp" line="477" />
       <source>Applies to Konqueror launched with Gad. Text pastes remain native.</source>
       <translation>Gad と連携して起動した Konqueror に適用されます。テキストの貼り付けは通常どおり動作します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="479" />
+      <location filename="../native/window.cpp" line="480" />
       <source>Open Konqueror with Gad</source>
       <translation>Gad と連携して Konqueror を開く</translation>
     </message>
     <message>
+      <location filename="../native/window_commands.cpp" line="199" />
       <location filename="../native/window_commands.cpp" line="189" />
-      <location filename="../native/window_commands.cpp" line="179" />
       <source>Unable to change the Dolphin shortcut.</source>
       <translation>Dolphin のショートカットを変更できませんでした。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="481" />
+      <location filename="../native/window.cpp" line="482" />
       <source>Unable to start Konqueror.</source>
       <translation>Konqueror を起動できませんでした。</translation>
     </message>
@@ -1732,46 +1735,45 @@ Applies to new copies only; moves are not duplicated.</source>
       <translation>同じ名前のプロファイルが既に存在します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="239" />
+      <location filename="../native/window.cpp" line="240" />
       <source>Applies to new requests only.
 Existing requests and the global speed limit stay unchanged.</source>
       <translation>新しい要求にのみ適用されます。
 既存の要求と全体の速度制限は変わりません。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="172" />
+      <location filename="../native/window_profiles.cpp" line="197" />
       <source>Apply profile</source>
       <translation>プロファイルを適用</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="183" />
-      <location filename="../native/window_profiles.cpp" line="132" />
+      <location filename="../native/window_profiles.cpp" line="208" />
+      <location filename="../native/window_profiles.cpp" line="157" />
       <source>Cancel</source>
       <translation>キャンセル</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="81" />
-      <location filename="../native/window.cpp" line="242" />
+      <location filename="../native/window_profiles.cpp" line="106" />
+      <location filename="../native/window.cpp" line="243" />
       <source>Default limit for new requests:</source>
       <translation>新しい要求の既定の速度制限：</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="173" />
+      <location filename="../native/window_profiles.cpp" line="198" />
       <source>Delete profile</source>
       <translation>プロファイルを削除</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="226" />
+      <location filename="../native/window_commands.cpp" line="267" />
       <location filename="../native/transfer_profiles.h" line="38" />
       <source>Enter a profile name (up to 100 characters).</source>
       <translation>プロファイル名を入力してください（100文字以内）。</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="280" />
-      <location filename="../native/window_commands.cpp" line="274" />
-      <location filename="../native/window_commands.cpp" line="256" />
-      <location filename="../native/window_commands.cpp" line="249" />
-      <location filename="../native/window_commands.cpp" line="244" />
+      <location filename="../native/window_commands.cpp" line="321" />
+      <location filename="../native/window_commands.cpp" line="315" />
+      <location filename="../native/window_commands.cpp" line="285" />
+      <location filename="../native/window_commands.cpp" line="235" />
       <location filename="../native/transfer_profiles.h" line="97" />
       <location filename="../native/transfer_profiles.h" line="93" />
       <location filename="../native/transfer_profiles.h" line="44" />
@@ -1782,46 +1784,46 @@ Existing requests and the global speed limit stay unchanged.</source>
       <translation>転送プロファイルの設定が無効です。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="119" />
+      <location filename="../native/window_profiles.cpp" line="144" />
       <source>Manage profiles…</source>
       <translation>プロファイルを管理…</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="183" />
-      <location filename="../native/window_profiles.cpp" line="128" />
+      <location filename="../native/window_profiles.cpp" line="208" />
+      <location filename="../native/window_profiles.cpp" line="153" />
       <source>Name:</source>
       <translation>名前：</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="117" />
+      <location filename="../native/window_profiles.cpp" line="142" />
       <source>No saved profiles</source>
       <translation>保存されたプロファイルはありません</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="97" />
+      <location filename="../native/window_profiles.cpp" line="122" />
       <source>Profiles</source>
       <translation>プロファイル</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="183" />
-      <location filename="../native/window_profiles.cpp" line="183" />
-      <location filename="../native/window_profiles.cpp" line="173" />
+      <location filename="../native/window_profiles.cpp" line="208" />
+      <location filename="../native/window_profiles.cpp" line="208" />
+      <location filename="../native/window_profiles.cpp" line="198" />
       <source>Rename profile…</source>
       <translation>プロファイル名を変更…</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="172" />
-      <location filename="../native/window_profiles.cpp" line="118" />
+      <location filename="../native/window_profiles.cpp" line="197" />
+      <location filename="../native/window_profiles.cpp" line="143" />
       <source>Save current settings…</source>
       <translation>現在の設定を保存…</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="131" />
+      <location filename="../native/window_profiles.cpp" line="156" />
       <source>Save profile</source>
       <translation>プロファイルを保存</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="125" />
+      <location filename="../native/window_profiles.cpp" line="150" />
       <source>Save transfer profile</source>
       <translation>転送プロファイルを保存</translation>
     </message>
@@ -1831,12 +1833,12 @@ Existing requests and the global speed limit stay unchanged.</source>
       <translation>保存されたプロファイルが無効です。変更せず保持します。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="34" />
+      <location filename="../native/window_profiles.cpp" line="35" />
       <source>This transfer profile no longer exists.</source>
       <translation>この転送プロファイルは存在しません。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="168" />
+      <location filename="../native/window_profiles.cpp" line="193" />
       <source>Transfer profiles</source>
       <translation>転送プロファイル</translation>
     </message>
@@ -1851,81 +1853,82 @@ Existing requests and the global speed limit stay unchanged.</source>
       <translation>転送プロファイルは64件まで保存できます。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="172" />
+      <location filename="../native/window_profiles.cpp" line="197" />
       <source>Update from current settings</source>
       <translation>現在の設定で更新</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="38" />
-      <location filename="../native/window_profiles.cpp" line="31" />
-      <location filename="../native/window_commands.cpp" line="278" />
-      <location filename="../native/window_commands.cpp" line="236" />
-      <location filename="../native/window.cpp" line="690" />
-      <source>A transfer profile is already being applied.</source>
-      <translation>転送プロファイルを適用中です。</translation>
+      <location filename="../native/window_profiles.cpp" line="46" />
+      <location filename="../native/window_profiles.cpp" line="43" />
+      <location filename="../native/window_profiles.cpp" line="32" />
+      <location filename="../native/window_commands.cpp" line="319" />
+      <location filename="../native/window_commands.cpp" line="277" />
+      <location filename="../native/window.cpp" line="707" />
+      <source>Settings are already being applied.</source>
+      <translation>設定を適用中です。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="36" />
+      <location filename="../native/window_profiles.cpp" line="44" />
       <source>The language saved in this profile is unavailable.</source>
       <translation>このプロファイルに保存された言語は利用できません。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="56" />
-      <source>Some settings could not be restored after the profile failed. Check the options.</source>
-      <translation>プロファイルの適用失敗後、一部の設定を元に戻せませんでした。オプションを確認してください。</translation>
+      <location filename="../native/window_profiles.cpp" line="81" />
+      <source>Some settings could not be restored after the change failed. Check the options.</source>
+      <translation>変更に失敗した後、一部の設定を復元できませんでした。オプションを確認してください。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="99" />
+      <location filename="../native/window_profiles.cpp" line="124" />
       <source>Apply all saved options without changing the destination.</source>
       <translation>コピー先を変更せず、保存したすべてのオプションを適用します。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="126" />
+      <location filename="../native/window_profiles.cpp" line="151" />
       <source>Save all current options.
 The destination is never included.</source>
       <translation>現在のすべてのオプションを保存します。
 コピー先は保存しません。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="169" />
+      <location filename="../native/window_profiles.cpp" line="194" />
       <source>Profiles save all options, including global settings.
 Applying a profile does not change the destination or start a transfer.</source>
       <translation>プロファイルには全体設定を含むすべてのオプションを保存します。
 適用してもコピー先は変わらず、転送は開始されません。</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="234" />
+      <location filename="../native/window_commands.cpp" line="275" />
       <source>Transfer profile not found.</source>
       <translation>転送プロファイルが見つかりません。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="201" />
+      <location filename="../native/window.cpp" line="202" />
       <source>Ask</source>
       <translation>確認する</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="81" />
-      <location filename="../native/window.cpp" line="202" />
+      <location filename="../native/window_profiles.cpp" line="106" />
+      <location filename="../native/window.cpp" line="203" />
       <source>File conflicts:</source>
       <translation>ファイルの競合:</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="201" />
+      <location filename="../native/window.cpp" line="202" />
       <source>Keep both files</source>
       <translation>両方のファイルを保持</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="201" />
+      <location filename="../native/window.cpp" line="202" />
       <source>Replace older files only</source>
       <translation>古いファイルのみ置換</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="201" />
+      <location filename="../native/window.cpp" line="202" />
       <source>Skip existing files</source>
       <translation>既存のファイルをスキップ</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="204" />
+      <location filename="../native/window.cpp" line="205" />
       <source>Applies to new requests and is saved in profiles.
 Existing folders are merged.
 Older means a strictly earlier modification time; equal or newer files are kept.
@@ -1972,12 +1975,12 @@ Unreadable dates or symbolic links stop the file instead of replacing it automat
       <translation>から</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="177" />
+      <location filename="../native/window_rows.cpp" line="180" />
       <source>Added:</source>
       <translation>追加日時:</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="176" />
+      <location filename="../native/window_rows.cpp" line="179" />
       <source>Unknown date (older history)</source>
       <translation>日時不明（古い履歴）</translation>
     </message>
@@ -2118,8 +2121,8 @@ History must be retained; cleared operations cannot be searched.</source>
     </message>
     <message>
       <location filename="../native/window_diagnostics.cpp" line="14" />
-      <location filename="../native/window.cpp" line="492" />
-      <location filename="../native/window.cpp" line="87" />
+      <location filename="../native/window.cpp" line="493" />
+      <location filename="../native/window.cpp" line="88" />
       <source>Speed limits</source>
       <translation>転送速度</translation>
     </message>
@@ -2129,7 +2132,7 @@ History must be retained; cleared operations cannot be searched.</source>
       <translation>転送の診断</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="498" />
+      <location filename="../native/window.cpp" line="499" />
       <source>Transfer diagnostics…</source>
       <translation>転送の診断…</translation>
     </message>
@@ -2174,13 +2177,13 @@ History must be retained; cleared operations cannot be searched.</source>
       <translation>全体</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="83" />
-      <location filename="../native/window.cpp" line="172" />
+      <location filename="../native/window_profiles.cpp" line="108" />
+      <location filename="../native/window.cpp" line="173" />
       <source>Verify fast moves</source>
       <translation>高速移動を検証</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="173" />
+      <location filename="../native/window.cpp" line="174" />
       <source>After a local rename, checks identity, type, size, modification time, permissions, owner/group, symbolic links, the complete tree and removal of the original path.
 Does not read file contents; MD5 remains a separate option that uses the copy path.
 A failed check keeps the moved result and its restoration journal.
@@ -2191,18 +2194,18 @@ Applies to new requests and is saved in profiles.</source>
 新しい要求に適用し、プロファイルに保存します。</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="375" />
+      <location filename="../native/window_rows.cpp" line="378" />
       <location filename="../native/transfer_metrics.h" line="117" />
       <source>Verifying fast move · metadata and paths</source>
       <translation>高速移動を検証中 · メタデータとパス</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="376" />
+      <location filename="../native/window_rows.cpp" line="379" />
       <source>Fast move verified · identity and metadata</source>
       <translation>高速移動を検証済み · 同一性とメタデータ</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="378" />
+      <location filename="../native/window_rows.cpp" line="381" />
       <source>Checked path:</source>
       <translation>確認したパス:</translation>
     </message>
@@ -2212,7 +2215,7 @@ Applies to new requests and is saved in profiles.</source>
       <translation>高速移動の結果を検証中です。同一性、メタデータ、ツリー、元のパスの消失を確認します。内容は再読み込みしません。</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="75" />
+      <location filename="../native/notifications.h" line="134" />
       <source>%1 in %2 seconds</source>
       <translation>%2 秒後に %1</translation>
     </message>
@@ -2222,14 +2225,15 @@ Applies to new requests and is saved in profiles.</source>
       <translation>%2 秒後に %1。Gadを開くとキャンセルできます。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="30" />
-      <location filename="../native/window_commands.cpp" line="267" />
-      <location filename="../native/window_commands.cpp" line="223" />
+      <location filename="../native/window_profiles.cpp" line="42" />
+      <location filename="../native/window_profiles.cpp" line="31" />
+      <location filename="../native/window_commands.cpp" line="308" />
+      <location filename="../native/window_commands.cpp" line="264" />
       <source>A completion action is being dispatched; no operation was added</source>
       <translation>終了時アクションを送信中のため操作を追加しませんでした</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="42" />
+      <location filename="../native/completion_plan.h" line="43" />
       <source>A tracked request disappeared. The completion action was canceled.</source>
       <translation>監視中の要求が消失したため終了時アクションをキャンセルしました。</translation>
     </message>
@@ -2239,7 +2243,7 @@ Applies to new requests and is saved in profiles.</source>
       <translation>アクション:</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="92" />
+      <location filename="../native/window_completion.cpp" line="85" />
       <source>All tracked transfers finished successfully.</source>
       <translation>監視中のすべての転送が正常に完了しました。</translation>
     </message>
@@ -2264,17 +2268,17 @@ Applies to new requests and is saved in profiles.</source>
       <translation>転送を変更せずにこのアクションを取り消します。新しい要求が入ると、再びキューが終了してからカウントダウンを最初から開始します。</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="87" />
+      <location filename="../native/window_completion.cpp" line="78" />
       <source>Click to open Gad.</source>
       <translation>クリックしてGadを開きます。</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="65" />
+      <location filename="../native/window_completion.cpp" line="64" />
       <source>Completion action canceled</source>
       <translation>終了時アクションをキャンセルしました</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="81" />
+      <location filename="../native/window_completion.cpp" line="72" />
       <source>Completion action failed</source>
       <translation>終了時アクションに失敗しました</translation>
     </message>
@@ -2284,36 +2288,38 @@ Applies to new requests and is saved in profiles.</source>
       <translation>カウントダウン（秒）:</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="80" />
+      <location filename="../native/window_profiles.cpp" line="105" />
       <location filename="../native/window_completion.cpp" line="28" />
       <source>Countdown: %1 s…</source>
       <translation>カウントダウン: %1 秒…</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="13" />
+      <location filename="../native/completion_plan.h" line="14" />
       <source>Do nothing</source>
       <translation>何もしない</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="93" />
+      <location filename="../native/window_completion.cpp" line="86" />
       <source>Gad could not close. No power action was requested.</source>
       <translation>Gadを終了できませんでした。システムアクションは要求していません。</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="94" />
-      <location filename="../native/window_commands.cpp" line="275" />
-      <location filename="../native/window_commands.cpp" line="245" />
+      <location filename="../native/window_completion.cpp" line="87" />
+      <location filename="../native/window_commands.cpp" line="316" />
+      <location filename="../native/window_commands.cpp" line="286" />
+      <location filename="../native/window_commands.cpp" line="244" />
       <source>Invalid completion action</source>
       <translation>終了時アクションが無効です</translation>
     </message>
     <message>
-      <location filename="../native/window_commands.cpp" line="276" />
-      <location filename="../native/window_commands.cpp" line="246" />
+      <location filename="../native/window_commands.cpp" line="317" />
+      <location filename="../native/window_commands.cpp" line="287" />
+      <location filename="../native/window_commands.cpp" line="245" />
       <source>Invalid countdown: use 5 to 3600 whole seconds.</source>
       <translation>カウントダウンは5～3600の整数秒で指定してください。</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="46" />
+      <location filename="../native/completion_plan.h" line="47" />
       <source>No successful transfer was observed. The completion action was canceled.</source>
       <translation>正常な転送が観測されなかったため終了時アクションをキャンセルしました。</translation>
     </message>
@@ -2328,7 +2334,7 @@ Applies to new requests and is saved in profiles.</source>
       <translation>終了時: %1（有効）</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="12" />
+      <location filename="../native/completion_plan.h" line="13" />
       <source>Power off the computer</source>
       <translation>コンピューターの電源を切る</translation>
     </message>
@@ -2364,17 +2370,17 @@ Applies to new requests and is saved in profiles.</source>
       <translation>設定やプロファイルではアクションを有効にしません。終了時メニューから一度だけ有効にします。エラー、キャンセル、要求の削除で取り消します。新しい要求が入るとカウントダウンを最初から開始します。</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="11" />
+      <location filename="../native/completion_plan.h" line="12" />
       <source>Suspend the computer</source>
       <translation>コンピューターをサスペンド</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="36" />
+      <location filename="../native/completion_plan.h" line="37" />
       <source>The completion action was canceled because operations were canceled, removed or restored.</source>
       <translation>操作のキャンセル、削除、復元があったため終了時アクションを取り消しました。</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="100" />
+      <location filename="../native/window_completion.cpp" line="93" />
       <source>The power action request did not complete.</source>
       <translation>システムアクションの要求を完了できませんでした。</translation>
     </message>
@@ -2384,7 +2390,7 @@ Applies to new requests and is saved in profiles.</source>
       <translation>キューにエラーまたはキャンセルがあるため終了時アクションを取り消しました。</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="98" />
+      <location filename="../native/window_completion.cpp" line="91" />
       <source>This session cannot perform the requested power action.</source>
       <translation>このセッションでは要求されたシステムアクションを実行できません。</translation>
     </message>
@@ -2394,19 +2400,19 @@ Applies to new requests and is saved in profiles.</source>
       <translation>キューの終了時…</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="90" />
-      <location filename="../native/window.cpp" line="482" />
+      <location filename="../native/window_profiles.cpp" line="115" />
+      <location filename="../native/window.cpp" line="483" />
       <source>Ctrl+V with Gad in Krusader</source>
       <translation>Krusader で Gad を使って Ctrl+V</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="486" />
+      <location filename="../native/window.cpp" line="487" />
       <source>Restart Krusader after changing its shortcut. Gad pastes files into the active panel. F5 and F6 remain unchanged.</source>
       <translation>ショートカットを変更した後は Krusader を再起動してください。Gad はアクティブなパネルにファイルを貼り付けます。F5 と F6 は変更されません。</translation>
     </message>
     <message>
+      <location filename="../native/window_commands.cpp" line="224" />
       <location filename="../native/window_commands.cpp" line="214" />
-      <location filename="../native/window_commands.cpp" line="204" />
       <source>Unable to change the Krusader shortcut.</source>
       <translation>Krusader のショートカットを変更できません。</translation>
     </message>
@@ -2622,8 +2628,8 @@ Applies to new requests and is saved in profiles.</source>
       <translation>開始</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="360" />
-      <location filename="../native/window_rows.cpp" line="289" />
+      <location filename="../native/window_rows.cpp" line="363" />
+      <location filename="../native/window_rows.cpp" line="292" />
       <location filename="../native/transfer_diagnostics.h" line="36" />
       <source>Ready to start</source>
       <translation>開始待ち</translation>
@@ -2639,7 +2645,7 @@ Applies to new requests and is saved in profiles.</source>
       <translation>一覧の準備ができた手動追加ファイルを開始します。クリップボードからの貼り付けは自動的に開始します。全体の一時停止は維持されます。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="258" />
+      <location filename="../native/window.cpp" line="259" />
       <source>Starts the prepared queue, pauses active transfers, or resumes the paused queue.</source>
       <translation>準備済みキューを開始するか、転送を一時停止または再開します。</translation>
     </message>
@@ -2649,7 +2655,7 @@ Applies to new requests and is saved in profiles.</source>
       <translation>取り消す変更はありません</translation>
     </message>
     <message>
-      <location filename="../native/window_rows.cpp" line="197" />
+      <location filename="../native/window_rows.cpp" line="200" />
       <source>Limit: %1</source>
       <translation>上限: %1</translation>
     </message>
@@ -2746,7 +2752,7 @@ An error, a canceled transfer or a removed request disables the action. Adding t
     </message>
     <message>
       <location filename="../native/window_completion.cpp" line="53" />
-      <location filename="../native/completion_plan.h" line="33" />
+      <location filename="../native/completion_plan.h" line="34" />
       <source>Batch completion guard unavailable. Restart Gad before arming an action.</source>
       <translation>終了時の保護機構を利用できません。アクションを有効にする前にGadを再起動してください。</translation>
     </message>
@@ -2761,97 +2767,97 @@ An error, a canceled transfer or a removed request disables the action. Adding t
       <translation>転送を変更せずにこのアクションを取り消します。新しい要求が入ると、再びバッチが終了してからカウントダウンを最初から開始します。</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="73" />
+      <location filename="../native/notifications.h" line="133" />
       <source>Batch completion countdown</source>
       <translation>バッチ終了のカウントダウン</translation>
     </message>
     <message>
-      <location filename="../native/window_completion.cpp" line="92" />
+      <location filename="../native/window_completion.cpp" line="85" />
       <source>Batch finished</source>
       <translation>バッチが終了しました</translation>
     </message>
     <message>
-      <location filename="../native/completion_plan.h" line="43" />
+      <location filename="../native/completion_plan.h" line="44" />
       <source>The batch contains an error or cancellation. The completion action was canceled.</source>
       <translation>バッチにエラーまたはキャンセルがあるため終了時アクションを取り消しました。</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="80" />
-      <location filename="../native/window.cpp" line="492" />
-      <location filename="../native/window.cpp" line="87" />
+      <location filename="../native/window_profiles.cpp" line="105" />
+      <location filename="../native/window.cpp" line="493" />
+      <location filename="../native/window.cpp" line="88" />
       <source>Batch completion</source>
       <translation>バッチ完了時</translation>
     </message>
     <message>
-      <location filename="../native/window_profiles.cpp" line="88" />
-      <location filename="../native/window.cpp" line="175" />
+      <location filename="../native/window_profiles.cpp" line="113" />
+      <location filename="../native/window.cpp" line="176" />
       <source>Show transfer progress in KDE</source>
       <translation>KDE の転送進捗メッセージを表示</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="176" />
+      <location filename="../native/window.cpp" line="177" />
       <source>Shows the KDE progress message, including when Gad is hidden.
 Disabling it hides the message without pausing or canceling transfers.</source>
       <translation>Gad が非表示でも KDE の進捗メッセージを表示します。
 無効にするとメッセージだけが非表示になり、転送は一時停止もキャンセルもされません。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="68" />
+      <location filename="../native/window.cpp" line="69" />
       <source>Clipboard files</source>
       <translation>クリップボードのファイル</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="43" />
+      <location filename="../native/window.cpp" line="44" />
       <source>Choose the destination folder.</source>
       <translation>保存先フォルダーを選択します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="72" />
+      <location filename="../native/window.cpp" line="73" />
       <source>Add files copied or cut to the clipboard, using the current destination.</source>
       <translation>クリップボードにコピーまたは切り取ったファイルを現在の保存先に追加します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="80" />
+      <location filename="../native/window.cpp" line="81" />
       <source>Configure transfer options, shortcuts, speed limits and completion actions.</source>
       <translation>転送、ショートカット、速度制限、完了時の動作を設定します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="455" />
+      <location filename="../native/window.cpp" line="456" />
       <source>Show the version, license and documentation.</source>
       <translation>バージョン、ライセンス、ドキュメントを表示します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="458" />
+      <location filename="../native/window.cpp" line="459" />
       <source>View transfer errors, retry failed files or export the report.</source>
       <translation>エラーの確認、失敗したファイルの再試行、レポートの出力を行います。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="499" />
+      <location filename="../native/window.cpp" line="500" />
       <source>Explain transfer progress and waiting times.</source>
       <translation>転送の進行状況と待機の理由を確認します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="420" />
+      <location filename="../native/window.cpp" line="421" />
       <source>Select the file awaiting conflict resolution in the list.</source>
       <translation>競合の解決を待っているファイルを一覧で選択します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="66" />
+      <location filename="../native/window.cpp" line="67" />
       <source>Choose files to add to the transfer list.</source>
       <translation>転送一覧に追加するファイルを選択します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="67" />
+      <location filename="../native/window.cpp" line="68" />
       <source>Add a folder and its contents to the transfer list.</source>
       <translation>フォルダーとその内容を転送一覧に追加します。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="49" />
+      <location filename="../native/window.cpp" line="50" />
       <source>Add items</source>
       <translation>項目を追加</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="51" />
+      <location filename="../native/window.cpp" line="52" />
       <source>Add files, a folder or clipboard files to the transfer list.</source>
       <translation>ファイル、フォルダー、クリップボードのファイルを転送一覧に追加します。</translation>
     </message>
@@ -2866,10 +2872,15 @@ Disabling it hides the message without pausing or canceling transfers.</source>
       <translation>すべての転送が正常に完了した後の動作を選択します。カウントダウン中に取り消せます。</translation>
     </message>
     <message>
-      <location filename="../native/window.cpp" line="497" />
-      <location filename="../native/window.cpp" line="87" />
+      <location filename="../native/window.cpp" line="498" />
+      <location filename="../native/window.cpp" line="88" />
       <source>Exclusions</source>
       <translation>除外</translation>
+    </message>
+    <message>
+      <location filename="../native/completion_plan.h" line="10" />
+      <source>Clear the list</source>
+      <translation>一覧を消去</translation>
     </message>
   </context>
   <context>
@@ -3421,6 +3432,14 @@ Disabling it hides the message without pausing or canceling transfers.</source>
     <message>
       <source>A completion action is being dispatched; no operation was added</source>
       <translation>終了時アクションを送信中のため操作を追加しませんでした</translation>
+    </message>
+    <message>
+      <source>Temporary file changed before finalization</source>
+      <translation>一時ファイルが確定前に変更されました</translation>
+    </message>
+    <message>
+      <source>Invalid pause value: expected true or false</source>
+      <translation>一時停止の値が無効です。true または false を指定してください。</translation>
     </message>
   </context>
 </TS>
